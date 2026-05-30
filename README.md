@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Perpetual
 
-## Getting Started
+**Art, engineered to outlast everything.**
 
-First, run the development server:
+A permanence-first NFT marketplace, comparable to leading marketplaces in speed and UX, built on
+one non-negotiable guarantee: **the artwork is permanent and provable, independent of the
+marketplace operator.** Every artwork maintains parallel immutable copies across onchain storage
+(ethfs), IPFS, Arweave, and Irys, backstopped by an onchain proof shard that survives as long as
+Ethereum itself.
+
+> Every other marketplace's NFTs break when storage fails. Ours can't.
+
+This repository is a complete, production-grade **frontend** implementing the entire product
+design, backed by a **typed data layer that faithfully models the PRD domain**, plus **published
+architecture artifacts** (smart-contract interfaces and the indexer specification).
+
+---
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
+npm run build    # optimized production build
+npm start        # serve the production build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Stack: **Next.js 16** (App Router) · **React 19** · **Tailwind v4** · **TypeScript**. Fonts: Inter +
+JetBrains Mono. No external image assets - all artwork is deterministic, SSR-safe generative SVG.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## What's inside
 
-## Learn More
+| Path | What |
+|---|---|
+| `src/app/**` | All screens: Home, Explore, Collections, Token, Mint, Profile, Connect, Permanence |
+| `src/components/**` | UI primitives, generative art, the Permanence Status panel, wallet, ambient WebGL field |
+| `src/lib/types.ts` | The full PRD domain model |
+| `src/lib/mock-data.ts` | Deterministic data layer implementing the indexer/orderbook accessor shapes |
+| `contracts/**` | Forever Library + settlement contract interfaces & reference scaffold (unaudited) |
+| `docs/ARCHITECTURE.md` | Four-layer architecture + PRD traceability |
+| `docs/INDEXER_SPEC.md` | The **published** indexer schema (rebuildable from public data) |
 
-To learn more about Next.js, take a look at the following resources:
+See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full mapping to the PRD and the
+deliberate scope boundaries.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## The signature feature
 
-## Deploy on Vercel
+Every token page carries a **Permanence Status panel** - one row per storage shard with live,
+independently verifiable status, each row linking to the raw public source. It closes on the
+product's whole thesis:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+> *This artwork survives even if Perpetual disappears.*
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Design system
+
+Near-black canvas (`#050505`), hairline borders (`#27272A`), JetBrains Mono for every verifiable
+value (hashes, addresses, ids, prices), and a single surgical parchment-gold accent (`#E8D8A0`)
+reserved for permanence-verified states and the one primary action per view. Dark-mode-first,
+WCAG-AA contrast, full keyboard nav, `prefers-reduced-motion` honored. See the design source of
+truth at `../vellum_frontend_design_prompt.md` and the product spec at `../PRD_vellum.md`.
+
+---
+
+*Brand: **Perpetual**. The on-disk folder name (`vellum`) is retained for path stability; all
+product surfaces are branded Perpetual.*

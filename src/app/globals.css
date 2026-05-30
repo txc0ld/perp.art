@@ -1,26 +1,132 @@
 @import "tailwindcss";
 
+/* ============================================================
+   PERPETUAL DESIGN TOKENS  (authoritative - see design prompt §3)
+   Near-black, hairline-bordered, mono-labeled, gallery restraint.
+   ============================================================ */
+@theme {
+  /* Colors */
+  --color-background: #050505;   /* deep canvas */
+  --color-surface: #18181b;      /* cards, panels, elevated surfaces */
+  --color-surface-2: #1f1f23;    /* nested elevation */
+  --color-border: #27272a;       /* hairline borders, dividers */
+  --color-border-bright: #3f3f46;/* hover / focus border */
+  --color-foreground: #ffffff;   /* text-primary */
+  --color-muted: #a1a1aa;        /* text-secondary */
+  --color-faint: #71717a;        /* tertiary metadata */
+
+  /* Signature accent - orchid pink. Used on <5% of any screen:
+     permanence-verified states, active selection, the single
+     most important CTA. Monochrome discipline is the premium signal. */
+  --color-accent: #fe93ed;
+  --color-accent-dim: #ee72de;
+
+  /* Verify green - reserved strictly for live "resolving/ok" pulse states */
+  --color-verify: #9ee6b4;
+
+  /* Fonts */
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
+  --font-brand: var(--font-jakarta), "Plus Jakarta Sans", ui-sans-serif, sans-serif;
+
+  /* Radius */
+  --radius-card: 8px;
+  --radius-control: 8px;
+  --radius-pill: 9999px;
+
+  /* Motion */
+  --ease-perpetual: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Accent at low alpha (Tailwind v4 can't derive this from a hex var) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-accent-faint: rgba(254, 147, 237, 0.12);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ---------- base ---------- */
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-accent-faint);
+  color: var(--color-accent);
+}
+
+/* Hairline divider helper */
+.hairline { border: 1px solid var(--color-border); }
+
+/* Mono technical label - the brand's machine-truth fingerprint */
+.label-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* Display headline rhythm */
+.display-lg {
+  font-size: clamp(40px, 6.4vw, 64px);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+}
+.display-sm {
+  font-size: clamp(28px, 3.6vw, 38px);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- scrollbar ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--color-background); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-border-bright); }
+
+/* ============================================================
+   MOTION  (design prompt §6) - smooth, restrained, purposeful
+   ============================================================ */
+@keyframes perpetual-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes perpetual-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes perpetual-reveal {
+  from { opacity: 0; transform: translateY(0.5em); clip-path: inset(0 0 100% 0); }
+  to   { opacity: 1; transform: translateY(0); clip-path: inset(0 0 -10% 0); }
+}
+@keyframes perpetual-verify-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.animate-rise { animation: perpetual-rise 0.6s var(--ease-perpetual) both; }
+.animate-fade { animation: perpetual-fade 0.8s var(--ease-perpetual) both; }
+.animate-reveal { animation: perpetual-reveal 0.7s var(--ease-perpetual) both; }
+.animate-verify-pulse { animation: perpetual-verify-pulse 1.6s ease-in-out infinite; }
+
+/* Reduced motion - disable ambient + entrance motion gracefully */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-rise, .animate-fade, .animate-reveal {
+    opacity: 1 !important; transform: none !important; clip-path: none !important;
+  }
 }

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>perpetual.art - logo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#050505;
+    --surface:#101012;
+    --surface-2:#18181B;
+    --border:#27272A;
+    --white:#FFFFFF;
+    --muted:#A1A1AA;
+    --accent:#fe93ed; /* signature pink - surgical use only */
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{
+    background:var(--bg);
+    color:var(--white);
+    font-family:'Plus Jakarta Sans',sans-serif;
+    min-height:100vh;
+    padding:72px 32px 120px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:18px;
+  }
+  .page-title{
+    font-size:40px;font-weight:600;letter-spacing:-.02em;line-height:1.05;margin-bottom:10px;
+  }
+  .page-sub{color:var(--muted);font-size:15px;line-height:1.6;max-width:560px;margin-bottom:64px}
+
+  .section-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 22px;display:flex;align-items:center;gap:12px;
+  }
+  .section-label::after{content:"";height:1px;flex:1;background:var(--border)}
+
+  /* PRIMARY HERO LOCKUP */
+  .hero{
+    border:1px solid var(--border);border-radius:12px;background:
+      radial-gradient(120% 140% at 50% 0%, #0c0c0f 0%, #050505 60%);
+    padding:80px 40px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:34px;margin-bottom:72px;position:relative;overflow:hidden;
+  }
+  .hero::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(60% 80% at 50% 50%, rgba(254,147,237,.06), transparent 70%);
+    pointer-events:none;
+  }
+  .lockup{display:flex;align-items:center;gap:22px;position:relative;z-index:1}
+  .wordmark{
+    font-size:52px;font-weight:600;letter-spacing:-.035em;line-height:1;
+  }
+  .wordmark .dot{color:var(--accent)}
+  .wordmark .tld{
+    font-family:'JetBrains Mono',monospace;font-weight:500;font-size:30px;letter-spacing:-.01em;color:var(--muted);
+    vertical-align:baseline;
+  }
+
+  /* MARK GRID */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:72px}
+  .card{
+    border:1px solid var(--border);border-radius:12px;background:var(--surface);
+    aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+    position:relative;transition:border-color .35s ease, transform .35s ease;
+  }
+  .card:hover{border-color:#3a3a40;transform:translateY(-3px)}
+  .card .mk{width:96px;height:96px;display:flex;align-items:center;justify-content:center}
+  .card .cap{
+    position:absolute;bottom:16px;left:0;right:0;text-align:center;
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  .card .idx{
+    position:absolute;top:16px;left:18px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;color:#3a3a40;letter-spacing:.1em;
+  }
+
+  /* lockup variants row */
+  .variants{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:72px}
+  .vcard{
+    border:1px solid var(--border);border-radius:12px;background:var(--surface);
+    padding:44px 40px;display:flex;align-items:center;gap:20px;min-height:160px;
+  }
+  .vcard.stack{flex-direction:column;align-items:flex-start;gap:14px;justify-content:center}
+  .vwm{font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1;display:flex;align-items:center;gap:14px}
+  .vwm .tld{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);font-weight:500}
+  .vwm.small{font-size:22px}
+  .vwm.small .tld{font-size:13px}
+
+  /* favicon / app icon row */
+  .icons{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:24px}
+  .ico{border:1px solid var(--border);border-radius:22%;background:var(--bg);display:flex;align-items:center;justify-content:center}
+  .ico.lg{width:104px;height:104px}
+  .ico.md{width:64px;height:64px;border-radius:20%}
+  .ico.sm{width:40px;height:40px;border-radius:18%}
+  .ico.inv{background:var(--white)}
+  .ico.gold{background:var(--accent)}
+  .meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.04em;line-height:1.9;margin-top:8px}
+  .meta b{color:var(--white);font-weight:600}
+
+  @media(max-width:760px){
+    .grid{grid-template-columns:repeat(2,1fr)}
+    .variants{grid-template-columns:1fr}
+    .wordmark{font-size:38px}.wordmark .tld{font-size:22px}
+    .page-title{font-size:30px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Fantom Labs · Identity</div>
+  <h1 class="page-title">perpetual<span style="color:#fe93ed">.</span><span style="font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--muted);font-size:30px;">art</span></h1>
+  <p class="page-sub">A minimalist identity system built on the single idea the brand stands for: continuity without end. One unbroken line, monochrome discipline, a single warm mark of permanence.</p>
+
+  <!-- PRIMARY LOCKUP -->
+  <div class="section-label">Primary lockup</div>
+  <div class="hero">
+    <!-- the recommended mark: continuous lemniscate, single stroke -->
+    <svg width="132" height="132" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="perpetual mark">
+      <circle cx="50" cy="50" r="32" stroke="#FFFFFF" stroke-width="3.2"/>
+      <circle cx="50" cy="50" r="4.6" fill="#fe93ed"/>
+    </svg>
+    <div class="lockup">
+      <span class="wordmark">perpetual<span class="dot">.</span><span class="tld">art</span></span>
+    </div>
+  </div>
+
+  <!-- MARK EXPLORATIONS -->
+  <div class="section-label">Mark exploration · monochrome</div>
+  <div class="grid">
+
+    <!-- 01 fixed point (primary / chosen) -->
+    <div class="card">
+      <span class="idx">01 / primary</span>
+      <div class="mk">
+        <svg width="96" height="96" viewBox="0 0 100 100" fill="none">
+          <circle cx="50" cy="50" r="32" stroke="#FFFFFF" stroke-width="3.2"/><circle cx="50" cy="50" r="4.4" fill="#fe93ed"/>
+        </svg>
+      </div>
+      <span class="cap">fixed point</span>
+    </div>
+
+    <!-- 02 eternal ring with overlap -->
+    <div class="card">
+      <span class="idx">02</span>
+      <div class="mk">
+        <svg width="96" height="96" viewBox="0 0 100 100" fill="none">
+          <path d="M50 18
+                   A 32 32 0 1 1 26.5 28.7"
+            stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round"/>
+          <path d="M50 18 L 41 11 M50 18 L 41 25"
+            stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </div>
+      <span class="cap">eternal return</span>
+    </div>
+
+    <!-- 03 P monogram, looped bowl -->
+    <div class="card">
+      <span class="idx">03</span>
+      <div class="mk">
+        <svg width="96" height="96" viewBox="0 0 100 100" fill="none">
+          <path d="M34 84 L34 22 C34 18 36 16 40 16 L56 16 A18 18 0 0 1 56 52 L34 52"
+            stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="cap">monogram “p”</span>
+    </div>
+
+    <!-- 04 strata / layers (permanence shards) -->
+    <div class="card">
+      <span class="idx">04</span>
+      <div class="mk">
+        <svg width="96" height="96" viewBox="0 0 100 100" fill="none">
+          <path d="M20 38 A30 30 0 0 1 80 38" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round"/>
+          <path d="M20 52 A30 30 0 0 1 80 52" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" opacity=".72"/>
+          <path d="M20 66 A30 30 0 0 1 80 66" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" opacity=".44"/>
+        </svg>
+      </div>
+      <span class="cap">strata · shards</span>
+    </div>
+
+    <!-- 05 continuous line (alt) -->
+    <div class="card">
+      <span class="idx">05 / alt</span>
+      <div class="mk">
+        <svg width="96" height="96" viewBox="0 0 100 100" fill="none">
+          <path d="M50 50 C 42 36, 18 36, 18 50 C 18 64, 42 64, 50 50 C 58 36, 82 36, 82 50 C 82 64, 58 64, 50 50 Z" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="cap">continuous line</span>
+    </div>
+
+    <!-- 06 möbius minimal -->
+    <div class="card">
+      <span class="idx">06</span>
+      <div class="mk">
+        <svg width="96" height="96" viewBox="0 0 100 100" fill="none">
+          <path d="M30 60 C 14 60, 14 40, 34 40 C 60 40, 40 60, 66 60 C 86 60, 86 40, 70 40"
+            stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="cap">möbius</span>
+    </div>
+
+  </div>
+
+  <!-- WORDMARK VARIANTS -->
+  <div class="section-label">Wordmark lockups</div>
+  <div class="variants">
+    <div class="vcard">
+      <svg width="40" height="40" viewBox="0 0 100 100" fill="none">
+        <circle cx="50" cy="50" r="32" stroke="#FFFFFF" stroke-width="4"/><circle cx="50" cy="50" r="5.1" fill="#fe93ed"/>
+      </svg>
+      <span class="vwm">perpetual<span style="color:var(--accent)">.</span><span class="tld">art</span></span>
+    </div>
+
+    <div class="vcard stack">
+      <span class="vwm">perpetual<span style="color:var(--accent)">.</span><span class="tld">art</span></span>
+      <span class="meta" style="margin-top:2px">engineered to outlast everything</span>
+    </div>
+
+    <div class="vcard">
+      <span class="vwm small" style="color:var(--muted)">perpetual<span style="color:var(--accent)">.</span><span class="tld" style="color:#fff">art</span></span>
+    </div>
+
+    <div class="vcard" style="background:var(--white)">
+      <svg width="40" height="40" viewBox="0 0 100 100" fill="none">
+        <circle cx="50" cy="50" r="32" stroke="#050505" stroke-width="4"/><circle cx="50" cy="50" r="5.1" fill="#fe93ed"/>
+      </svg>
+      <span class="vwm" style="color:#050505">perpetual<span style="color:#d23fbf">.</span><span class="tld" style="color:#71717A">art</span></span>
+    </div>
+  </div>
+
+  <!-- APP ICON / FAVICON -->
+  <div class="section-label">App icon · favicon scaling</div>
+  <div class="icons">
+    <div class="ico lg">
+      <svg width="64" height="64" viewBox="0 0 100 100" fill="none">
+        <circle cx="50" cy="50" r="32" stroke="#FFFFFF" stroke-width="4"/><circle cx="50" cy="50" r="5.1" fill="#fe93ed"/>
+      </svg>
+    </div>
+    <div class="ico md">
+      <svg width="38" height="38" viewBox="0 0 100 100" fill="none">
+        <circle cx="50" cy="50" r="32" stroke="#FFFFFF" stroke-width="5"/><circle cx="50" cy="50" r="6.0" fill="#fe93ed"/>
+      </svg>
+    </div>
+    <div class="ico sm">
+      <svg width="24" height="24" viewBox="0 0 100 100" fill="none">
+        <circle cx="50" cy="50" r="32" stroke="#FFFFFF" stroke-width="6.5"/><circle cx="50" cy="50" r="7.4" fill="#fe93ed"/>
+      </svg>
+    </div>
+    <div class="ico md inv">
+      <svg width="38" height="38" viewBox="0 0 100 100" fill="none">
+        <circle cx="50" cy="50" r="32" stroke="#050505" stroke-width="5"/><circle cx="50" cy="50" r="6.0" fill="#fe93ed"/>
+      </svg>
+    </div>
+    <div class="ico md gold">
+      <svg width="38" height="38" viewBox="0 0 100 100" fill="none">
+        <circle cx="50" cy="50" r="32" stroke="#050505" stroke-width="5"/><circle cx="50" cy="50" r="6.0" fill="#fe93ed"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="meta">
+    mark · <b>fixed point</b> - an unbroken ring with a single point at center<br>
+    type · <b>Plus Jakarta Sans</b> 600, -3.5% tracking &nbsp;|&nbsp; tld · <b>JetBrains Mono</b> 500<br>
+    color · <b>#FFFFFF</b> on <b>#050505</b> &nbsp;|&nbsp; accent <b>#FE93ED</b> (the single dot only)
+  </div>
+
+</div>
+</body>
+</html>
