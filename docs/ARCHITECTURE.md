@@ -86,11 +86,10 @@ loop and its UX** is what this build proves end-to-end.
 ## Run it
 
 ```bash
-cd vellum            # the app directory (folder name retained; brand is "Perpetual")
+cd perpetual        # the app directory
 npm install
 npm run dev          # http://localhost:3000
 npm run build        # production build (56 static/SSG routes)
 ```
 
-> Note: the on-disk project folder is still named `vellum.art/vellum` for path stability; the product,
 > all UI, metadata, and copy are branded **Perpetual** throughout.

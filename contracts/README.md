@@ -7,7 +7,7 @@
 > encoding details (ethfs persistence, full EIP-712 array hashing, conduit
 > transfers) are intentionally stubbed with `// ...` and marked as such.
 
-**Brand:** Perpetual (formerly working title "Vellum"). A permanence-first NFT
+**Brand:** Perpetual. A permanence-first NFT
 marketplace built on a single non-negotiable guarantee: *the artwork is
 permanent and provable, independent of the marketplace operator* (PRD §1).
 

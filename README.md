@@ -7,7 +7,7 @@
 A permanence-first NFT marketplace with OpenSea-grade trading UX, built on a single
 guarantee: **the artwork is provably permanent and survives even if the operator disappears.**
 
-[**Live demo**](https://vellum-tx-build.vercel.app) · [Architecture](./docs/ARCHITECTURE.md) · [Indexer spec](./docs/INDEXER_SPEC.md) · [Contracts](./contracts/README.md)
+[**Live demo**](https://perpetual-art-tx-build.vercel.app) · [Architecture](./docs/ARCHITECTURE.md) · [Indexer spec](./docs/INDEXER_SPEC.md) · [Contracts](./contracts/README.md)
 
 `Next.js 16` · `React 19` · `Tailwind v4` · `TypeScript`
 
@@ -148,7 +148,7 @@ The repository root is the application root.
 vercel --prod
 ```
 
-Live: **https://vellum-tx-build.vercel.app**
+Live: **https://perpetual-art-tx-build.vercel.app**
 
 ---
 
@@ -163,5 +163,5 @@ are already in place.
 ---
 
 <div align="center">
-<sub>Brand: <b>perpetual.art</b>. The on-disk folder is named <code>vellum</code> for path stability.</sub>
+<sub>Built with care. The art cannot die.</sub>
 </div>
