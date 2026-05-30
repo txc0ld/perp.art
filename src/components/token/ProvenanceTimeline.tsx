@@ -4,7 +4,8 @@
  * linking to a block explorer. Engineered, archival feel with a hairline connector.
  */
 import type { ProvenanceEvent } from "@/lib/types";
-import { shortAddress, shortHash, formatEth, relativeTime, cn } from "@/lib/utils";
+import { shortHash, formatEth, relativeTime, cn } from "@/lib/utils";
+import { Identity } from "@/components/identity/Identity";
 
 const KIND_LABEL: Record<ProvenanceEvent["kind"], string> = {
   created: "Created",
@@ -53,15 +54,15 @@ export function ProvenanceTimeline({ events }: { events: ProvenanceEvent[] }) {
 
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] text-muted">
                   {e.from && (
-                    <span>
+                    <span className="inline-flex items-center gap-1">
                       <span className="text-faint">from </span>
-                      {shortAddress(e.from)}
+                      <Identity address={e.from} className="text-muted" />
                     </span>
                   )}
                   {e.to && (
-                    <span>
+                    <span className="inline-flex items-center gap-1">
                       <span className="text-faint">to </span>
-                      {shortAddress(e.to)}
+                      <Identity address={e.to} className="text-muted" />
                     </span>
                   )}
                   {typeof e.blockNumber === "number" && (

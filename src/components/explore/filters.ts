@@ -4,6 +4,7 @@
  * client filter shell and its child controls.
  */
 import type { Token, Genre, Chain } from "@/lib/types";
+import { getChains, CHAIN_ORDER } from "@/lib/mock-data";
 
 export type StorageKind = "arweave" | "irys" | "onchain-only";
 export type StatusKind = "listed" | "unlisted";
@@ -34,10 +35,11 @@ export const EMPTY_FILTERS: ExploreFilters = {
   sort: "recent",
 };
 
-export const CHAINS: { value: Chain; label: string }[] = [
-  { value: "ethereum", label: "Ethereum" },
-  { value: "base", label: "Base" },
-];
+/** Every supported chain, in display order, for the Chain filter group. */
+export const CHAINS: { value: Chain; label: string }[] = getChains().map((c) => ({
+  value: c.id,
+  label: c.short,
+}));
 
 export const STORAGE_OPTIONS: { value: StorageKind; label: string }[] = [
   { value: "arweave", label: "Has Arweave" },
@@ -192,7 +194,7 @@ export function filtersFromSearchParams(sp: Record<string, string | string[] | u
 
   const validGenres: Genre[] = ["Generative", "Glitch", "Photography", "Pixel", "AI", "3D", "Abstract"];
   const genres = many(sp.genre).filter((g): g is Genre => validGenres.includes(g as Genre));
-  const chains = many(sp.chain).filter((c): c is Chain => c === "ethereum" || c === "base");
+  const chains = many(sp.chain).filter((c): c is Chain => (CHAIN_ORDER as string[]).includes(c));
   const storage = many(sp.storage).filter((s): s is StorageKind =>
     s === "arweave" || s === "irys" || s === "onchain-only",
   );

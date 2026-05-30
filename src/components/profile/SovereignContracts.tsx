@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { Collection } from "@/lib/types";
+import type { Collection, Chain } from "@/lib/types";
 import { Surface, Button, Badge, MonoLabel, Divider } from "@/components/ui";
+import { getChainMeta } from "@/lib/mock-data";
 import { shortAddress, bpsToPct } from "@/lib/utils";
 import { DeployContractModal, type DeployedContract } from "./DeployContractModal";
 
@@ -11,7 +12,7 @@ interface ContractView {
   key: string;
   name: string;
   contractAddress: string;
-  chain: "ethereum" | "base";
+  chain: Chain;
   itemCount: number;
   ownerCount: number;
   royaltyBps: number;
@@ -23,7 +24,7 @@ function fromCollection(c: Collection): ContractView {
     key: c.slug,
     name: c.name,
     contractAddress: c.contractAddress,
-    chain: c.chain === "ethereum" ? "ethereum" : "base",
+    chain: c.chain,
     itemCount: c.itemCount,
     ownerCount: c.ownerCount,
     royaltyBps: c.royaltyBps,
@@ -131,7 +132,7 @@ function ContractCard({ contract: c }: { contract: ContractView }) {
   }
 
   const rows: Array<{ label: string; value: string }> = [
-    { label: "Chain", value: c.chain === "ethereum" ? "Ethereum Mainnet" : "Base" },
+    { label: "Chain", value: getChainMeta(c.chain).label },
     { label: "Items", value: String(c.itemCount) },
     { label: "Owners", value: String(c.ownerCount) },
     { label: "Royalty", value: bpsToPct(c.royaltyBps) },

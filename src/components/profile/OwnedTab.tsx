@@ -65,7 +65,8 @@ export function CollectedTab({ tokens, preview }: { tokens: Token[]; preview?: b
         }
         description={
           <>
-            Est. {formatEth(estValue)} ETH
+            <span className="whitespace-nowrap">Est. value {formatEth(estValue)} ETH-eq</span>
+            <span className="text-faint"> · approx, holdings span multiple chains</span>
             {preview ? " · preview, sample collection" : ""}
           </>
         }

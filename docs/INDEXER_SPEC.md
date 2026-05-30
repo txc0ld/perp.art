@@ -8,8 +8,13 @@
 > and rebuild a marketplace.
 >
 > **No proprietary data is required to reconstruct the index.** Everything below is derived
-> from (a) on-chain events/state on Ethereum mainnet + Base, and (b) public content-storage
-> networks (ethfs, IPFS, Arweave, Irys).
+> from (a) on-chain events/state across the nine supported networks, and (b) public
+> content-storage networks (ethfs, IPFS, Arweave, Irys).
+>
+> **Supported networks (the `chain` field spans all nine).** Permanence-native EVM chains where
+> Forever Library deploys: `ethereum`, `base`, `polygon`, `arbitrum`, `optimism`, `zora`.
+> Indexed + traded with native storage: `solana`, `tezos`, `flow`. Each carries a native currency
+> (ETH / POL / SOL / XTZ / FLOW); see `CHAINS` in `src/lib/mock-data.ts`.
 
 ---
 
@@ -35,7 +40,7 @@
 {
   "address": "0x…",            // Forever Library instance
   "kind": "native | sovereign",
-  "chain": "ethereum | base",
+  "chain": "ethereum | base | polygon | arbitrum | optimism | zora",  // EVM (Forever Library)
   "registeredAtBlock": 21000000,
   "verified": true,            // passed Forever Library compatibility check (PRD §17.5)
   "owner": "0x…"               // artist owns sovereign contracts outright (PRD §7.5)
@@ -48,7 +53,8 @@
   "id": "<contract>-<tokenId>",   // canonical, route-safe (no ':' - Windows/static-export safe)
   "contract": "0x…",
   "tokenId": 1,
-  "chain": "ethereum | base",
+  "chain": "ethereum | base | polygon | arbitrum | optimism | zora | solana | tezos | flow",
+  "currency": "ETH",             // chain native currency (ETH | POL | SOL | XTZ | FLOW)
   "creator": "0x…",
   "owner": "0x…",                 // from latest Transfer
   "title": "Strata No. 1",
@@ -88,10 +94,42 @@
 ### 2.5 Order (listing / offer) - signed Seaport order (PRD §9.2)
 ```jsonc
 { "orderId": "0x…", "type": "listing | offer", "scope": "token | collection | trait",
-  "tokenId": "<contract>-<tokenId>", "priceEth": 1.8, "chain": "ethereum | base",
+  "tokenId": "<contract>-<tokenId>", "priceEth": 1.8, "chain": "ethereum | base | … | flow",
   "maker": "0x…", "expiresAt": "2026-06-20T…Z", "signature": "0x…",
   "onchainValid": true }            // fillable directly against settlement if orderbook is down
 ```
+
+### 2.6 SwapOrder (NFT-for-NFT + criteria barter) - signed Seaport barter order (PRD §8)
+
+A swap is a barter order: the maker offers token(s), and either requests specific token(s) or
+matches a criteria. When the two sides span different chains it settles cross-chain via the escrow
+bridge (see §7). Each `SwapSide` carries its own `chain`, so `crossChain` is simply
+`offer.chain !== request.chain`.
+
+```jsonc
+{
+  "id": "swap-…",
+  "status": "open | accepted | declined | expired | countered",
+  "maker": "0x…",                 // address proposing the swap
+  "taker": "0x…",                 // optional directed counterparty (owner of the requested token)
+  "offer":   { "tokenIds": ["<contract>-<tokenId>"], "ethTopUp": 0,   "chain": "base" },
+  "request": { "tokenIds": ["<contract>-<tokenId>"], "ethTopUp": 0.4, "chain": "ethereum" },
+  // OR, for an open criteria swap, request.tokenIds is empty and requestCriteria carries the rule:
+  "requestCriteria": {
+    "collectionSlug": "strata",   // any token from this collection …
+    "traitKey": "Palette",        // … optionally with this trait (key+value) …
+    "traitValue": "Cinder",
+    "label": "Any Strata (Cinder) + 0.4 ETH"   // human summary
+  },
+  "crossChain": true,             // offer.chain !== request.chain -> settles via escrow bridge
+  "createdAt": "2026-05-20T…Z",
+  "expiresAt": "2026-06-08T…Z",
+  "targetTokenId": "<contract>-<tokenId>"  // primary token for token-page surfacing (optional)
+}
+```
+
+> A criteria swap is filled by any token satisfying `requestCriteria` (collection, optionally
+> trait); the indexer resolves candidate fillers per the same rule the frontend applies.
 
 ---
 
@@ -149,9 +187,17 @@ GET /v1/collections                                         -> Collection[]
 GET /v1/collections/:slug                                   -> Collection
 GET /v1/collections/:slug/tokens                            -> Token[]
 GET /v1/orders?tokenId=&type=                               -> Order[]
+GET /v1/swaps?status=&maker=&taker=&tokenId=&criteria=      -> SwapOrder[]  (Swaps desk / token / profile)
+GET /v1/swaps/:id                                           -> SwapOrder
 GET /v1/search?q=                                           -> Token[]      (full-text + trait)
 GET /v1/featured                                            -> FeaturedEntry[] (community vote, PRD §11)
 ```
+
+The `chain` filter on `/v1/tokens` accepts any of the nine supported networks. The `/v1/swaps`
+endpoint returns barter orders (§2.6); a swap with `crossChain: true` settles atomically across
+the escrow bridge, and `criteria=true` filters to open criteria-based requests. In this build,
+`getOpenSwaps`, `getCriteriaSwaps`, `getSwapsForToken`, `getSwapsForUser`, and `getSwap` in
+`src/lib/mock-data.ts` implement these shapes in-memory.
 
 In this build, `src/lib/mock-data.ts` implements exactly these shapes in-memory so the
 frontend is fully functional offline; swapping it for a live indexer that emits this schema

@@ -1,5 +1,6 @@
 import type { Collection } from "@/lib/types";
 import type { CollectionRanking } from "@/lib/mock-data";
+import { getChainMeta } from "@/lib/mock-data";
 import { formatEth, bpsToPct } from "@/lib/utils";
 import { PctChange } from "@/components/stats/PctChange";
 
@@ -23,16 +24,17 @@ export function CollectionStatsBar({
   listedCount: number;
 }) {
   const listedPct = collection.itemCount > 0 ? (listedCount / collection.itemCount) * 100 : 0;
+  const cur = getChainMeta(collection.chain).currency;
 
   const cells: Cell[] = [
-    { label: "Floor", value: `${formatEth(collection.floorEth)} ETH` },
-    { label: "Top offer", value: ranking ? `${formatEth(ranking.topOfferEth)} ETH` : "-" },
-    { label: "24h Vol", value: ranking ? `${formatEth(ranking.volumeEth)} ETH` : "-" },
+    { label: "Floor", value: `${formatEth(collection.floorEth)} ${cur}` },
+    { label: "Top offer", value: ranking ? `${formatEth(ranking.topOfferEth)} ${cur}` : "-" },
+    { label: "24h Vol", value: ranking ? `${formatEth(ranking.volumeEth)} ${cur}` : "-" },
     {
       label: "24h Change",
       value: ranking ? <PctChange value={ranking.changePct} /> : "-",
     },
-    { label: "Total Vol", value: `${formatEth(collection.volumeEth)} ETH` },
+    { label: "Total Vol", value: `${formatEth(collection.volumeEth)} ${cur}` },
     { label: "Items", value: collection.itemCount.toLocaleString() },
     { label: "Owners", value: collection.ownerCount.toLocaleString() },
     { label: "Listed", value: `${listedPct.toFixed(0)}%` },

@@ -8,8 +8,9 @@ import {
   getCollection,
   getTokensByCollection,
   getSwapsForToken,
+  getChainMeta,
 } from "@/lib/mock-data";
-import { Section, SectionHeader, Badge, StatusGlyph } from "@/components/ui";
+import { Section, SectionHeader, Badge, StatusGlyph, VerifiedBadge } from "@/components/ui";
 import { ArtTile } from "@/components/art/ArtTile";
 import { ArtworkViewer } from "@/components/token/ArtworkViewer";
 import { BuyPanel } from "@/components/token/BuyPanel";
@@ -22,6 +23,11 @@ import { ItemTabs } from "@/components/token/ItemTabs";
 import { ItemActions } from "@/components/token/ItemActions";
 import { SectionNav } from "@/components/token/SectionNav";
 import { TokenSwaps } from "@/components/token/TokenSwaps";
+import { Identity } from "@/components/identity/Identity";
+import { PermanenceScoreBadge } from "@/components/token/PermanenceScoreBadge";
+import { PermanenceScoreCard } from "@/components/token/PermanenceScoreCard";
+import { VanishTest } from "@/components/token/VanishTest";
+import { CertificateOfPermanence } from "@/components/token/CertificateOfPermanence";
 import {
   shortAddress,
   shortHash,
@@ -110,7 +116,8 @@ export default async function TokenPage({
     .slice(0, 5);
   const swaps = getSwapsForToken(token.id);
 
-  const chainLabel = token.chain === "ethereum" ? "Ethereum" : "Base";
+  const chainMeta = getChainMeta(token.chain);
+  const chainLabel = chainMeta.label;
   const verifiedShards = token.permanence.shards.filter(
     (s) => s.status === "verified",
   ).length;
@@ -121,6 +128,8 @@ export default async function TokenPage({
   // In-page sub-nav: only the sections actually rendered for this token.
   const navItems = [
     { id: "section-permanence", label: "Permanence" },
+    { id: "section-vanish", label: "Vanish test" },
+    { id: "section-certificate", label: "Certificate" },
     ...(token.traits.length > 0
       ? [{ id: "section-traits", label: "Traits" }]
       : []),
@@ -202,6 +211,14 @@ export default async function TokenPage({
               }
             >
               <PermanencePanel token={token} />
+
+              {/* Permanence Score - an authoritative grade beneath the live shard panel. */}
+              <div className="mt-5">
+                <p className="mb-2.5 font-mono text-[10px] uppercase tracking-wider text-faint">
+                  Permanence score
+                </p>
+                <PermanenceScoreCard token={token} />
+              </div>
             </Accordion>
           </div>
 
@@ -229,8 +246,8 @@ export default async function TokenPage({
                 {collection.description}
               </p>
               <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                <Stat label="Floor" value={`${formatEth(collection.floorEth)} ETH`} />
-                <Stat label="Volume" value={`${formatEth(collection.volumeEth)} ETH`} />
+                <Stat label="Floor" value={`${formatEth(collection.floorEth)} ${chainMeta.currency}`} />
+                <Stat label="Volume" value={`${formatEth(collection.volumeEth)} ${chainMeta.currency}`} />
                 <Stat label="Items" value={collection.itemCount.toLocaleString()} />
                 <Stat label="Owners" value={collection.ownerCount.toLocaleString()} />
               </div>
@@ -245,7 +262,7 @@ export default async function TokenPage({
                 value={shortAddress(
                   collection?.contractAddress ?? token.royalty.receiver,
                 )}
-                href={`https://etherscan.io/address/${
+                href={`${chainMeta.explorer}/address/${
                   collection?.contractAddress ?? token.royalty.receiver
                 }`}
               />
@@ -277,7 +294,7 @@ export default async function TokenPage({
                 className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-accent"
               >
                 {collection.name}
-                {artist?.verified && <StatusGlyph status="verified" />}
+                {artist?.verified && <VerifiedBadge size={14} />}
               </Link>
             ) : (
               <span />
@@ -287,14 +304,17 @@ export default async function TokenPage({
 
           {/* Title + favorite/share */}
           <div className="animate-rise flex items-start justify-between gap-4">
-            <h1 className="display-sm text-balance text-foreground">{token.title}</h1>
+            <div className="flex min-w-0 flex-col gap-2.5">
+              <h1 className="display-sm text-balance text-foreground">{token.title}</h1>
+              <PermanenceScoreBadge token={token} className="self-start" />
+            </div>
             <ItemActions />
           </div>
 
           {/* Provenance line */}
-          <p className="animate-rise font-mono text-[12px] text-muted">
+          <p className="animate-rise flex flex-wrap items-center gap-1.5 font-mono text-[12px] text-muted">
             Held by{" "}
-            <span className="text-foreground">{shortAddress(token.owner)}</span>
+            <Identity address={token.owner} avatar className="text-foreground" />
           </p>
 
           {/* Price box + Buy / Make offer (existing BuyPanel/BuyModal) */}
@@ -335,6 +355,30 @@ export default async function TokenPage({
             },
           ]}
         />
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Vanish Test - the signature proof of the permanence guarantee       */}
+      {/* ------------------------------------------------------------------ */}
+      <div id="section-vanish" className="mt-16 scroll-mt-24 lg:mt-20">
+        <SectionHeader
+          eyebrow="Proof"
+          title="The vanish test"
+          description="Take Perpetual offline and watch the artwork refuse to disappear. We shut down the indexer, the CDN, then even the IPFS pin, while the onchain proof keeps resolving the work from Ethereum itself."
+        />
+        <VanishTest token={token} />
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Certificate of Permanence - downloadable archival SVG               */}
+      {/* ------------------------------------------------------------------ */}
+      <div id="section-certificate" className="mt-16 scroll-mt-24 lg:mt-20">
+        <SectionHeader
+          eyebrow="Keepsake"
+          title="Certificate of permanence"
+          description="An archival, self-contained SVG that records this work's permanence: content hash, every storage shard, mint date, and its permanence grade. Yours to keep."
+        />
+        <CertificateOfPermanence token={token} />
       </div>
 
       {/* ------------------------------------------------------------------ */}

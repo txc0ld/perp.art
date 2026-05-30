@@ -3,8 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import type { Token } from "@/lib/types";
-import { cn, formatEth, shortAddress, relativeTime } from "@/lib/utils";
+import { cn, formatEth, relativeTime } from "@/lib/utils";
+import { getChainMeta } from "@/lib/mock-data";
 import { ArtTile } from "@/components/art/ArtTile";
+import { Identity } from "@/components/identity/Identity";
 
 type Tab = "items" | "activity";
 type Sort = "recent" | "price-asc" | "price-desc";
@@ -251,9 +253,13 @@ function ActivityTable({ rows, collectionName }: { rows: ActivityRow[]; collecti
                   {r.token.title}
                 </Link>
               </td>
-              <Td className="text-right text-foreground">{r.priceEth ? `${formatEth(r.priceEth)} ETH` : "-"}</Td>
-              <Td className="hidden text-left sm:table-cell">{r.from ? shortAddress(r.from) : "-"}</Td>
-              <Td className="hidden text-left sm:table-cell">{r.to ? shortAddress(r.to) : "-"}</Td>
+              <Td className="text-right text-foreground">{r.priceEth ? `${formatEth(r.priceEth)} ${getChainMeta(r.token.chain).currency}` : "-"}</Td>
+              <Td className="hidden text-left sm:table-cell">
+                {r.from ? <Identity address={r.from} className="max-w-full text-[13px] text-muted" /> : "-"}
+              </Td>
+              <Td className="hidden text-left sm:table-cell">
+                {r.to ? <Identity address={r.to} className="max-w-full text-[13px] text-muted" /> : "-"}
+              </Td>
               <Td className="text-right text-faint">{relativeTime(r.timestamp)}</Td>
             </tr>
           ))}

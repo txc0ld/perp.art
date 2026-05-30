@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { Collection } from "@/lib/types";
-import { getArtist } from "@/lib/mock-data";
+import { getArtist, getChainMeta } from "@/lib/mock-data";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
-import { StatusGlyph } from "@/components/ui";
+import { VerifiedBadge } from "@/components/ui";
+import { ChainBadge } from "@/components/chain/ChainBadge";
 import { Tilt3D } from "@/components/visual/Tilt3D";
 import { formatEth } from "@/lib/utils";
 
@@ -13,6 +14,7 @@ import { formatEth } from "@/lib/utils";
  */
 export function CollectionCard({ collection }: { collection: Collection }) {
   const artist = getArtist(collection.artistHandle);
+  const currency = getChainMeta(collection.chain).currency;
 
   return (
     <Link
@@ -28,9 +30,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
           className="h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
         />
         <div className="absolute right-3 top-3">
-          <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-1 font-mono text-[9px] uppercase tracking-wider text-muted backdrop-blur-md">
-            {collection.chain === "ethereum" ? "Ethereum" : "Base"}
-          </span>
+          <ChainBadge chain={collection.chain} className="border-border/60 bg-background/70 backdrop-blur-md" />
         </div>
       </Tilt3D>
 
@@ -50,14 +50,14 @@ export function CollectionCard({ collection }: { collection: Collection }) {
         <div className="flex items-center gap-1.5">
           <h3 className="truncate text-[15px] font-semibold text-foreground">{collection.name}</h3>
           {(collection.sovereign || artist?.verified) && (
-            <StatusGlyph status="verified" className="shrink-0" />
+            <VerifiedBadge size={15} className="shrink-0" label={collection.sovereign ? "Sovereign contract" : "Verified"} />
           )}
         </div>
         <p className="mt-0.5 truncate text-xs text-muted">{artist?.name ?? collection.artistHandle}</p>
 
         <div className="mt-auto grid grid-cols-3 gap-2 pt-4">
-          <Stat label="Floor" value={`${formatEth(collection.floorEth)} ETH`} />
-          <Stat label="Volume" value={`${formatEth(collection.volumeEth)} ETH`} />
+          <Stat label="Floor" value={`${formatEth(collection.floorEth)} ${currency}`} />
+          <Stat label="Volume" value={`${formatEth(collection.volumeEth)} ${currency}`} />
           <Stat label="Items" value={String(collection.itemCount)} />
         </div>
       </div>

@@ -12,6 +12,7 @@ import type { SwapOrder } from "@/lib/types";
 import { getSwapsForUser } from "@/lib/mock-data";
 import { useWallet, connectWallet } from "@/lib/wallet";
 import { SwapList } from "./SwapList";
+import { ProposeSwapButton } from "./ProposeSwapButton";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -28,14 +29,20 @@ export function SwapsDesk({
   const wallet = useWallet();
   const [tab, setTab] = React.useState<TabId>("open");
   const [crossOnly, setCrossOnly] = React.useState(false);
+  const [criteriaOnly, setCriteriaOnly] = React.useState(false);
   const tabRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
 
   const address = wallet.connected && wallet.address ? wallet.address : fallbackAddress;
   const { incoming, outgoing } = React.useMemo(() => getSwapsForUser(address), [address]);
 
   const filter = React.useCallback(
-    (list: SwapOrder[]) => (crossOnly ? list.filter((s) => s.crossChain) : list),
-    [crossOnly],
+    (list: SwapOrder[]) =>
+      list.filter(
+        (s) =>
+          (!crossOnly || s.crossChain) &&
+          (!criteriaOnly || Boolean(s.requestCriteria)),
+      ),
+    [crossOnly, criteriaOnly],
   );
 
   const fOpen = filter(openSwaps);
@@ -114,23 +121,45 @@ export function SwapsDesk({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setCrossOnly((v) => !v)}
-          aria-pressed={crossOnly}
-          className={cn(
-            "inline-flex h-9 shrink-0 items-center gap-2 rounded-[8px] border px-3 font-mono text-[11px] uppercase tracking-wider transition-colors",
-            crossOnly
-              ? "border-accent/40 bg-accent/10 text-accent"
-              : "border-border bg-surface text-muted hover:border-border-bright hover:text-foreground",
-          )}
-        >
-          <span
-            className={cn("inline-block h-2 w-2 rounded-full", crossOnly ? "bg-accent" : "bg-faint")}
-            aria-hidden
-          />
-          Cross-chain only
-        </button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCriteriaOnly((v) => !v)}
+            aria-pressed={criteriaOnly}
+            className={cn(
+              "inline-flex h-9 items-center gap-2 rounded-[8px] border px-3 font-mono text-[11px] uppercase tracking-wider transition-colors",
+              criteriaOnly
+                ? "border-accent/40 bg-accent/10 text-accent"
+                : "border-border bg-surface text-muted hover:border-border-bright hover:text-foreground",
+            )}
+          >
+            <span
+              className={cn("inline-block h-2 w-2 rounded-full", criteriaOnly ? "bg-accent" : "bg-faint")}
+              aria-hidden
+            />
+            Collection swaps
+          </button>
+          <button
+            type="button"
+            onClick={() => setCrossOnly((v) => !v)}
+            aria-pressed={crossOnly}
+            className={cn(
+              "inline-flex h-9 items-center gap-2 rounded-[8px] border px-3 font-mono text-[11px] uppercase tracking-wider transition-colors",
+              crossOnly
+                ? "border-accent/40 bg-accent/10 text-accent"
+                : "border-border bg-surface text-muted hover:border-border-bright hover:text-foreground",
+            )}
+          >
+            <span
+              className={cn("inline-block h-2 w-2 rounded-full", crossOnly ? "bg-accent" : "bg-faint")}
+              aria-hidden
+            />
+            Cross-chain only
+          </button>
+          <ProposeSwapButton variant="accent" size="sm" defaultMode="criteria">
+            Create swap
+          </ProposeSwapButton>
+        </div>
       </div>
 
       {/* Wallet hint for personal tabs */}
@@ -151,8 +180,19 @@ export function SwapsDesk({
           <SwapList
             swaps={fOpen}
             variant="open"
-            emptyTitle={crossOnly ? "No open cross-chain swaps" : "No open swaps right now"}
-            emptyBody="Open a token page and propose the first barter. Offer a work, balance with ETH, settle across chains."
+            emptyTitle={
+              criteriaOnly
+                ? "No open collection swaps"
+                : crossOnly
+                  ? "No open cross-chain swaps"
+                  : "No open swaps right now"
+            }
+            emptyBody="Create a collection swap, any work from a collection for one of yours, or open a token page to propose a specific barter."
+            action={
+              <ProposeSwapButton variant="accent" size="md" defaultMode="criteria">
+                Create swap
+              </ProposeSwapButton>
+            }
           />
         )}
         {tab === "incoming" && (

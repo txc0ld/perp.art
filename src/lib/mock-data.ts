@@ -11,9 +11,9 @@
 import type {
   Artist, Collection, Token, Genre, StorageShard, PermanenceStatus,
   ProvenanceEvent, Offer, ShardOption, FeaturedEntry, Chain, MediaType,
-  SwapOrder, SwapSide, SwapStatus,
+  SwapOrder, SwapSide, SwapStatus, SwapCriteria,
 } from "./types";
-import { seededRandom, hashSeed } from "./utils";
+import { seededRandom, hashSeed, shortAddress } from "./utils";
 
 // ---------------------------------------------------------------------------
 // Deterministic helpers
@@ -82,11 +82,14 @@ const COLLECTION_SEED: Array<{
   description: string; chain: Chain; floorEth: number; royaltyBps: number; count: number;
 }> = [
   { slug: "perpetual-strata", name: "Strata", artistHandle: "claudewren", genre: "Generative", description: "Sedimentary generative fields. Each layer a thousand-year deposit, computed once and fixed forever.", chain: "ethereum", floorEth: 1.8, royaltyBps: 750, count: 8 },
-  { slug: "decay-atlas", name: "Decay Atlas", artistHandle: "marisotto", genre: "Glitch", description: "Maps of corrupted territory. The signal degraded; the record is permanent.", chain: "ethereum", floorEth: 0.9, royaltyBps: 1000, count: 7 },
+  { slug: "decay-atlas", name: "Decay Atlas", artistHandle: "marisotto", genre: "Glitch", description: "Maps of corrupted territory. The signal degraded; the record is permanent.", chain: "tezos", floorEth: 240, royaltyBps: 1000, count: 7 },
   { slug: "afterlight", name: "Afterlight", artistHandle: "kenjiao", genre: "Photography", description: "Light that has already gone, held still. Long exposures of the briefly eternal.", chain: "base", floorEth: 1.2, royaltyBps: 800, count: 6 },
-  { slug: "handset", name: "Handset", artistHandle: "pixelmonk", genre: "Pixel", description: "Every pixel placed by hand. Slowness as proof of care.", chain: "base", floorEth: 0.45, royaltyBps: 600, count: 6 },
-  { slug: "latent-cartography", name: "Latent Cartography", artistHandle: "novaarchive", genre: "AI", description: "Cross-sections of a model's imagination, anchored to immutable storage.", chain: "ethereum", floorEth: 2.4, royaltyBps: 900, count: 7 },
-  { slug: "quiet-fields", name: "Quiet Fields", artistHandle: "elmsong", genre: "Abstract", description: "Color meant to outlast the wall it hangs on. Restraint as permanence.", chain: "base", floorEth: 0.6, royaltyBps: 500, count: 6 },
+  { slug: "handset", name: "Handset", artistHandle: "pixelmonk", genre: "Pixel", description: "Every pixel placed by hand. Slowness as proof of care.", chain: "zora", floorEth: 0.45, royaltyBps: 600, count: 6 },
+  { slug: "latent-cartography", name: "Latent Cartography", artistHandle: "novaarchive", genre: "AI", description: "Cross-sections of a model's imagination, anchored to immutable storage.", chain: "solana", floorEth: 18, royaltyBps: 900, count: 7 },
+  { slug: "quiet-fields", name: "Quiet Fields", artistHandle: "elmsong", genre: "Abstract", description: "Color meant to outlast the wall it hangs on. Restraint as permanence.", chain: "polygon", floorEth: 320, royaltyBps: 500, count: 6 },
+  { slug: "ramparts", name: "Ramparts", artistHandle: "claudewren", genre: "3D", description: "Eroded fortifications rebuilt in volume. Geometry that refuses to forget.", chain: "arbitrum", floorEth: 0.7, royaltyBps: 750, count: 6 },
+  { slug: "long-exposure", name: "Long Exposure", artistHandle: "kenjiao", genre: "Photography", description: "Time, gathered onto a single plate. The slow accumulation of light made permanent.", chain: "optimism", floorEth: 0.55, royaltyBps: 800, count: 6 },
+  { slug: "soliton", name: "Soliton", artistHandle: "novaarchive", genre: "AI", description: "Standing waves that never disperse. Latent forms held exactly as first dreamed.", chain: "flow", floorEth: 95, royaltyBps: 900, count: 6 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -482,15 +485,35 @@ export interface ChainMeta {
   short: string;
   color: string;        // accent swatch for the chain
   explorer: string;
+  /** True where Forever Library deploys and permanence is native (EVM). */
+  permanenceNative: boolean;
+  /** Native settlement currency symbol. */
+  currency: string;
 }
 
 export const CHAINS: Record<Chain, ChainMeta> = {
-  ethereum: { id: "ethereum", label: "Ethereum Mainnet", short: "Ethereum", color: "#9eb8ff", explorer: "https://etherscan.io" },
-  base: { id: "base", label: "Base", short: "Base", color: "#7dd3fc", explorer: "https://basescan.org" },
+  ethereum: { id: "ethereum", label: "Ethereum", short: "Ethereum", color: "#9eb8ff", explorer: "https://etherscan.io", permanenceNative: true, currency: "ETH" },
+  base: { id: "base", label: "Base", short: "Base", color: "#7dd3fc", explorer: "https://basescan.org", permanenceNative: true, currency: "ETH" },
+  polygon: { id: "polygon", label: "Polygon", short: "Polygon", color: "#c4b5fd", explorer: "https://polygonscan.com", permanenceNative: true, currency: "POL" },
+  arbitrum: { id: "arbitrum", label: "Arbitrum", short: "Arbitrum", color: "#86c5ff", explorer: "https://arbiscan.io", permanenceNative: true, currency: "ETH" },
+  optimism: { id: "optimism", label: "Optimism", short: "Optimism", color: "#fda4af", explorer: "https://optimistic.etherscan.io", permanenceNative: true, currency: "ETH" },
+  zora: { id: "zora", label: "Zora", short: "Zora", color: "#a5b4fc", explorer: "https://explorer.zora.energy", permanenceNative: true, currency: "ETH" },
+  solana: { id: "solana", label: "Solana", short: "Solana", color: "#99f6c8", explorer: "https://solscan.io", permanenceNative: false, currency: "SOL" },
+  tezos: { id: "tezos", label: "Tezos", short: "Tezos", color: "#93c5fd", explorer: "https://tzkt.io", permanenceNative: false, currency: "XTZ" },
+  flow: { id: "flow", label: "Flow", short: "Flow", color: "#86efac", explorer: "https://flowscan.io", permanenceNative: false, currency: "FLOW" },
 };
+
+/** Display order for chain pickers/filters (most active NFT chains first). */
+export const CHAIN_ORDER: Chain[] = [
+  "ethereum", "base", "solana", "polygon", "tezos", "arbitrum", "optimism", "zora", "flow",
+];
 
 export function getChainMeta(c: Chain): ChainMeta {
   return CHAINS[c];
+}
+
+export function getChains(): ChainMeta[] {
+  return CHAIN_ORDER.map((c) => CHAINS[c]);
 }
 
 /** Cross-chain settlement bridge fee (flat, surfaced at point of trade). */
@@ -557,7 +580,136 @@ function buildSwaps(): SwapOrder[] {
       targetTokenId: role === 1 ? request.tokenIds[0] : target.id,
     });
   }
+
+  // Criteria-based (open) swaps: "any token from collection X [with trait] for mine + ETH".
+  // request.tokenIds is empty; requestCriteria carries the match rule.
+  const COLLS = WORLD.collections;
+  for (let j = 0; j < 6; j++) {
+    const r = seededRandom(`cswap:${j}`);
+    const coll = COLLS[Math.floor(r() * COLLS.length)];
+    const offered = tokens[Math.floor(r() * tokens.length)];
+    if (!coll || !offered) continue;
+    const useTrait = r() > 0.5;
+    const traitPick = useTrait ? offered.traits[Math.floor(r() * offered.traits.length)] : undefined;
+    const ethTopUp = +(r() * 0.8).toFixed(3);
+    const label = `Any ${coll.name}${traitPick ? ` (${traitPick.value})` : ""}${ethTopUp ? ` + ${ethTopUp} ETH` : ""}`;
+    const maker = j % 2 === 0 ? offered.owner : you;
+    swaps.push({
+      id: "swap-" + pseudoHash("cswap:" + j).slice(2, 12),
+      status: "open",
+      maker,
+      offer: side([offered.id], 0, offered.chain),
+      request: side([], ethTopUp, coll.chain),
+      requestCriteria: { collectionSlug: coll.slug, traitKey: traitPick?.key, traitValue: traitPick?.value, label },
+      crossChain: offered.chain !== coll.chain,
+      createdAt: isoDaysBefore(1 + Math.floor(r() * 14)),
+      expiresAt: isoDaysBefore(-(3 + Math.floor(r() * 18))),
+      targetTokenId: undefined,
+    });
+  }
+
   return swaps;
+}
+
+/** Does a token satisfy a criteria-based swap request? */
+export function tokenMatchesCriteria(token: Token, c: SwapCriteria): boolean {
+  if (c.collectionSlug && token.collectionSlug !== c.collectionSlug) return false;
+  if (c.traitKey && c.traitValue) {
+    return token.traits.some((t) => t.key === c.traitKey && t.value === c.traitValue);
+  }
+  return true;
+}
+
+/** Tokens the connected user owns that can fill a criteria swap. */
+export function tokensMatchingCriteria(c: SwapCriteria, ownerAddress?: string): Token[] {
+  return WORLD.tokens.filter(
+    (t) =>
+      tokenMatchesCriteria(t, c) &&
+      (!ownerAddress || t.owner.toLowerCase() === ownerAddress.toLowerCase()),
+  );
+}
+
+export function getCriteriaSwaps(): SwapOrder[] {
+  return SWAPS.filter((s) => s.requestCriteria && (s.status === "open" || s.status === "countered"));
+}
+
+// ---------------------------------------------------------------------------
+// ENS resolution - human-readable identities (stands in for an ENS resolver).
+// ---------------------------------------------------------------------------
+
+const ENS_POOL = [
+  "lumen", "atlas", "verde", "cinder", "quill", "oranne", "silva", "kestrel",
+  "ovid", "perenna", "cael", "marlowe", "vesper", "thorne", "indra", "halcyon",
+];
+
+const ENS_MAP = new Map<string, string>();
+ARTISTS.forEach((a) => ENS_MAP.set(a.address.toLowerCase(), `${a.handle}.eth`));
+ENS_MAP.set(CURRENT_USER.address.toLowerCase(), "collector.eth");
+
+/** Resolve an address to its primary ENS name, or null if it has none. */
+export function resolveEns(address: string): string | null {
+  if (!address) return null;
+  const a = address.toLowerCase();
+  if (ENS_MAP.has(a)) return ENS_MAP.get(a)!;
+  const h = hashSeed("ens:" + a);
+  // ~55% of wallets have a primary ENS name; the rest show a short address.
+  if (h % 100 < 55) return `${ENS_POOL[h % ENS_POOL.length]}${(h >> 9) % 90 + 10}.eth`;
+  return null;
+}
+
+/** Best human-readable label for an address: ENS name, else shortened hex. */
+export function displayName(address: string): string {
+  return resolveEns(address) ?? shortAddress(address);
+}
+
+// ---------------------------------------------------------------------------
+// Permanence Score - a data-backed grade for how durable a token is.
+// ---------------------------------------------------------------------------
+
+export interface PermanenceScore {
+  score: number;       // 0..100
+  grade: "A+" | "A" | "B" | "C" | "D";
+  redundancy: number;  // verified non-onchain copies
+  factors: Array<{ label: string; ok: boolean; detail?: string }>;
+}
+
+export function permanenceScore(t: Token): PermanenceScore {
+  const p = t.permanence;
+  const verified = p.shards.filter((s) => s.status === "verified");
+  const redundancy = verified.filter((s) => s.backend !== "onchain").length;
+
+  let score = 0;
+  if (p.onchainProofConfigured) score += 50; // the guarantee itself
+  if (p.contentHashMatches) score += 15;
+  score += Math.min(redundancy, 4) * 6;      // up to 24 for redundancy
+  if (p.locked) score += 11;
+  score = Math.min(100, score);
+
+  const grade: PermanenceScore["grade"] =
+    score >= 96 ? "A+" : score >= 88 ? "A" : score >= 78 ? "B" : score >= 65 ? "C" : "D";
+
+  return {
+    score,
+    grade,
+    redundancy,
+    factors: [
+      { label: "Onchain proof (ethfs)", ok: p.onchainProofConfigured },
+      { label: "Content hash matches record", ok: p.contentHashMatches },
+      { label: "Redundant permanent copies", ok: redundancy >= 3, detail: `${redundancy} of 3+` },
+      { label: "Shards locked (immutable)", ok: p.locked },
+    ],
+  };
+}
+
+/** Aggregate permanence health across a set of tokens (a wallet's holdings). */
+export function portfolioPermanence(tokens: Token[]) {
+  if (tokens.length === 0) return { avg: 0, grade: "A+" as const, allPermanent: true, atRisk: 0 };
+  const scores = tokens.map((t) => permanenceScore(t));
+  const avg = Math.round(scores.reduce((n, s) => n + s.score, 0) / scores.length);
+  const atRisk = scores.filter((s) => !tokens[0] || s.grade === "C" || s.grade === "D").length;
+  const grade = avg >= 96 ? "A+" : avg >= 88 ? "A" : avg >= 78 ? "B" : avg >= 65 ? "C" : "D";
+  const allPermanent = tokens.every((t) => t.permanence.onchainProofConfigured && t.permanence.contentHashMatches);
+  return { avg, grade, allPermanent, atRisk };
 }
 
 const SWAPS = buildSwaps();

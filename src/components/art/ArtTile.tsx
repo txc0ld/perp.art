@@ -3,9 +3,10 @@
 import Link from "next/link";
 import type { Token } from "@/lib/types";
 import { GenerativeArt } from "./GenerativeArt";
-import { getArtist } from "@/lib/mock-data";
+import { getArtist, getChainMeta } from "@/lib/mock-data";
 import { formatEth } from "@/lib/utils";
 import { StatusGlyph } from "@/components/ui";
+import { ChainBadge } from "@/components/chain/ChainBadge";
 import { Tilt3D } from "@/components/visual/Tilt3D";
 
 /**
@@ -17,11 +18,12 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
   const artist = getArtist(token.artistHandle);
   const verifiedShards = token.permanence.shards.filter((s) => s.status === "verified").length;
   const lastSale = [...token.provenance].find((e) => e.kind === "sale")?.priceEth;
+  const currency = getChainMeta(token.chain).currency;
 
   return (
     <Link
       href={`/token/${token.id}`}
-      aria-label={`${token.title} by ${artist?.name ?? token.artistHandle}${token.listing ? `, listed for ${formatEth(token.listing.priceEth)} ETH` : ""}`}
+      aria-label={`${token.title} by ${artist?.name ?? token.artistHandle}${token.listing ? `, listed for ${formatEth(token.listing.priceEth)} ${currency}` : ""}`}
       className="block rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <Tilt3D
@@ -66,16 +68,14 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
         <div className="flex flex-col gap-1 p-3">
           <div className="flex items-center justify-between gap-2">
             <p className="truncate text-[13px] text-muted">{artist?.name ?? token.artistHandle}</p>
-            {token.chain === "base" ? (
-              <span className="font-mono text-[9px] uppercase tracking-wider text-faint">Base</span>
-            ) : null}
+            <ChainBadge chain={token.chain} className="shrink-0 px-1.5 py-0 text-[9px]" />
           </div>
           <p className="truncate text-sm font-semibold text-foreground">{token.title}</p>
           <div className="mt-1.5 flex items-end justify-between gap-2">
             <div className="min-w-0">
               <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Price</p>
               {token.listing ? (
-                <p className="truncate font-mono text-sm tabular-nums text-foreground">{formatEth(token.listing.priceEth)} ETH</p>
+                <p className="truncate font-mono text-sm tabular-nums text-foreground">{formatEth(token.listing.priceEth)} {currency}</p>
               ) : (
                 <p className="truncate font-mono text-[13px] text-faint">-</p>
               )}
@@ -83,7 +83,7 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
             <div className="shrink-0 text-right">
               <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Last sale</p>
               <p className="font-mono text-[13px] tabular-nums text-muted">
-                {lastSale ? `${formatEth(lastSale)} ETH` : "-"}
+                {lastSale ? `${formatEth(lastSale)} ${currency}` : "-"}
               </p>
             </div>
           </div>

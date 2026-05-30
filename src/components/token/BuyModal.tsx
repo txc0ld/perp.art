@@ -8,7 +8,9 @@
  */
 import * as React from "react";
 import type { Token } from "@/lib/types";
-import { Button, MonoLabel, Badge } from "@/components/ui";
+import { Button, MonoLabel } from "@/components/ui";
+import { ChainBadge } from "@/components/chain/ChainBadge";
+import { getChainMeta } from "@/lib/mock-data";
 import { feeBreakdown, formatEth, bpsToPct, shortHash, PROTOCOL_FEE_BPS, cn } from "@/lib/utils";
 
 type Phase = "review" | "confirming" | "done";
@@ -37,6 +39,8 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
   const price = token.listing?.priceEth ?? 0;
   const fees = feeBreakdown(price, token.royalty.bps);
   const txHash = React.useMemo(() => fabricateTx(token), [token]);
+  const chainMeta = getChainMeta(token.chain);
+  const currency = chainMeta.currency;
 
   // Focus the primary action on open; return focus to the opener on close.
   React.useEffect(() => {
@@ -131,7 +135,7 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
                 {token.id}
               </p>
             </div>
-            <Badge tone="muted">{token.chain === "ethereum" ? "Mainnet" : "Base"}</Badge>
+            <ChainBadge chain={token.chain} className="whitespace-nowrap" />
           </div>
 
           {phase === "done" ? (
@@ -145,7 +149,7 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
               <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
                 <MonoLabel>Transaction</MonoLabel>
                 <a
-                  href={`https://etherscan.io/tx/${txHash}`}
+                  href={`${chainMeta.explorer}/tx/${txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-mono text-[13px] text-accent hover:underline"
@@ -161,23 +165,23 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
             <>
               {/* Fee breakdown */}
               <dl className="space-y-2.5">
-                <Line label="Price" value={`${formatEth(fees.price)} ETH`} />
+                <Line label="Price" value={`${formatEth(fees.price)} ${currency}`} />
                 <Line
                   label={`Protocol fee · ${bpsToPct(PROTOCOL_FEE_BPS)}`}
-                  value={`${formatEth(fees.protocol)} ETH`}
+                  value={`${formatEth(fees.protocol)} ${currency}`}
                   muted
                 />
                 <Line
                   label={`Creator royalty · ${bpsToPct(token.royalty.bps)}`}
-                  value={`${formatEth(fees.royalty)} ETH`}
+                  value={`${formatEth(fees.royalty)} ${currency}`}
                   muted
                 />
                 <div className="!mt-3 flex items-baseline justify-between border-t border-border pt-3">
                   <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-foreground">
                     Total
                   </span>
-                  <span className="font-mono text-[15px] font-semibold tabular-nums text-foreground">
-                    {formatEth(fees.price)} ETH
+                  <span className="font-mono text-[15px] font-semibold tabular-nums text-foreground whitespace-nowrap">
+                    {formatEth(fees.price)} {currency}
                   </span>
                 </div>
               </dl>
@@ -202,7 +206,7 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
                     Confirming…
                   </span>
                 ) : (
-                  `Confirm · ${formatEth(fees.price)} ETH`
+                  `Confirm · ${formatEth(fees.price)} ${currency}`
                 )}
               </Button>
             </>

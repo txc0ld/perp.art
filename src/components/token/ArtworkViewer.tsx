@@ -9,6 +9,7 @@ import * as React from "react";
 import type { Token } from "@/lib/types";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { Tilt3D } from "@/components/visual/Tilt3D";
+import { getChainMeta } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export function ArtworkViewer({ token }: { token: Token }) {
@@ -78,10 +79,10 @@ export function ArtworkViewer({ token }: { token: Token }) {
 
       {/* Mono caption - verifiable framing details */}
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-faint">
-        <span>{token.id}</span>
-        <span>{token.chain === "ethereum" ? "Ethereum" : "Base"}</span>
-        <span>{mediaLabel}</span>
-        <span className="text-muted">{token.genre}</span>
+        <span className="whitespace-nowrap">{token.id}</span>
+        <span className="whitespace-nowrap">{getChainMeta(token.chain).label}</span>
+        <span className="whitespace-nowrap">{mediaLabel}</span>
+        <span className="whitespace-nowrap text-muted">{token.genre}</span>
       </div>
 
       {/* Lightbox */}

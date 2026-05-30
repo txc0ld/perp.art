@@ -4,9 +4,10 @@ import * as React from "react";
 import Link from "next/link";
 import type { Genre, Chain } from "@/lib/types";
 import type { CollectionRanking, RankWindow } from "@/lib/mock-data";
+import { getChainMeta, getChains } from "@/lib/mock-data";
 import { cn, formatEth } from "@/lib/utils";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
-import { StatusGlyph } from "@/components/ui";
+import { VerifiedBadge } from "@/components/ui";
 import { PctChange } from "./PctChange";
 
 const WINDOWS: RankWindow[] = ["1h", "6h", "24h", "7d", "30d"];
@@ -97,8 +98,11 @@ export function RankingsTable({
             aria-label="Chain"
           >
             <Pill active={chain === "all"} onClick={() => setChain("all")}>All chains</Pill>
-            <Pill active={chain === "ethereum"} onClick={() => setChain("ethereum")}>Ethereum</Pill>
-            <Pill active={chain === "base"} onClick={() => setChain("base")}>Base</Pill>
+            {getChains().map((m) => (
+              <Pill key={m.id} active={chain === m.id} onClick={() => setChain(m.id)}>
+                {m.short}
+              </Pill>
+            ))}
           </div>
         </div>
 
@@ -206,10 +210,12 @@ export function RankingsTable({
 
 function Row({ row, window }: { row: CollectionRanking; window: RankWindow }) {
   const c = row.collection;
-  const chainLabel = c.chain === "ethereum" ? "Ethereum" : "Base";
+  const meta = getChainMeta(c.chain);
+  const chainLabel = meta.short;
+  const cur = meta.currency;
   const label =
-    `Rank ${row.rank}: ${c.name} on ${chainLabel}. Floor ${formatEth(row.floorEth)} ETH, ` +
-    `${WINDOW_LABEL[window]} volume ${formatEth(row.volumeEth)} ETH.`;
+    `Rank ${row.rank}: ${c.name} on ${chainLabel}. Floor ${formatEth(row.floorEth)} ${cur}, ` +
+    `${WINDOW_LABEL[window]} volume ${formatEth(row.volumeEth)} ${cur}.`;
   return (
     <tr className="group border-b border-border transition-colors hover:bg-surface focus-within:bg-surface">
       <td className="h-[68px] pl-2 text-left font-mono text-sm tabular-nums text-faint">
@@ -228,7 +234,7 @@ function Row({ row, window }: { row: CollectionRanking; window: RankWindow }) {
             <span className="flex items-center gap-1.5">
               <span className="truncate text-sm font-medium text-foreground">{c.name}</span>
               {c.sovereign ? (
-                <StatusGlyph status="verified" className="shrink-0" />
+                <VerifiedBadge size={14} className="shrink-0" label="Sovereign contract" />
               ) : null}
             </span>
             <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-wider text-faint">
@@ -237,12 +243,12 @@ function Row({ row, window }: { row: CollectionRanking; window: RankWindow }) {
           </span>
         </Link>
       </td>
-      <Td>{formatEth(row.floorEth)} ETH</Td>
-      <Td className="hidden sm:table-cell">{formatEth(row.topOfferEth)} ETH</Td>
+      <Td>{formatEth(row.floorEth)} {cur}</Td>
+      <Td className="hidden sm:table-cell">{formatEth(row.topOfferEth)} {cur}</Td>
       <td className="py-4 pr-4 text-right">
         <PctChange value={row.changePct} className="justify-end" />
       </td>
-      <Td className="text-foreground">{formatEth(row.volumeEth)} ETH</Td>
+      <Td className="text-foreground">{formatEth(row.volumeEth)} {cur}</Td>
       <Td className="hidden md:table-cell">{row.salesCount.toLocaleString()}</Td>
     </tr>
   );

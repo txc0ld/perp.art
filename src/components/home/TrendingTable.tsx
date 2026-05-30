@@ -18,6 +18,7 @@ import Link from "next/link";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { SectionHeader } from "@/components/ui";
 import { formatEth, cn } from "@/lib/utils";
+import { getChainMeta } from "@/lib/mock-data";
 import type { CollectionRanking, RankWindow } from "@/lib/mock-data";
 
 const WINDOWS: RankWindow[] = ["1h", "6h", "24h", "7d", "30d"];
@@ -34,9 +35,9 @@ function VerifiedMark({ className }: { className?: string }) {
 function ChangeCell({ pct }: { pct: number }) {
   const positive = pct >= 0;
   return (
-    <span className={cn("font-mono text-sm tabular-nums", positive ? "text-verify" : "text-[#fda4af]")}>
-      <span aria-hidden>{positive ? "▲" : "▼"}</span> {positive ? "+" : "-"}
-      {Math.abs(pct).toFixed(1)}%
+    <span className={cn("inline-flex items-center justify-end gap-0.5 whitespace-nowrap font-mono text-[13px] tabular-nums", positive ? "text-verify" : "text-[#fda4af]")}>
+      <span aria-hidden className="text-[9px] leading-none">{positive ? "▲" : "▼"}</span>
+      {positive ? "+" : "-"}{Math.abs(pct).toFixed(1)}%
     </span>
   );
 }
@@ -106,11 +107,11 @@ export function TrendingTable({
               Top trending collections over the {window} window, ranked by volume.
             </caption>
             <colgroup>
-              <col className="w-[44px] sm:w-[52px]" />
+              <col className="w-[40px] sm:w-[52px]" />
               <col />
               <col className="w-0 sm:w-[112px]" />
               <col className="w-0 md:w-[112px]" />
-              <col className="w-[84px]" />
+              <col className="w-[92px]" />
               <col className="w-0 sm:w-[112px]" />
               <col className="w-0 lg:w-[80px]" />
             </colgroup>
@@ -128,6 +129,7 @@ export function TrendingTable({
             <tbody>
               {rows.map((row) => {
                 const c = row.collection;
+                const cur = getChainMeta(c.chain).currency;
                 return (
                   <tr key={c.slug} className="group border-b border-border transition-colors duration-150 last:border-b-0 hover:bg-surface-2">
                     <td className="px-3 py-3 text-center align-middle font-mono text-sm tabular-nums text-faint sm:px-4">
@@ -148,22 +150,22 @@ export function TrendingTable({
                           </div>
                           {/* mobile-only inline floor, since the Floor column is hidden */}
                           <span className="font-mono text-[11px] tabular-nums text-faint sm:hidden">
-                            Floor {formatEth(c.floorEth)} ETH
+                            Floor {formatEth(c.floorEth)} {cur}
                           </span>
                         </div>
                       </Link>
                     </td>
                     <td className="hidden px-3 py-3 text-right align-middle font-mono text-sm tabular-nums text-foreground sm:table-cell">
-                      {formatEth(row.floorEth)} ETH
+                      {formatEth(row.floorEth)} {cur}
                     </td>
                     <td className="hidden px-3 py-3 text-right align-middle font-mono text-sm tabular-nums text-muted md:table-cell">
-                      {formatEth(row.topOfferEth)} ETH
+                      {formatEth(row.topOfferEth)} {cur}
                     </td>
                     <td className="px-3 py-3 text-right align-middle sm:px-4">
                       <ChangeCell pct={row.changePct} />
                     </td>
                     <td className="hidden px-3 py-3 text-right align-middle font-mono text-sm tabular-nums text-foreground sm:table-cell">
-                      {formatEth(row.volumeEth)} ETH
+                      {formatEth(row.volumeEth)} {cur}
                     </td>
                     <td className="hidden px-3 py-3 text-right align-middle font-mono text-sm tabular-nums text-muted lg:table-cell sm:px-4">
                       {row.salesCount}

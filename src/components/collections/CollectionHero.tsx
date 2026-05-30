@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Collection, Artist } from "@/lib/types";
+import { getChainMeta } from "@/lib/mock-data";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
-import { Badge, StatusGlyph } from "@/components/ui";
+import { Badge, VerifiedBadge } from "@/components/ui";
 import { CollectionActions } from "./CollectionActions";
 import { CollectionBanner3D } from "./CollectionBanner3D";
 
@@ -40,15 +41,13 @@ export function CollectionHero({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <h1 className="display-sm font-brand text-foreground">{collection.name}</h1>
             {(collection.sovereign || artist?.verified) && (
-              <span className="inline-flex items-center" title={collection.sovereign ? "Sovereign contract" : "Verified"}>
-                <StatusGlyph status="verified" className="h-5 w-5" />
-              </span>
+              <VerifiedBadge size={20} label={collection.sovereign ? "Sovereign contract" : "Verified"} />
             )}
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Badge tone="muted">{collection.genre}</Badge>
-            <Badge tone="outline">{collection.chain === "ethereum" ? "Ethereum" : "Base"}</Badge>
+            <Badge tone="outline">{getChainMeta(collection.chain).short}</Badge>
             {collection.sovereign && <Badge tone="accent">Sovereign</Badge>}
           </div>
 

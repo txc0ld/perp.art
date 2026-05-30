@@ -8,7 +8,7 @@
  */
 import { ButtonLink, Badge } from "@/components/ui";
 import { HeroArt3D } from "./HeroArt3D";
-import { getArtist } from "@/lib/mock-data";
+import { getArtist, getChainMeta } from "@/lib/mock-data";
 import { formatEth } from "@/lib/utils";
 import type { CollectionRanking } from "@/lib/mock-data";
 
@@ -24,6 +24,7 @@ function VerifiedMark() {
 export function HeroFeature({ feature }: { feature: CollectionRanking }) {
   const c = feature.collection;
   const artist = getArtist(c.artistHandle);
+  const currency = getChainMeta(c.chain).currency;
 
   return (
     <section className="border-b border-border">
@@ -54,9 +55,9 @@ export function HeroFeature({ feature }: { feature: CollectionRanking }) {
             <div className="relative">
               {/* mono stats row */}
               <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[10px] border border-border bg-border">
-                <Stat label="Floor" value={`${formatEth(c.floorEth)} ETH`} />
+                <Stat label="Floor" value={`${formatEth(c.floorEth)} ${currency}`} />
                 <Stat label="Items" value={String(c.itemCount)} />
-                <Stat label="Volume" value={`${formatEth(c.volumeEth)} ETH`} />
+                <Stat label="Volume" value={`${formatEth(c.volumeEth)} ${currency}`} />
               </div>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">

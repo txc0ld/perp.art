@@ -7,7 +7,7 @@
 A permanence-first NFT marketplace with OpenSea-grade trading UX, built on a single
 guarantee: **the artwork is provably permanent and survives even if the operator disappears.**
 
-[**Live demo**](https://perpetual-art-tx-build.vercel.app) · [Architecture](./docs/ARCHITECTURE.md) · [Indexer spec](./docs/INDEXER_SPEC.md) · [Contracts](./contracts/README.md)
+[**Live demo**](https://perpetual-art-tx-build.vercel.app) · [Features](./docs/FEATURES.md) · [Architecture](./docs/ARCHITECTURE.md) · [Indexer spec](./docs/INDEXER_SPEC.md) · [Contracts](./contracts/README.md)
 
 `Next.js 16` · `React 19` · `Tailwind v4` · `TypeScript`
 
@@ -44,20 +44,39 @@ artifacts (smart-contract interfaces and the indexer specification).
 - Profile with Collected / Created / Activity / Sovereign-contract management
 - A guided **mint** flow with shard configuration, royalty, and optional locking
 
+**One-stop, multi-chain**
+- **Nine networks** indexed and traded as one marketplace: **Ethereum, Base, Polygon, Arbitrum,
+  Optimism, Zora** (EVM, permanence-native: Forever Library deploys here) plus **Solana, Tezos,
+  Flow** (indexed and traded with native storage). Discovery (explore, rankings, stats) filters
+  across every chain; prices render in each chain's native currency (`ETH` / `POL` / `SOL` /
+  `XTZ` / `FLOW`).
+
 **Differentiators (what OpenSea does not do)**
 - **NFT-for-NFT swaps**: propose a barter trade of your token(s), optionally with ETH on either
   side to balance value, with an atomic settlement breakdown. Browse open swaps, manage incoming
-  and outgoing offers (accept / decline / counter) on a dedicated Swaps desk.
-- **Cross-chain trades**: when the two sides live on different chains, the swap settles atomically
-  across an escrow bridge (lock on chain A, release on chain B, rollback on failure), shown as a
-  clear settlement route.
+  and outgoing offers (accept / decline / counter) on a dedicated **Swaps desk** (`/swaps`), with
+  per-token swap interest and a profile Swaps tab.
+- **Criteria swaps**: offer against a collection or trait rather than a specific token ("any token
+  from this collection, optionally with this trait, for mine"); the counterparty picks which
+  qualifying token fills it.
+- **Cross-chain trades**: when the two sides span different chains, the swap settles atomically
+  across an escrow bridge (lock on chain A, release on chain B, rollback on failure), with a flat
+  bridge fee shown at the point of trade.
 - A **Permanence Status panel** on every token: per-shard live verification, each row linking to
   its raw public source, closing on *"This artwork survives even if perpetual.art disappears."*
+- A **Permanence Score**: a data-backed A+ grade per token (badge + detail card), plus a portfolio
+  **Permanence Report** on the profile.
+- **The Vanish Test**: an interactive proof on each token page that takes the operator layers
+  (indexer / CDN / IPFS) offline while the onchain proof keeps resolving the art.
+- A downloadable **Certificate of Permanence**: an archival SVG certificate per token.
+- **ENS identities**: addresses resolve to ENS names across profiles, swaps, provenance, offers,
+  and activity, with a short-address fallback.
 
 **Feel**
-- Tasteful CSS-3D throughout: pointer-tilt artwork cards with specular sheen, a signature 3D
-  **shard stack** that makes layered permanence tangible, scroll-driven depth reveals, and a
-  floating brand medallion. All reduced-motion aware; the art is always the brightest element.
+- Tasteful CSS-3D throughout: pointer-tilt artwork cards with specular sheen, a 3D **coverflow** of
+  featured drops, a signature 3D **shard stack** that makes layered permanence tangible,
+  scroll-driven depth reveals, and a floating brand medallion. All reduced-motion aware; the art is
+  always the brightest element.
 
 **Engineering**
 - Deterministic, SSR-safe **generative SVG artwork** (no external image assets)
@@ -78,7 +97,8 @@ artifacts (smart-contract interfaces and the indexer specification).
 | Language | TypeScript (strict) |
 | Type faces | Inter, JetBrains Mono, Plus Jakarta Sans |
 | Data | Deterministic in-memory layer (`src/lib/mock-data.ts`) implementing the indexer spec |
-| Contracts | Forever Library (ERC-721 + ERC-2981 + URI sharding) and Seaport-compatible settlement (reference scaffold) |
+| Contracts | Forever Library (ERC-721 + ERC-2981 + URI sharding), Seaport-compatible settlement with NFT-for-NFT + criteria barter, and a cross-chain escrow bridge (reference scaffold) |
+| Networks | 9 chains: Ethereum, Base, Polygon, Arbitrum, Optimism, Zora (EVM) + Solana, Tezos, Flow |
 
 No external image assets, no UI dependencies beyond the framework. All artwork is generated.
 
@@ -124,9 +144,9 @@ centralized for performance, and their failure harms nothing permanent.
 
 | Layer | Responsibility | Posture |
 |---|---|---|
-| Asset & provenance | Artwork, metadata, ownership, URI sharding | Permanent (Forever Library) |
-| Settlement | Trades, royalty enforcement | Onchain (Ethereum + Base) |
-| Orderbook & indexer | Listings, offers, search, permanence verification | Centralized, rebuildable from public data |
+| Asset & provenance | Artwork, metadata, ownership, URI sharding | Permanent (Forever Library, the 6 EVM chains) |
+| Settlement | Trades, royalty enforcement, barter, cross-chain escrow | Onchain (EVM chains) + escrow bridge for cross-chain swaps |
+| Orderbook & indexer | Listings, offers, swaps, search, permanence verification, across 9 chains | Centralized, rebuildable from public data |
 | Frontend | This app | Centralized hosting |
 
 Full detail and PRD traceability in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md). The indexer
@@ -147,6 +167,20 @@ brightest element; the interface is the quiet frame.
 - Dark-mode-first, AA contrast, reduced-motion honored, 8px spacing rhythm.
 
 The full design context lives in [`.impeccable.md`](./.impeccable.md).
+
+---
+
+## Configuration
+
+The app runs fully on the deterministic in-memory data layer, so **no configuration is required
+for local development**. To wire live infrastructure, every variable you need is documented in
+[`.env.example`](./.env.example): per-chain RPCs (all 9 networks), WalletConnect, deployed
+contracts, the cross-chain bridge, the indexer + database, the four storage providers, the
+verification service, and ENS. Copy it to `.env.local` (gitignored) and fill in real values.
+
+```bash
+cp .env.example .env.local
+```
 
 ---
 

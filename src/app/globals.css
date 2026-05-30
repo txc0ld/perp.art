@@ -24,6 +24,10 @@
   /* Verify green - reserved strictly for live "resolving/ok" pulse states */
   --color-verify: #9ee6b4;
 
+  /* Verified blue - identity verification badge (artists / collections), the
+     conventional "verified check" blue. Distinct from the pink permanence accent. */
+  --color-verified: #3b9bff;
+
   /* Fonts */
   --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;

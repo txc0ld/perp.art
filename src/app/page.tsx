@@ -19,6 +19,7 @@
  */
 import {
   getFeaturedTokens,
+  getArtist,
   getMarketStats,
   getTrendingCollections,
   getTopMovers,
@@ -30,6 +31,7 @@ import { Section } from "@/components/ui";
 import { HeroFeature } from "@/components/home/HeroFeature";
 import { Reveal3D } from "@/components/home/Reveal3D";
 import { CategoryPills } from "@/components/home/CategoryPills";
+import { FeaturedDrops } from "@/components/home/FeaturedDrops";
 import { TrendingTable } from "@/components/home/TrendingTable";
 import { FeaturedWorksGrid } from "@/components/home/FeaturedWorksGrid";
 import { TopMovers } from "@/components/home/TopMovers";
@@ -48,6 +50,13 @@ export default async function Home({
   const featured = getFeaturedTokens();
   const stats = getMarketStats();
 
+  // Resolve artist display names on the server so Coverflow3D stays a pure
+  // client island fed by serializable props.
+  const featuredItems = featured.map((token) => ({
+    token,
+    artistName: getArtist(token.artistHandle)?.name ?? token.artistHandle,
+  }));
+
   // Precompute every window once on the server, then hand the whole map to the
   // client TrendingTable so its toggle is instant (never import data fns there).
   const trendingByWindow = Object.fromEntries(
@@ -62,6 +71,12 @@ export default async function Home({
       <HeroFeature feature={heroFeature} />
 
       <CategoryPills genres={GENRES} active={activeGenre} />
+
+      <Reveal3D>
+        <Section id="featured-drops">
+          <FeaturedDrops items={featuredItems} />
+        </Section>
+      </Reveal3D>
 
       <Reveal3D>
         <Section id="trending">

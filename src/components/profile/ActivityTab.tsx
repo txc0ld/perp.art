@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { Token } from "@/lib/types";
+import type { Token, Chain } from "@/lib/types";
 import { SectionHeader } from "@/components/ui";
+import { Identity } from "@/components/identity/Identity";
+import { getChainMeta } from "@/lib/mock-data";
 import { EmptyState } from "./OwnedTab";
 import { SortSelect } from "./SortSelect";
-import { shortAddress, shortHash, formatEth, relativeTime } from "@/lib/utils";
+import { shortHash, formatEth, relativeTime } from "@/lib/utils";
 
 type ActivityKind = "created" | "minted" | "listed" | "offer" | "sale" | "transfer";
 
@@ -15,6 +17,7 @@ interface ActivityRow {
   kind: ActivityKind;
   tokenId: string;
   tokenTitle: string;
+  chain: Chain;
   counterparty?: string;
   priceEth?: number;
   txHash?: string;
@@ -38,8 +41,8 @@ const KIND_LABEL: Record<ActivityKind, string> = {
   transfer: "Transfer",
 };
 
-function etherscanTx(hash: string) {
-  return `https://etherscan.io/tx/${hash}`;
+function explorerTx(chain: Chain, hash: string) {
+  return `${getChainMeta(chain).explorer}/tx/${hash}`;
 }
 
 /**
@@ -61,6 +64,7 @@ export function ActivityTab({ tokens }: { tokens: Token[] }) {
           kind: e.kind,
           tokenId: t.id,
           tokenTitle: t.title,
+          chain: t.chain,
           counterparty: e.to ?? e.from,
           priceEth: e.priceEth,
           txHash: e.txHash,
@@ -74,6 +78,7 @@ export function ActivityTab({ tokens }: { tokens: Token[] }) {
           kind: "offer",
           tokenId: t.id,
           tokenTitle: t.title,
+          chain: o.chain,
           counterparty: o.from,
           priceEth: o.priceEth,
           timestamp: o.expiresAt,
@@ -154,16 +159,20 @@ export function ActivityTab({ tokens }: { tokens: Token[] }) {
                     {r.tokenTitle}
                   </Link>
                 </td>
-                <td className="px-3 py-3.5 font-mono text-xs tabular-nums text-muted">
-                  {r.counterparty ? shortAddress(r.counterparty) : "-"}
+                <td className="px-3 py-3.5 text-xs text-muted">
+                  {r.counterparty ? (
+                    <Identity address={r.counterparty} className="max-w-[160px]" />
+                  ) : (
+                    <span className="font-mono">-</span>
+                  )}
                 </td>
-                <td className="px-3 py-3.5 font-mono text-xs tabular-nums text-foreground">
-                  {r.priceEth != null ? `${formatEth(r.priceEth)} ETH` : "-"}
+                <td className="whitespace-nowrap px-3 py-3.5 font-mono text-xs tabular-nums text-foreground">
+                  {r.priceEth != null ? `${formatEth(r.priceEth)} ${getChainMeta(r.chain).currency}` : "-"}
                 </td>
                 <td className="px-3 py-3.5 font-mono text-xs tabular-nums text-muted">
                   {r.txHash ? (
                     <a
-                      href={etherscanTx(r.txHash)}
+                      href={explorerTx(r.chain, r.txHash)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="transition-colors hover:text-accent"

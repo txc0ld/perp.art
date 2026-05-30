@@ -9,11 +9,15 @@
  * and scrollable on mobile.
  */
 import * as React from "react";
+import type { Chain } from "@/lib/types";
 import { Button } from "@/components/ui";
+import { getChains, getChainMeta } from "@/lib/mock-data";
 import { shortAddress, bpsToPct, cn } from "@/lib/utils";
 
 type Phase = "review" | "deploying" | "done";
-type Chain = "ethereum" | "base";
+
+/** Forever Library deploys on permanence-native (EVM) chains. */
+const DEPLOY_CHAINS = getChains().filter((c) => c.permanenceNative);
 
 function fabricateAddress(name: string): string {
   let h = 0x811c9dc5;
@@ -151,12 +155,12 @@ export function DeployContractModal({
               </div>
               <dl className="mt-4 space-y-2.5 border-t border-border pt-4">
                 <Line label="Name" value={name.trim()} strong />
-                <Line label="Chain" value={chain === "ethereum" ? "Ethereum Mainnet" : "Base"} />
+                <Line label="Chain" value={getChainMeta(chain).label} />
                 <Line label="Royalty" value={bpsToPct(Math.round(royaltyPct * 100))} />
                 <div className="flex items-baseline justify-between">
                   <span className="font-mono text-[11px] uppercase tracking-wider text-faint">Address</span>
                   <a
-                    href={`https://etherscan.io/address/${address}`}
+                    href={`${getChainMeta(chain).explorer}/address/${address}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-mono text-[13px] tabular-nums text-accent hover:underline"
@@ -215,8 +219,11 @@ export function DeployContractModal({
                     onChange={(e) => setChain(e.target.value as Chain)}
                     className="h-11 w-full rounded-[8px] border border-border bg-background px-3.5 text-sm text-foreground transition-colors focus-visible:border-border-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                   >
-                    <option value="ethereum">Ethereum Mainnet</option>
-                    <option value="base">Base</option>
+                    {DEPLOY_CHAINS.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex flex-col gap-1.5">

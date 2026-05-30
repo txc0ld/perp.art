@@ -9,7 +9,9 @@
  */
 import * as React from "react";
 import type { Token } from "@/lib/types";
-import { Button, MonoLabel, Badge } from "@/components/ui";
+import { Button, MonoLabel } from "@/components/ui";
+import { ChainBadge } from "@/components/chain/ChainBadge";
+import { getChainMeta } from "@/lib/mock-data";
 import { formatEth, bpsToPct, PROTOCOL_FEE_BPS, cn } from "@/lib/utils";
 
 type Phase = "compose" | "signing" | "done";
@@ -31,6 +33,7 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
 
   const bestOffer = token.offers.length > 0 ? token.offers[0] : undefined;
   const reference = token.listing?.priceEth ?? bestOffer?.priceEth;
+  const currency = getChainMeta(token.chain).currency;
 
   const parsed = Number.parseFloat(amount);
   const valid = Number.isFinite(parsed) && parsed > 0;
@@ -133,7 +136,7 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
                 {token.id}
               </p>
             </div>
-            <Badge tone="muted">{token.chain === "ethereum" ? "Mainnet" : "Base"}</Badge>
+            <ChainBadge chain={token.chain} className="whitespace-nowrap" />
           </div>
 
           {phase === "done" ? (
@@ -145,7 +148,7 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
                 </p>
               </div>
               <dl className="mt-4 space-y-2.5 border-t border-border pt-4">
-                <Line label="Your offer" value={`${formatEth(parsed)} ETH`} />
+                <Line label="Your offer" value={`${formatEth(parsed)} ${currency}`} />
                 <Line
                   label="Expires"
                   value={expiryDays === 1 ? "in 1 day" : `in ${expiryDays} days`}
@@ -163,8 +166,8 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
                 <label htmlFor="offer-amount" className="flex items-baseline justify-between">
                   <MonoLabel className="text-faint">Offer amount</MonoLabel>
                   {typeof reference === "number" && (
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                      {token.listing ? "List" : "Best"} · {formatEth(reference)} ETH
+                    <span className="whitespace-nowrap font-mono text-[10px] uppercase tracking-wider text-faint">
+                      {token.listing ? "List" : "Best"} · {formatEth(reference)} {currency}
                     </span>
                   )}
                 </label>
@@ -191,7 +194,7 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
                     placeholder="0.000"
                     className="w-full bg-transparent py-3 font-mono text-[16px] tabular-nums text-foreground placeholder:text-faint focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
-                  <span className="font-mono text-[13px] text-muted">ETH</span>
+                  <span className="whitespace-nowrap font-mono text-[13px] text-muted">{currency}</span>
                 </div>
                 {showError && (
                   <p id={errorId} className="font-mono text-[11px] text-[#fda4af]">
@@ -254,7 +257,7 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
                     Signing…
                   </span>
                 ) : valid ? (
-                  `Place offer · ${formatEth(parsed)} ETH`
+                  `Place offer · ${formatEth(parsed)} ${currency}`
                 ) : (
                   "Place offer"
                 )}

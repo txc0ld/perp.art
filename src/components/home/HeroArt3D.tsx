@@ -5,6 +5,7 @@ import { Tilt3D } from "@/components/visual/Tilt3D";
 import { BrandMark } from "@/components/chrome/Brand";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { Badge, StatusGlyph } from "@/components/ui";
+import { getChainMeta } from "@/lib/mock-data";
 import type { Genre, Chain } from "@/lib/types";
 
 /**
@@ -81,7 +82,7 @@ export function HeroArt3D({
             </span>
           </div>
           <div className="absolute right-4 top-4">
-            <Badge tone="muted">{chain === "ethereum" ? "Mainnet" : "Base"}</Badge>
+            <Badge tone="muted">{getChainMeta(chain).short}</Badge>
           </div>
 
           {/* Floating brand medallion - a small luxurious accent that lifts off

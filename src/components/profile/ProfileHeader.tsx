@@ -3,8 +3,9 @@
 import { useState } from "react";
 import type { Genre, Token } from "@/lib/types";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
-import { Button, StatusGlyph } from "@/components/ui";
+import { Button, VerifiedBadge } from "@/components/ui";
 import { shortAddress, formatEth, relativeTime } from "@/lib/utils";
+import { resolveEns } from "@/lib/mock-data";
 import { EditProfileModal } from "./EditProfileModal";
 
 /**
@@ -82,11 +83,12 @@ export function ProfileHeader({
   const stats: Array<{ label: string; value: string }> = [
     { label: "Items", value: String(ownedTokens.length) },
     { label: "Created", value: String(createdCount) },
-    { label: "Est. value", value: `${formatEth(totalValue)} ETH` },
+    { label: "Est. value (approx)", value: `${formatEth(totalValue)} ETH-eq` },
     { label: "Collections", value: String(collectionsCount) },
   ];
 
   const showMark = verified || sovereign;
+  const ens = resolveEns(address);
 
   return (
     <header className="animate-rise">
@@ -123,19 +125,22 @@ export function ProfileHeader({
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <h1 className="display-sm font-brand text-foreground">{name}</h1>
               {showMark && (
-                <span
-                  className="inline-flex items-center"
-                  title={sovereign ? "Sovereign creator" : "Verified"}
-                >
-                  <StatusGlyph status="verified" className="h-5 w-5" />
-                  <span className="sr-only">{sovereign ? "Sovereign creator" : "Verified"}</span>
-                </span>
+                <VerifiedBadge size={20} label={sovereign ? "Sovereign creator" : "Verified"} />
               )}
             </div>
 
             {bio && <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">{bio}</p>}
 
             <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+              {ens && (
+                <span
+                  className="inline-flex items-center gap-1.5 font-sans text-sm font-medium text-foreground"
+                  title={`Primary ENS name for ${address}`}
+                >
+                  <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
+                  {ens}
+                </span>
+              )}
               <span className="font-mono text-sm text-muted">@{handle}</span>
               <button
                 type="button"

@@ -8,8 +8,10 @@
  */
 import * as React from "react";
 import type { Token } from "@/lib/types";
-import { Button, Badge, MonoLabel } from "@/components/ui";
+import { Button, MonoLabel } from "@/components/ui";
+import { ChainBadge } from "@/components/chain/ChainBadge";
 import { useWallet, connectWallet } from "@/lib/wallet";
+import { getChainMeta } from "@/lib/mock-data";
 import { formatEth, shortAddress, relativeTime } from "@/lib/utils";
 import { BuyModal } from "./BuyModal";
 import { OfferModal } from "./OfferModal";
@@ -22,7 +24,7 @@ export function BuyPanel({ token }: { token: Token }) {
 
   const listing = token.listing;
   const bestOffer = token.offers.length > 0 ? token.offers[0] : undefined;
-  const chainLabel = token.chain === "ethereum" ? "Mainnet" : "Base";
+  const currency = getChainMeta(token.chain).currency;
 
   function handleBuy() {
     if (!connected) {
@@ -50,10 +52,10 @@ export function BuyPanel({ token }: { token: Token }) {
               <MonoLabel className="text-faint">Current price</MonoLabel>
               <p className="mt-1.5 font-mono text-[28px] font-semibold leading-none tabular-nums text-foreground">
                 {formatEth(listing.priceEth)}
-                <span className="ml-1.5 text-base font-medium text-muted">ETH</span>
+                <span className="ml-1.5 whitespace-nowrap text-base font-medium text-muted">{currency}</span>
               </p>
             </div>
-            <Badge tone="muted">{chainLabel}</Badge>
+            <ChainBadge chain={token.chain} className="whitespace-nowrap" />
           </div>
 
           <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-faint">
@@ -77,7 +79,7 @@ export function BuyPanel({ token }: { token: Token }) {
               <MonoLabel className="text-faint">Status</MonoLabel>
               <p className="mt-1.5 text-lg font-medium text-foreground">Not for sale</p>
             </div>
-            <Badge tone="muted">{chainLabel}</Badge>
+            <ChainBadge chain={token.chain} className="whitespace-nowrap" />
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-muted">
             This work is not listed. Make a signed, gasless offer the holder can accept
@@ -95,7 +97,7 @@ export function BuyPanel({ token }: { token: Token }) {
         <MonoLabel className="text-faint">Highest offer</MonoLabel>
         {bestOffer ? (
           <span className="truncate text-right font-mono text-[13px] tabular-nums text-foreground">
-            {formatEth(bestOffer.priceEth)} ETH
+            <span className="whitespace-nowrap">{formatEth(bestOffer.priceEth)} {currency}</span>
             <span className="ml-2 text-faint">{shortAddress(bestOffer.from)}</span>
           </span>
         ) : (

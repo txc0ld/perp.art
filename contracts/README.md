@@ -38,9 +38,9 @@ operator. Everything in this directory is designed to uphold that invariant.
 | File | What it is | PRD |
 |---|---|---|
 | `interfaces/IForeverLibrary.sol` | Interface for the Forever Library token: ERC-721 + ERC-2981 with the URI-sharding surface the frontend/indexer depend on (mandatory on-chain proof gate, selected shard, lock state, shard accessors, mint/provenance record, events, `ShardBackend` enum). | §7 |
-| `interfaces/IPerpetualSettlement.sol` | Seaport-compatible settlement interface: signed-order structs, `fulfillOrder`, `cancel`, `getOrderStatus`, counter/nonce replay protection, and the documented ERC-2981 royalty-enforcement guarantee. | §8, §12 |
+| `interfaces/IPerpetualSettlement.sol` | Seaport-compatible settlement interface: signed-order structs, `fulfillOrder`, `cancel`, `getOrderStatus`, counter/nonce replay protection, and the documented ERC-2981 royalty-enforcement guarantee. Covers fixed-price orders **and NFT-for-NFT + criteria barter** (Seaport-native offer/consideration with criteria items). | §8, §12 |
 | `ForeverLibrary.sol` | Reference implementation sketch of `IForeverLibrary`. Immutable provenance on mint, per-token shard config with content-hash recording, **mandatory Shard 0 (ethfs) on-chain proof**, edit windows → immutability, lock, ERC-2981 `royaltyInfo`. Reentrancy-guarded. | §7 |
-| `PerpetualSettlement.sol` | Reference implementation sketch of `IPerpetualSettlement`. EIP-712 order hashing, signature verification, nonce/counter cancellation, configurable protocol fee (2.0-2.5%, default 2.25% = 225 bps), and **mandatory ERC-2981 royalty payout enforced in `fulfillOrder`** (reverts if not honored). Non-custodial, reentrancy-guarded. | §8, §12 |
+| `PerpetualSettlement.sol` | Reference implementation sketch of `IPerpetualSettlement`. EIP-712 order hashing, signature verification, nonce/counter cancellation, configurable protocol fee (2.0-2.5%, default 2.25% = 225 bps), and **mandatory ERC-2981 royalty payout enforced in `fulfillOrder`** (reverts if not honored). Supports fixed-price sales and **barter** orders: NFT-for-NFT with optional ETH on either side, and **criteria** items (any token from a collection, optionally with a trait), both expressed natively in the Seaport order model. Non-custodial, reentrancy-guarded. | §8, §12 |
 | `LISTING_ELIGIBILITY.md` | Spec of the PRD §9.6 listing-eligibility gate and how the centralized orderbook enforces it off-chain before accepting a signed listing. | §9.6 |
 | `README.md` | This file. | §6, §18 |
 
@@ -60,6 +60,31 @@ operator. Everything in this directory is designed to uphold that invariant.
    UI suggestion, and a primary artist-acquisition lever (PRD §2.3, §3.1.3).
 
 ---
+
+## Trading surface: barter + cross-chain settlement
+
+`PerpetualSettlement` settles more than fixed-price sales. Because it is Seaport-compatible, the
+same signed-order model expresses **barter**:
+
+- **NFT-for-NFT** - offer token(s) for token(s), with optional ETH on either side to balance value.
+- **Criteria** - a Seaport criteria item matches any token from a collection (and, narrowed by an
+  off-chain trait check the orderbook applies, optionally a trait), so a maker can offer for "any
+  token from this collection" without naming an id. The taker supplies the qualifying token at fill.
+
+**Cross-chain escrow bridge.** A swap whose two sides live on different chains settles atomically
+through an escrow bridge contract: lock the asset on chain A, release the counter-asset on chain B,
+and roll back on any failure, so there is never a half-settled state. A flat bridge fee is surfaced
+at the point of trade. The bridge contract is part of the on-chain surface; its address and relayer
+are configured per deployment (see `.env.example`).
+
+## Multi-chain deployment
+
+Forever Library and `PerpetualSettlement` are **EVM** contracts and deploy to each supported EVM
+chain: Ethereum, Base, Polygon, Arbitrum, Optimism, and Zora (permanence-native; the mandatory
+ethfs onchain proof applies on each). The non-EVM networks Perpetual indexes and trades (Solana,
+Tezos, Flow) use their native storage and settlement and are out of scope for these EVM contracts.
+Per-chain deployed addresses (Forever Library, settlement, ethfs, bridge) are configured via
+[`.env.example`](../.env.example); never hardcode them.
 
 ## How this maps to the PRD
 

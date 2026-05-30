@@ -78,7 +78,22 @@ export interface RoyaltyConfig {
   receiver: string;    // address
 }
 
-export type Chain = "ethereum" | "base";
+/**
+ * Supported networks. Perpetual is a one-stop shop across the major NFT chains.
+ * Permanence is native where Forever Library is deployed (Ethereum + EVM L2s);
+ * other chains are indexed and traded with their native storage, and any pair
+ * can settle a cross-chain swap via the escrow bridge.
+ */
+export type Chain =
+  | "ethereum"
+  | "base"
+  | "polygon"
+  | "arbitrum"
+  | "optimism"
+  | "zora"
+  | "solana"
+  | "tezos"
+  | "flow";
 
 export interface Listing {
   /** Signed Seaport order id (gasless). */

@@ -1,0 +1,88 @@
+# Perpetual - Feature Catalog
+
+A concise reference to what Perpetual does and what makes it different. Permanence-first,
+multi-chain, non-custodial. The marketplace can disappear; the art cannot.
+
+For the in-depth account see the on-site docs (`/docs`), [`ARCHITECTURE.md`](./ARCHITECTURE.md),
+and [`INDEXER_SPEC.md`](./INDEXER_SPEC.md). Live demo:
+https://perpetual-art-tx-build.vercel.app
+
+---
+
+## Permanence (the core)
+
+- **Four storage shards** per token, in parallel: `shard 0` ethfs onchain proof (mandatory
+  backstop, survives as long as Ethereum), IPFS, Arweave, Irys.
+- **Read-only verification service** resolves each shard, hashes the bytes, and compares against
+  the content hash recorded onchain at mint. Public data only, so anyone can reproduce it.
+- **Permanence Status panel** on every token: one row per shard, live status, each row linking to
+  its raw public source.
+- **The decoupling:** because `shard 0` carries permanence on its own, IPFS/CDN costs are
+  performance optimizations, not permanence obligations. Permanence is decoupled from operator
+  solvency.
+
+## Multi-chain (one-stop shop)
+
+- **Nine networks**, indexed and traded as one marketplace.
+- **Permanence-native (EVM):** Ethereum, Base, Polygon, Arbitrum, Optimism, Zora. Forever Library
+  deploys here; the onchain proof shard is native.
+- **Indexed + traded (non-EVM):** Solana, Tezos, Flow. Native storage and settlement.
+- Discovery (explore, rankings, stats) filters across every chain; prices show the chain's native
+  currency (ETH / POL / SOL / XTZ / FLOW).
+
+## Trading
+
+- **Gasless listings + offers** - signed orders, settled onchain only when filled; valid onchain
+  even if the orderbook is down.
+- **NFT-for-NFT swaps** - barter your token(s) for theirs, with optional ETH on either side to
+  balance value.
+- **Criteria swaps** - offer against a collection or trait rather than a specific token; the
+  counterparty picks which qualifying token fills it.
+- **Swaps desk** (`/swaps`) - browse open swaps, accept / decline / counter incoming and outgoing
+  proposals. Per-token swap interest and a profile Swaps tab.
+- **Enforced royalties** - ERC-2981, checked at settlement; a sale that does not honor the royalty
+  is rejected by the contract, not by the interface.
+
+## Cross-chain settlement
+
+- A swap whose two sides span different chains settles **atomically** via an escrow bridge: lock on
+  chain A, release on chain B, rollback on failure. No half-settled state.
+- A flat **bridge fee** is shown at the point of trade, alongside the protocol fee and royalty,
+  before you confirm.
+
+## Identity, scoring, and proof
+
+- **ENS identities** - addresses resolve to ENS names across profiles, swaps, provenance, offers,
+  and activity, with a short-address fallback. Presentational only; the address stays the source of
+  truth.
+- **Permanence Score** - a data-backed grade per token (up to A+) from the onchain proof, the
+  content-hash match, redundant permanent copies, and lock state. Badge + detail card. A portfolio
+  **Permanence Report** aggregates a wallet's holdings on the profile.
+- **The Vanish Test** - an interactive proof on each token page: take the operator layers (indexer,
+  CDN, IPFS pin) offline in turn while the onchain proof keeps resolving the art. Reduced-motion
+  safe.
+- **Certificate of Permanence** - a downloadable, archival SVG certificate per token (title,
+  artist, token id, content hash, shard list, mint date, grade).
+
+## Sovereignty + rebuildability
+
+- **Sovereign contracts** - artists can deploy and own their own Forever Library instance outright;
+  Perpetual indexes it as a federated index. If you leave, your contract, tokens, provenance, and
+  permanence leave with you.
+- **Published, rebuildable indexer** - reads only public onchain data and public storage networks;
+  the schema is published in [`INDEXER_SPEC.md`](./INDEXER_SPEC.md) so any third party can run an
+  equivalent index. The marketplace is not a single point of failure for discovery, just as it is
+  not one for storage.
+
+## Feel (tasteful 3D)
+
+- Pointer-tilt artwork cards, a 3D coverflow of featured drops, the 3D ShardStack permanence
+  visualization, and scroll-driven depth reveals. All reduced-motion safe; the art is always the
+  brightest element.
+
+## Configuration
+
+- The app runs on a deterministic in-memory layer, so no configuration is needed for local
+  development. To take it live, every variable (per-chain RPCs, WalletConnect, contracts, the
+  bridge, the indexer + database, storage providers, the verification service, ENS) is documented
+  in [`.env.example`](../.env.example).

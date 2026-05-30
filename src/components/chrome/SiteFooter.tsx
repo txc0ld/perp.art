@@ -27,13 +27,21 @@ const COLS: Array<{ title: string; links: Array<{ label: string; href: string }>
       { label: "Indexer spec", href: "/permanence#indexer" },
     ],
   },
+  {
+    title: "Learn",
+    links: [
+      { label: "Documentation", href: "/docs" },
+      { label: "Trading & swaps", href: "/docs#trading" },
+      { label: "Getting started", href: "/docs#getting-started" },
+    ],
+  },
 ];
 
 export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-background">
       <div className="mx-auto w-full max-w-[1600px] px-4 py-16 sm:px-6">
-        <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-12">
+        <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] md:gap-12">
           <div className="col-span-full md:col-span-1">
             <Link
               href="/"

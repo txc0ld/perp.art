@@ -1,36 +1,49 @@
 "use client";
 
 /**
- * SwapModal - "Propose a swap" against a TARGET token. Mirrors BuyModal's modal
- * mechanics (scrim, role=dialog/aria-modal, Esc, focus trap, body-scroll lock,
- * max-h-[90dvh] scroll, optimistic success).
+ * SwapModal - propose a swap. Two request MODES, chosen via a segmented control:
  *
- * Flow:
- *  1. Target ("You receive"): thumb, title, ChainBadge.
- *  2. "You offer": multi-select from the wallet's swappable holdings (or a Connect
- *     step when disconnected; a calm empty state when the wallet owns nothing).
- *  3. Optional ETH top-up on EITHER side to balance value.
- *  4. Cross-chain route + settlement note when the offered chain differs.
- *  5. Settlement breakdown via swapBreakdown (protocol on net ETH, bridge if cross-chain).
- *  6. Confirm -> "Proposing..." -> optimistic success with a fabricated swap id.
+ *  - "Specific item": barter for one TARGET token (the original flow).
+ *  - "Any from a collection": criteria barter - any token from a chosen
+ *    collection (optionally filtered to a trait), via CriteriaPicker.
+ *
+ * Mirrors BuyModal's modal mechanics (scrim, role=dialog/aria-modal, Esc, focus
+ * trap, body-scroll lock, max-h scroll, optimistic success).
+ *
+ * Common to both modes:
+ *  - "You offer": multi-select from the wallet's swappable holdings (Connect step
+ *    when disconnected; calm empty state when the wallet owns nothing).
+ *  - Optional ETH top-up on either side to balance value.
+ *  - Cross-chain route + settlement note when chains differ.
+ *  - Settlement breakdown via swapBreakdown.
+ *  - Confirm -> "Posting..." -> optimistic success with a fabricated swap id.
+ *
+ * Opened WITHOUT a target token, the modal defaults to criteria mode.
  */
 import * as React from "react";
 import Link from "next/link";
-import type { Token } from "@/lib/types";
+import type { Token, SwapCriteria } from "@/lib/types";
 import { Button, MonoLabel, Badge } from "@/components/ui";
 import { ChainBadge } from "@/components/chain/ChainBadge";
 import { CrossChainRoute } from "@/components/chain/CrossChainRoute";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { useWallet, connectWallet } from "@/lib/wallet";
-import { getSwappableTokens, BRIDGE_FEE_ETH } from "@/lib/mock-data";
+import {
+  getSwappableTokens,
+  getCollection,
+  tokensMatchingCriteria,
+  BRIDGE_FEE_ETH,
+} from "@/lib/mock-data";
 import { swapBreakdown, formatEth, cn } from "@/lib/utils";
+import { CriteriaPicker, collectionThumbToken } from "./CriteriaPicker";
 
 type Phase = "connect" | "compose" | "proposing" | "done";
 type TopUpSide = "mine" | "theirs";
+export type SwapMode = "specific" | "criteria";
 
-function fabricateSwapId(token: Token, offered: string[]): string {
+function fabricateSwapId(key: string, offered: string[]): string {
   let h = 0x811c9dc5;
-  const s = "swap:" + token.id + ":" + offered.join(",");
+  const s = "swap:" + key + ":" + offered.join(",");
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
     h = Math.imul(h, 0x01000193) >>> 0;
@@ -44,14 +57,26 @@ function fabricateSwapId(token: Token, offered: string[]): string {
   return "swap-" + out;
 }
 
-export function SwapModal({ token, onClose }: { token: Token; onClose: () => void }) {
+export function SwapModal({
+  token,
+  defaultMode,
+  onClose,
+}: {
+  /** Optional target token. When omitted, the modal opens in criteria mode. */
+  token?: Token;
+  defaultMode?: SwapMode;
+  onClose: () => void;
+}) {
   const wallet = useWallet();
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
 
+  const initialMode: SwapMode = defaultMode ?? (token ? "specific" : "criteria");
+  const [mode, setMode] = React.useState<SwapMode>(initialMode);
   const [phase, setPhase] = React.useState<Phase>(wallet.connected ? "compose" : "connect");
   const [selected, setSelected] = React.useState<string[]>([]);
   const [topUpSide, setTopUpSide] = React.useState<TopUpSide>("mine");
   const [topUpAmount, setTopUpAmount] = React.useState<string>("");
+  const [criteria, setCriteria] = React.useState<SwapCriteria | null>(null);
 
   // The user's holdings to offer. A pure mock-data accessor - SSR-safe to call.
   const holdings = React.useMemo(
@@ -68,24 +93,37 @@ export function SwapModal({ token, onClose }: { token: Token; onClose: () => voi
   }, [wallet.connected, phase]);
 
   const offeredTokens = holdings.filter((t) => selected.includes(t.id));
-  // Cross-chain when ANY offered leg lives on a different chain than the target.
-  const crossChain = offeredTokens.some((t) => t.chain !== token.chain);
-  const offerChain = offeredTokens[0]?.chain ?? token.chain;
+
+  // The chain of the requested side: target token, or the chosen collection.
+  const criteriaCollection = criteria?.collectionSlug ? getCollection(criteria.collectionSlug) : undefined;
+  const requestChain = mode === "specific" ? token?.chain : criteriaCollection?.chain;
+
+  // Cross-chain when ANY offered leg lives on a different chain than the request.
+  const crossChain =
+    requestChain != null && offeredTokens.some((t) => t.chain !== requestChain);
+  const offerChain = offeredTokens[0]?.chain ?? requestChain ?? "ethereum";
 
   const topUp = Math.max(0, Number.parseFloat(topUpAmount) || 0);
   const offerEth = topUpSide === "mine" ? topUp : 0;
   const requestEth = topUpSide === "theirs" ? topUp : 0;
   const breakdown = swapBreakdown({ offerEth, requestEth, crossChain, bridgeFeeEth: BRIDGE_FEE_ETH });
 
-  const swapId = React.useMemo(() => fabricateSwapId(token, selected), [token, selected]);
-  const canConfirm = selected.length > 0;
+  const matchCount = criteria ? tokensMatchingCriteria(criteria).length : 0;
+
+  const swapId = React.useMemo(
+    () => fabricateSwapId(mode === "specific" ? token?.id ?? "open" : criteria?.label ?? "open", selected),
+    [mode, token, criteria, selected],
+  );
+
+  const requestReady = mode === "specific" ? Boolean(token) : Boolean(criteria?.collectionSlug);
+  const canConfirm = selected.length > 0 && requestReady;
 
   // Focus management + Esc + focus trap + scroll lock (mirrors BuyModal).
   React.useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     dialogRef.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
     return () => opener?.focus?.();
-  }, [phase]);
+  }, [phase, mode]);
 
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -128,6 +166,16 @@ export function SwapModal({ token, onClose }: { token: Token; onClose: () => voi
     window.setTimeout(() => setPhase("done"), 1600);
   }
 
+  // The label that carries the chosen criteria, including any ETH top-up.
+  const criteriaSummary = React.useMemo(() => {
+    if (!criteria) return null;
+    const eth = requestEth > 0 ? ` + ${formatEth(requestEth)} ETH` : "";
+    // criteria.label already includes any base + trait; append live ETH note.
+    return `${criteria.label}${eth}`;
+  }, [criteria, requestEth]);
+
+  const criteriaThumb = criteria?.collectionSlug ? collectionThumbToken(criteria.collectionSlug) : undefined;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
@@ -148,7 +196,7 @@ export function SwapModal({ token, onClose }: { token: Token; onClose: () => voi
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
           <MonoLabel className="text-foreground">
-            {phase === "done" ? "Swap proposed" : phase === "connect" ? "Connect wallet" : "Propose a swap"}
+            {phase === "done" ? "Swap posted" : phase === "connect" ? "Connect wallet" : "Propose a swap"}
           </MonoLabel>
           <button
             type="button"
@@ -165,29 +213,68 @@ export function SwapModal({ token, onClose }: { token: Token; onClose: () => voi
 
         {/* Body */}
         <div className="overflow-y-auto px-5 py-5">
-          {phase === "connect" && (
-            <ConnectStep onConnect={() => connectWallet()} />
-          )}
+          {phase === "connect" && <ConnectStep onConnect={() => connectWallet()} />}
 
-          {phase === "done" && (
-            <DoneStep swapId={swapId} onClose={onClose} />
-          )}
+          {phase === "done" && <DoneStep swapId={swapId} onClose={onClose} />}
 
           {(phase === "compose" || phase === "proposing") && (
             <div className="flex flex-col gap-5">
-              {/* You receive (target) */}
+              {/* Mode toggle (segmented control) */}
+              <div
+                role="radiogroup"
+                aria-label="What do you want in return"
+                className="inline-flex w-full rounded-[8px] border border-border p-0.5"
+              >
+                {(
+                  [
+                    { id: "specific" as SwapMode, label: "Specific item" },
+                    { id: "criteria" as SwapMode, label: "Any from a collection" },
+                  ]
+                ).map((m) => {
+                  const active = mode === m.id;
+                  // Specific mode needs a target; without one it is disabled.
+                  const unavailable = m.id === "specific" && !token;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      disabled={phase === "proposing" || unavailable}
+                      onClick={() => setMode(m.id)}
+                      className={cn(
+                        "h-9 flex-1 rounded-[6px] px-3 font-mono text-[11px] uppercase tracking-wider transition-colors disabled:opacity-30",
+                        active ? "bg-surface-2 text-foreground" : "text-faint hover:text-muted",
+                      )}
+                    >
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* You receive (request side) */}
               <section>
                 <MonoLabel className="text-faint">You receive</MonoLabel>
-                <div className="mt-2 flex items-center gap-3 rounded-[8px] border border-border bg-surface-2/40 p-3">
-                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-[8px] border border-border-bright">
-                    <GenerativeArt seed={token.artSeed} genre={token.genre} size={56} className="h-full w-full" />
+
+                {mode === "specific" && token && (
+                  <div className="mt-2 flex items-center gap-3 rounded-[8px] border border-border bg-surface-2/40 p-3">
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-[8px] border border-border-bright">
+                      <GenerativeArt seed={token.artSeed} genre={token.genre} size={56} className="h-full w-full" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{token.title}</p>
+                      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-faint">{token.id}</p>
+                    </div>
+                    <ChainBadge chain={token.chain} />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">{token.title}</p>
-                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-faint">{token.id}</p>
+                )}
+
+                {mode === "criteria" && (
+                  <div className="mt-2">
+                    <CriteriaPicker value={criteria} onChange={setCriteria} disabled={phase === "proposing"} />
                   </div>
-                  <ChainBadge chain={token.chain} />
-                </div>
+                )}
               </section>
 
               {/* You offer */}
@@ -213,7 +300,7 @@ export function SwapModal({ token, onClose }: { token: Token; onClose: () => voi
                         <button
                           key={t.id}
                           type="button"
-                          data-autofocus={t.id === holdings[0].id ? true : undefined}
+                          data-autofocus={mode === "specific" && t.id === holdings[0].id ? true : undefined}
                           onClick={() => toggle(t.id)}
                           aria-pressed={on}
                           disabled={phase === "proposing"}
@@ -289,14 +376,34 @@ export function SwapModal({ token, onClose }: { token: Token; onClose: () => voi
                 </p>
               </section>
 
+              {/* Criteria summary (criteria mode) */}
+              {mode === "criteria" && criteria?.collectionSlug && (
+                <section className="rounded-[8px] border border-accent/25 bg-accent/[0.04] px-3 py-3">
+                  <div className="flex items-center gap-3">
+                    {criteriaThumb && (
+                      <span className="h-10 w-10 shrink-0 overflow-hidden rounded-[6px] border border-border-bright">
+                        <GenerativeArt seed={criteriaThumb.artSeed} genre={criteriaThumb.genre} size={40} className="h-full w-full" />
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Badge tone="accent">Any</Badge>
+                        <span className="truncate text-[13px] font-medium text-foreground">{criteriaSummary}</span>
+                      </div>
+                      <p className="mt-1 font-mono text-[11px] tabular-nums text-muted">matches {matchCount} works</p>
+                    </div>
+                  </div>
+                </section>
+              )}
+
               {/* Cross-chain settlement */}
-              {crossChain && (
+              {crossChain && requestChain && (
                 <section className="rounded-[8px] border border-accent/25 bg-accent/[0.04] px-3 py-3">
                   <div className="mb-2 flex items-center justify-between">
                     <MonoLabel className="text-accent">Cross-chain settlement</MonoLabel>
                     <Badge tone="accent">Cross-chain</Badge>
                   </div>
-                  <CrossChainRoute from={offerChain} to={token.chain} />
+                  <CrossChainRoute from={offerChain} to={requestChain} />
                   <p className="mt-2.5 text-[11px] leading-snug text-muted">
                     Settles atomically across chains via escrow, rolls back if either leg fails.
                   </p>
@@ -308,9 +415,7 @@ export function SwapModal({ token, onClose }: { token: Token; onClose: () => voi
                 <dl className="space-y-2.5">
                   <Line label="Net ETH" value={`${formatEth(breakdown.netEth)} ETH`} muted />
                   <Line label="Protocol fee" value={`${formatEth(breakdown.protocol)} ETH`} muted />
-                  {crossChain && (
-                    <Line label="Bridge fee" value={`${formatEth(breakdown.bridge)} ETH`} muted />
-                  )}
+                  {crossChain && <Line label="Bridge fee" value={`${formatEth(breakdown.bridge)} ETH`} muted />}
                   <div className="!mt-3 flex items-baseline justify-between border-t border-border pt-3">
                     <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-foreground">
                       You pay in fees
@@ -323,7 +428,11 @@ export function SwapModal({ token, onClose }: { token: Token; onClose: () => voi
 
                 <ul className="mt-4 space-y-1.5">
                   <Reassure>Fully non-custodial. Your work only leaves your wallet at settlement.</Reassure>
-                  <Reassure>Both legs settle atomically, the trade either completes or reverts.</Reassure>
+                  {mode === "criteria" ? (
+                    <Reassure>Any holder of a matching work can accept, the first to settle takes the trade.</Reassure>
+                  ) : (
+                    <Reassure>Both legs settle atomically, the trade either completes or reverts.</Reassure>
+                  )}
                 </ul>
               </section>
 
@@ -337,12 +446,16 @@ export function SwapModal({ token, onClose }: { token: Token; onClose: () => voi
                 {phase === "proposing" ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="inline-block h-2 w-2 animate-verify-pulse rounded-full bg-background" />
-                    Proposing...
+                    Posting...
                   </span>
-                ) : canConfirm ? (
-                  `Propose swap${crossChain ? " (cross-chain)" : ""}`
-                ) : (
+                ) : !requestReady && mode === "criteria" ? (
+                  "Choose a collection"
+                ) : selected.length === 0 ? (
                   "Select a work to offer"
+                ) : mode === "criteria" ? (
+                  `Post swap${crossChain ? " (cross-chain)" : ""}`
+                ) : (
+                  `Propose swap${crossChain ? " (cross-chain)" : ""}`
                 )}
               </Button>
             </div>
@@ -380,7 +493,7 @@ function DoneStep({ swapId, onClose }: { swapId: string; onClose: () => void }) 
       <div className="flex items-center gap-2.5 rounded-[8px] border border-verify/25 bg-verify/10 px-4 py-3">
         <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-verify" />
         <p className="text-[13px] text-foreground">
-          Swap proposed. The counterparty can accept, decline, or counter. Nothing moves until both legs settle.
+          Swap posted. A matching holder can accept, decline, or counter. Nothing moves until both legs settle.
         </p>
       </div>
       <div className="mt-4 flex items-center justify-between border-t border-border pt-4">

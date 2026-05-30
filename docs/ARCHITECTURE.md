@@ -12,10 +12,24 @@ repository, and records which parts are real code vs. reference scaffold.
 
 | Layer | Function | Decentralization | In this repo |
 |---|---|---|---|
-| **Asset & Provenance** | Artwork, metadata, ownership, provenance, URI sharding | Fully permanent (Forever Library) | `contracts/` interfaces + reference impl (scaffold) |
-| **Settlement** | Trades, royalty enforcement | On-chain (Ethereum + Base) | `contracts/PerpetualSettlement.sol` (scaffold) |
-| **Orderbook & Indexer** | Listings, offers, discovery, search, permanence verification | Centralized, **rebuildable from public data** | `docs/INDEXER_SPEC.md` + `src/lib/mock-data.ts` (typed in-memory implementation) |
+| **Asset & Provenance** | Artwork, metadata, ownership, provenance, URI sharding | Fully permanent (Forever Library, the 6 EVM chains) | `contracts/` interfaces + reference impl (scaffold) |
+| **Settlement** | Trades, royalty enforcement, NFT-for-NFT + criteria barter, cross-chain escrow | On-chain (the EVM chains) + escrow bridge for cross-chain swaps | `contracts/PerpetualSettlement.sol` (scaffold) |
+| **Orderbook & Indexer** | Listings, offers, swaps, discovery, search, permanence verification, across 9 chains | Centralized, **rebuildable from public data** | `docs/INDEXER_SPEC.md` + `src/lib/mock-data.ts` (typed in-memory implementation) |
 | **Frontend** | Web app | Centralized hosting | `src/app/**`, `src/components/**` (production Next.js app) |
+
+### Multi-chain (one-stop shop)
+
+Perpetual indexes and trades across **nine networks**, presented as a single marketplace.
+Chain metadata is authoritative in `src/lib/mock-data.ts` (`CHAINS` / `getChainMeta` / `getChains`).
+
+| Group | Networks | Permanence | Native currency |
+|---|---|---|---|
+| **Permanence-native (EVM)** | Ethereum, Base, Polygon, Arbitrum, Optimism, Zora | Native: Forever Library deploys here; mandatory onchain proof shard | ETH / POL (Polygon) |
+| **Indexed + traded (non-EVM)** | Solana, Tezos, Flow | Indexed and traded with native storage | SOL / XTZ / FLOW |
+
+Discovery (explore, rankings, stats) filters across all chains at once; prices render in each
+chain's native currency rather than a normalized unit. Ownership and settlement remain
+chain-native; the marketplace is the unifying index, not a custodian.
 
 ### The architectural invariant (PRD §6.1, §18)
 > If the operator vanishes, every NFT remains owned, resolving to its artwork via the onchain
@@ -57,6 +71,51 @@ on *"This artwork survives even if Perpetual disappears."*
   component changes.
 - `src/components/art/GenerativeArt.tsx` - deterministic, SSR-safe SVG artwork (no external image
   assets); every token renders reproducible per-genre generative art.
+
+### Trading & swaps (complete UX over the typed layer)
+
+Beyond gasless fixed-price listings and offers, Perpetual restores barter (PRD §8, the
+NFT-for-NFT trading OpenSea abandoned):
+
+- **NFT-for-NFT swaps** - the maker offers token(s), the request is specific token(s), with an
+  optional `ethTopUp` on either side to balance value. Modeled as `SwapOrder` with `offer` /
+  `request` `SwapSide`s (`src/lib/types.ts`).
+- **Criteria swaps** - the request is a `SwapCriteria` (collection, optionally a trait) rather
+  than a specific id: "any token from this collection, optionally with this trait, for mine." The
+  counterparty chooses which qualifying token fills it (`tokenMatchesCriteria`,
+  `tokensMatchingCriteria`).
+- **Lifecycle** - every proposal is `open`, `accepted`, `declined`, `expired`, or `countered`. A
+  counter re-opens the terms; nothing moves until both sides have signed. Surfaced on a dedicated
+  Swaps desk (`/swaps`), per token (`getSwapsForToken`), and on the profile Swaps tab
+  (`getSwapsForUser`).
+
+### Cross-chain settlement (escrow bridge)
+
+A swap whose two sides span different chains (`offer.chain !== request.chain`, recorded as
+`SwapOrder.crossChain`) settles atomically through an escrow bridge: **lock** the asset on chain A,
+**release** the counter-asset on chain B, **rollback** on any failure. There is no intermediate
+state where one side has parted with value and the other has not. A flat bridge fee
+(`BRIDGE_FEE_ETH`) is surfaced at the point of trade, alongside the protocol fee and royalty,
+before the user confirms (`src/components/chain/CrossChainRoute.tsx`).
+
+### Identities, scoring, and verification-backed features
+
+These all read from the same public verification path; none weakens an onchain guarantee.
+
+- **ENS identities** - addresses resolve to ENS names across profiles, swaps, provenance, offers,
+  and activity (`resolveEns` / `displayName`, the `Identity` component), with a short-address
+  fallback. Resolution is presentational only; the address remains the source of truth for
+  ownership and settlement.
+- **Permanence Score** - a data-backed grade per token (`permanenceScore`, up to `A+`) from the
+  verified onchain proof, content-hash match, redundant permanent copies, and lock state. Shown as
+  a badge + detail card; a portfolio **Permanence Report** (`portfolioPermanence`) aggregates a
+  wallet's holdings on the profile.
+- **The Vanish Test** - an interactive proof on each token page that takes the operator layers
+  (indexer, CDN, IPFS pin) offline in turn while shard 0 keeps resolving the artwork from Ethereum,
+  reduced-motion safe (`src/components/token/VanishTest.tsx`).
+- **Certificate of Permanence** - a downloadable, deterministic SVG certificate per token carrying
+  the title, artist, token id, content hash, shard list, mint date, and grade
+  (`src/components/token/CertificateOfPermanence.tsx`).
 
 ### On-chain layer (reference scaffold - unaudited)
 `contracts/` contains well-documented Solidity interfaces and reference-implementation sketches for
