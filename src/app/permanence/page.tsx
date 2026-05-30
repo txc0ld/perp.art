@@ -34,6 +34,7 @@ import { getMarketStats } from "@/lib/mock-data";
 
 import { ProblemSection } from "@/components/permanence/ProblemSection";
 import { ShardDiagram } from "@/components/permanence/ShardDiagram";
+import { ShardStack3D } from "@/components/permanence/ShardStack3D";
 import { VerificationFlow } from "@/components/permanence/VerificationFlow";
 import { IndexerSpec } from "@/components/permanence/IndexerSpec";
 
@@ -53,17 +54,26 @@ export default function PermanencePage() {
       {/* ============================================================ */}
       <section className="relative isolate overflow-hidden border-b border-border">
         <AmbientField className="-z-10" />
+        {/* Hairline grid raked into depth - a quiet floor plane behind the thesis. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
-            backgroundSize: "88px 88px",
-            maskImage:
-              "radial-gradient(120% 80% at 50% 0%, #000 30%, transparent 80%)",
-          }}
-        />
+          className="perspective-1400 pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+        >
+          <div
+            className="preserve-3d absolute inset-x-[-20%] bottom-[-30%] top-[10%] opacity-[0.05]"
+            style={{
+              transform: "rotateX(62deg)",
+              transformOrigin: "center bottom",
+              backgroundImage:
+                "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
+              backgroundSize: "88px 88px",
+              maskImage:
+                "radial-gradient(120% 90% at 50% 100%, #000 20%, transparent 75%)",
+              WebkitMaskImage:
+                "radial-gradient(120% 90% at 50% 100%, #000 20%, transparent 75%)",
+            }}
+          />
+        </div>
 
         <div className="mx-auto w-full max-w-[1320px] px-6 py-28 sm:px-8 lg:py-36">
           <div className="max-w-3xl">
@@ -152,7 +162,13 @@ export default function PermanencePage() {
           title="Four immutable copies. One mandatory backstop."
           description="Each token carries parallel, immutable versions of its artwork across independent storage backends. Three add resolution and redundancy. Shard 0, the onchain proof, is the permanence guarantor, and it is the only one permanence actually requires."
         />
+        {/* The signature visual: shards as translucent planes stacked in depth. */}
         <div className="mt-12">
+          <ShardStack3D />
+        </div>
+
+        {/* The authoritative, plain-language legend (documented in full). */}
+        <div className="mt-14">
           <ShardDiagram />
         </div>
 

@@ -23,6 +23,36 @@ const BACKEND_LABEL: Record<string, string> = {
   cdn: "CDN",
 };
 
+/**
+ * A small static 3D shard glyph for the header: three hairline planes stacked
+ * in depth, echoing the storage-model stack. Pure CSS-3D, no interactivity,
+ * reduced-motion safe (it never animates).
+ */
+function ShardGlyph3D() {
+  return (
+    <span
+      aria-hidden
+      className="perspective-1000 relative inline-block h-4 w-4 shrink-0"
+    >
+      <span
+        className="preserve-3d absolute inset-0"
+        style={{ transform: "rotateX(52deg) rotateZ(-34deg)" }}
+      >
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={cn(
+              "absolute inset-0 rounded-[2px] border",
+              i === 0 ? "border-accent/70" : "border-border-bright",
+            )}
+            style={{ transform: `translateZ(${i * 3}px) translateY(${i * -1.5}px)` }}
+          />
+        ))}
+      </span>
+    </span>
+  );
+}
+
 function ExternalGlyph({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 12 12" className={cn("h-2.5 w-2.5", className)} fill="none" aria-hidden>
@@ -153,12 +183,12 @@ export function PermanencePanel({ token }: { token: Token }) {
     <section
       ref={ref}
       aria-label="Permanence status"
-      className="overflow-hidden rounded-[8px] border border-border-bright bg-surface"
+      className="overflow-hidden rounded-[8px] border border-border-bright bg-surface shadow-[0_30px_70px_-50px_rgba(0,0,0,0.9)]"
     >
       {/* Header */}
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5 sm:px-5">
-        <div className="flex items-center gap-2">
-          <StatusGlyph status="verified" className="h-4 w-4" />
+        <div className="flex items-center gap-2.5">
+          <ShardGlyph3D />
           <MonoLabel className="text-foreground">
             Permanence Status - {token.title}
           </MonoLabel>

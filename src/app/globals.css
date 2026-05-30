@@ -36,6 +36,7 @@
 
   /* Motion */
   --ease-perpetual: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
 }
 
 /* Accent at low alpha (Tailwind v4 can't derive this from a hex var) */
@@ -158,6 +159,39 @@ body {
 .animate-fade { animation: perpetual-fade 0.8s var(--ease-perpetual) both; }
 .animate-reveal { animation: perpetual-reveal 0.7s var(--ease-perpetual) both; }
 .animate-verify-pulse { animation: perpetual-verify-pulse 1.6s ease-in-out infinite; }
+
+/* ============================================================
+   3D / DEPTH  - tasteful CSS-3D primitives (luxurious, restrained)
+   Always behind prefers-reduced-motion guards in JS where dynamic.
+   ============================================================ */
+.perspective-1000 { perspective: 1000px; }
+.perspective-1400 { perspective: 1400px; }
+.preserve-3d { transform-style: preserve-3d; }
+.backface-hidden { backface-visibility: hidden; }
+.gpu { will-change: transform; transform: translateZ(0); }
+
+/* Specular sheen that sweeps across a tilted surface on hover. */
+.sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.10) 45%, rgba(254,147,237,0.10) 50%, transparent 62%);
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-perpetual);
+  mix-blend-mode: screen;
+}
+.group:hover .sheen { opacity: 1; }
+
+@keyframes perpetual-float {
+  0%, 100% { transform: translateY(0) rotateX(0) rotateY(0); }
+  50% { transform: translateY(-8px) rotateX(3deg) rotateY(-3deg); }
+}
+.animate-float { animation: perpetual-float 7s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float { animation: none !important; }
+}
 
 /* Reduced motion - disable ambient + entrance motion gracefully */
 @media (prefers-reduced-motion: reduce) {

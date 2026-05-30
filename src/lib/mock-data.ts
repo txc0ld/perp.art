@@ -11,6 +11,7 @@
 import type {
   Artist, Collection, Token, Genre, StorageShard, PermanenceStatus,
   ProvenanceEvent, Offer, ShardOption, FeaturedEntry, Chain, MediaType,
+  SwapOrder, SwapSide, SwapStatus,
 } from "./types";
 import { seededRandom, hashSeed } from "./utils";
 
@@ -469,4 +470,124 @@ export function getTrendingCollections(window: RankWindow = "24h"): CollectionRa
 /** Top movers by absolute floor change for the given window. */
 export function getTopMovers(window: RankWindow = "24h"): CollectionRanking[] {
   return [...getTrendingCollections(window)].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
+}
+
+// ---------------------------------------------------------------------------
+// Chains (cross-chain trading metadata)
+// ---------------------------------------------------------------------------
+
+export interface ChainMeta {
+  id: Chain;
+  label: string;
+  short: string;
+  color: string;        // accent swatch for the chain
+  explorer: string;
+}
+
+export const CHAINS: Record<Chain, ChainMeta> = {
+  ethereum: { id: "ethereum", label: "Ethereum Mainnet", short: "Ethereum", color: "#9eb8ff", explorer: "https://etherscan.io" },
+  base: { id: "base", label: "Base", short: "Base", color: "#7dd3fc", explorer: "https://basescan.org" },
+};
+
+export function getChainMeta(c: Chain): ChainMeta {
+  return CHAINS[c];
+}
+
+/** Cross-chain settlement bridge fee (flat, surfaced at point of trade). */
+export const BRIDGE_FEE_ETH = 0.0009;
+
+// ---------------------------------------------------------------------------
+// Swaps: NFT-for-NFT barter + cross-chain (the differentiators, PRD §8 barter)
+// ---------------------------------------------------------------------------
+
+function side(tokenIds: string[], ethTopUp: number, chain: Chain): SwapSide {
+  return { tokenIds, ethTopUp: +ethTopUp.toFixed(3), chain };
+}
+
+/** Deterministic pool of swap orders referencing real tokens. */
+function buildSwaps(): SwapOrder[] {
+  const swaps: SwapOrder[] = [];
+  const tokens = WORLD.tokens;
+  const you = CURRENT_USER.address;
+  // A spread of tokens owned by "you" to seed incoming/outgoing swaps.
+  const youOwned = tokens.filter((t) => t.owner.toLowerCase() === you.toLowerCase());
+  const pick = (seed: string, list: Token[]) => list[hashSeed(seed) % list.length];
+
+  for (let i = 0; i < 16; i++) {
+    const r = seededRandom(`swap:${i}`);
+    const target = tokens[Math.floor(r() * tokens.length)];
+    const offered = tokens[Math.floor(r() * tokens.length)];
+    if (!target || !offered || target.id === offered.id) continue;
+
+    // Rotate roles: some made by you (outgoing), some directed to you (incoming), rest open.
+    const role = i % 3; // 0 outgoing(you maker), 1 incoming(you taker), 2 open
+    let maker = offered.owner;
+    let taker: string | undefined = target.owner;
+    let offer = side([offered.id], r() > 0.6 ? +(r() * 1.5).toFixed(3) : 0, offered.chain);
+    let request = side([target.id], r() > 0.85 ? +(r() * 0.6).toFixed(3) : 0, target.chain);
+
+    if (role === 0 && youOwned.length) {
+      const mine = pick(`out:${i}`, youOwned);
+      maker = you;
+      offer = side([mine.id], r() > 0.5 ? +(r() * 1.2).toFixed(3) : 0, mine.chain);
+      taker = target.owner;
+      request = side([target.id], 0, target.chain);
+    } else if (role === 1 && youOwned.length) {
+      const mine = pick(`in:${i}`, youOwned);
+      taker = you;
+      request = side([mine.id], 0, mine.chain);
+      maker = offered.owner;
+      offer = side([offered.id], r() > 0.5 ? +(r() * 1.4).toFixed(3) : 0, offered.chain);
+    }
+
+    const crossChain = offer.chain !== request.chain;
+    const statusRoll = r();
+    const status: SwapStatus = statusRoll > 0.82 ? "accepted" : statusRoll > 0.72 ? "countered" : "open";
+
+    swaps.push({
+      id: "swap-" + pseudoHash("swap:" + i).slice(2, 12),
+      status,
+      maker,
+      taker,
+      offer,
+      request,
+      crossChain,
+      createdAt: isoDaysBefore(1 + Math.floor(r() * 18)),
+      expiresAt: isoDaysBefore(-(2 + Math.floor(r() * 20))),
+      targetTokenId: role === 1 ? request.tokenIds[0] : target.id,
+    });
+  }
+  return swaps;
+}
+
+const SWAPS = buildSwaps();
+
+export function getOpenSwaps(): SwapOrder[] {
+  return SWAPS.filter((s) => s.status === "open" || s.status === "countered");
+}
+
+export function getSwapsForToken(tokenId: string): SwapOrder[] {
+  return SWAPS.filter(
+    (s) =>
+      s.targetTokenId === tokenId ||
+      s.request.tokenIds.includes(tokenId) ||
+      s.offer.tokenIds.includes(tokenId),
+  );
+}
+
+export function getSwapsForUser(address: string): { incoming: SwapOrder[]; outgoing: SwapOrder[] } {
+  const a = address.toLowerCase();
+  return {
+    incoming: SWAPS.filter((s) => s.taker?.toLowerCase() === a && s.maker.toLowerCase() !== a),
+    outgoing: SWAPS.filter((s) => s.maker.toLowerCase() === a),
+  };
+}
+
+export function getSwap(id: string): SwapOrder | undefined {
+  return SWAPS.find((s) => s.id === id);
+}
+
+/** Tokens the connected user can offer in a swap (their holdings). */
+export function getSwappableTokens(address: string): Token[] {
+  return WORLD.tokens.filter((t) => t.owner.toLowerCase() === address.toLowerCase());
 }

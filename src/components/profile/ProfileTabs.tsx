@@ -9,8 +9,9 @@ import { CollectedTab } from "./OwnedTab";
 import { CreatedTab } from "./CreatedTab";
 import { ActivityTab } from "./ActivityTab";
 import { SovereignContracts } from "./SovereignContracts";
+import { ProfileSwaps } from "./ProfileSwaps";
 
-type TabId = "collected" | "created" | "activity" | "contracts";
+type TabId = "collected" | "created" | "activity" | "swaps" | "contracts";
 
 /**
  * ProfileTabs (OpenSea-style profile shell) - client shell for the connected user.
@@ -72,6 +73,7 @@ export function ProfileTabs({
     { id: "collected", label: "Collected", count: ownedTokens.length },
     { id: "created", label: "Created", count: creatorTokens.length },
     { id: "activity", label: "Activity" },
+    { id: "swaps", label: "Swaps" },
     { id: "contracts", label: "Sovereign Contracts" },
   ];
 
@@ -171,6 +173,7 @@ export function ProfileTabs({
         )}
         {tab === "created" && <CreatedTab tokens={creatorTokens} />}
         {tab === "activity" && <ActivityTab tokens={activityTokens} />}
+        {tab === "swaps" && <ProfileSwaps address={activeAddress} />}
         {tab === "contracts" && (
           <SovereignContracts collections={creatorCollections} />
         )}

@@ -3,6 +3,7 @@ import type { Collection } from "@/lib/types";
 import { getArtist } from "@/lib/mock-data";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { StatusGlyph } from "@/components/ui";
+import { Tilt3D } from "@/components/visual/Tilt3D";
 import { formatEth } from "@/lib/utils";
 
 /**
@@ -18,8 +19,8 @@ export function CollectionCard({ collection }: { collection: Collection }) {
       href={`/collections/${collection.slug}`}
       className="group flex h-full flex-col overflow-hidden rounded-[10px] border border-border bg-surface transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:border-border-bright hover:shadow-[0_16px_44px_-28px_rgba(0,0,0,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      {/* Cover */}
-      <div className="relative aspect-[16/9] overflow-hidden bg-background">
+      {/* Cover - tasteful pointer tilt + sheen (this is NOT an ArtTile) */}
+      <Tilt3D max={6} lift={10} glare scale={1.0} className="relative aspect-[16/9] overflow-hidden bg-background">
         <GenerativeArt
           seed={collection.coverSeed}
           genre={collection.genre}
@@ -31,7 +32,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
             {collection.chain === "ethereum" ? "Ethereum" : "Base"}
           </span>
         </div>
-      </div>
+      </Tilt3D>
 
       {/* Overlapping avatar */}
       <div className="relative px-4">

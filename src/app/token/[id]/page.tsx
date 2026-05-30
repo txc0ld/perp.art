@@ -7,6 +7,7 @@ import {
   getArtist,
   getCollection,
   getTokensByCollection,
+  getSwapsForToken,
 } from "@/lib/mock-data";
 import { Section, SectionHeader, Badge, StatusGlyph } from "@/components/ui";
 import { ArtTile } from "@/components/art/ArtTile";
@@ -20,6 +21,7 @@ import { Accordion } from "@/components/token/Accordion";
 import { ItemTabs } from "@/components/token/ItemTabs";
 import { ItemActions } from "@/components/token/ItemActions";
 import { SectionNav } from "@/components/token/SectionNav";
+import { TokenSwaps } from "@/components/token/TokenSwaps";
 import {
   shortAddress,
   shortHash,
@@ -106,6 +108,7 @@ export default async function TokenPage({
   const siblings = getTokensByCollection(token.collectionSlug)
     .filter((t) => t.id !== token.id)
     .slice(0, 5);
+  const swaps = getSwapsForToken(token.id);
 
   const chainLabel = token.chain === "ethereum" ? "Ethereum" : "Base";
   const verifiedShards = token.permanence.shards.filter(
@@ -332,6 +335,18 @@ export default async function TokenPage({
             },
           ]}
         />
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Swaps - NFT-for-NFT barter + cross-chain settlement                 */}
+      {/* ------------------------------------------------------------------ */}
+      <div id="section-swaps" className="mt-16 scroll-mt-24 lg:mt-20">
+        <SectionHeader
+          eyebrow="Trade"
+          title="Swaps"
+          description="Barter this work directly, no sale required. Offer a piece from your collection, balance value with ETH, and settle atomically, even across chains."
+        />
+        <TokenSwaps token={token} swaps={swaps} />
       </div>
 
       {/* More from this collection */}

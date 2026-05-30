@@ -9,6 +9,7 @@ import { FilterRail } from "./FilterRail";
 import { SortMenu } from "./SortMenu";
 import { DensityToggle } from "./DensityToggle";
 import { ExploreGrid } from "./ExploreGrid";
+import { HeadingGlow } from "./HeadingGlow";
 import {
   EMPTY_FILTERS,
   applyFilters,
@@ -50,14 +51,17 @@ export function ExploreClient({
 
   return (
     <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6">
-      {/* Page heading */}
-      <SectionHeader
-        as="h1"
-        eyebrow="The catalog"
-        title="Explore"
-        description="Every work here is engineered to outlast its operator. Filter by genre, chain, storage, and price, then verify permanence per shard."
-        className="border-b-0 pb-5"
-      />
+      {/* Page heading - faint accent glow drifts on scroll for quiet depth */}
+      <div className="relative overflow-hidden">
+        <HeadingGlow />
+        <SectionHeader
+          as="h1"
+          eyebrow="The catalog"
+          title="Explore"
+          description="Every work here is engineered to outlast its operator. Filter by genre, chain, storage, and price, then verify permanence per shard."
+          className="relative border-b-0 pb-5"
+        />
+      </div>
       <p className="sr-only" role="status" aria-live="polite">
         {results.length} {results.length === 1 ? "item" : "items"} match the current filters.
       </p>

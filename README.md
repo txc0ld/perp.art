@@ -44,9 +44,20 @@ artifacts (smart-contract interfaces and the indexer specification).
 - Profile with Collected / Created / Activity / Sovereign-contract management
 - A guided **mint** flow with shard configuration, royalty, and optional locking
 
-**The signature surface**
-- A **Permanence Status panel** on every token: per-shard live verification, each row linking
-  to its raw public source, closing on *"This artwork survives even if perpetual.art disappears."*
+**Differentiators (what OpenSea does not do)**
+- **NFT-for-NFT swaps**: propose a barter trade of your token(s), optionally with ETH on either
+  side to balance value, with an atomic settlement breakdown. Browse open swaps, manage incoming
+  and outgoing offers (accept / decline / counter) on a dedicated Swaps desk.
+- **Cross-chain trades**: when the two sides live on different chains, the swap settles atomically
+  across an escrow bridge (lock on chain A, release on chain B, rollback on failure), shown as a
+  clear settlement route.
+- A **Permanence Status panel** on every token: per-shard live verification, each row linking to
+  its raw public source, closing on *"This artwork survives even if perpetual.art disappears."*
+
+**Feel**
+- Tasteful CSS-3D throughout: pointer-tilt artwork cards with specular sheen, a signature 3D
+  **shard stack** that makes layered permanence tangible, scroll-driven depth reveals, and a
+  floating brand medallion. All reduced-motion aware; the art is always the brightest element.
 
 **Engineering**
 - Deterministic, SSR-safe **generative SVG artwork** (no external image assets)

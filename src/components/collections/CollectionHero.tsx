@@ -3,6 +3,7 @@ import type { Collection, Artist } from "@/lib/types";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { Badge, StatusGlyph } from "@/components/ui";
 import { CollectionActions } from "./CollectionActions";
+import { CollectionBanner3D } from "./CollectionBanner3D";
 
 /**
  * OpenSea-style collection hero: a wide GenerativeArt banner with a circular
@@ -18,16 +19,8 @@ export function CollectionHero({
 }) {
   return (
     <header>
-      {/* Banner */}
-      <div className="relative h-[200px] overflow-hidden rounded-[10px] border border-border bg-background sm:h-[240px] lg:h-[280px]">
-        <GenerativeArt
-          seed={collection.coverSeed}
-          genre={collection.genre}
-          size={1200}
-          className="h-full w-full"
-        />
-        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/10 to-transparent" />
-      </div>
+      {/* Banner - subtle pointer/scroll parallax for quiet depth */}
+      <CollectionBanner3D coverSeed={collection.coverSeed} genre={collection.genre} />
 
       {/* Avatar + identity. The avatar overlaps the banner bottom-left; the row
           reserves left padding at >=sm so identity text never sits under it. */}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AmbientField } from "@/components/visual/AmbientField";
 import { ConnectCard } from "@/components/auth/ConnectCard";
+import { BrandMedallion3D } from "@/components/auth/BrandMedallion3D";
 
 export const metadata: Metadata = {
   title: "Connect - Perpetual",
@@ -33,6 +34,7 @@ export default function ConnectPage() {
       />
 
       <div className="animate-fade relative w-full max-w-[440px]">
+        <BrandMedallion3D />
         <ConnectCard />
       </div>
     </div>

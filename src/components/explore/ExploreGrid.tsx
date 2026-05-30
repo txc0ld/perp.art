@@ -1,5 +1,6 @@
 import type { Token } from "@/lib/types";
 import { ArtTile } from "@/components/art/ArtTile";
+import { GridReveal } from "./GridReveal";
 import type { Density } from "./filters";
 
 /**
@@ -16,13 +17,9 @@ export function ExploreGrid({ tokens, density }: { tokens: Token[]; density: Den
   return (
     <div className={`grid ${cols}`}>
       {tokens.map((t, i) => (
-        <div
-          key={t.id}
-          className="animate-rise"
-          style={{ animationDelay: `${Math.min(i, 11) * 40}ms` }}
-        >
+        <GridReveal key={t.id} index={i}>
           <ArtTile token={t} priority={i < 4} />
-        </div>
+        </GridReveal>
       ))}
     </div>
   );

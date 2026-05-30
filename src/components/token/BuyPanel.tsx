@@ -13,6 +13,7 @@ import { useWallet, connectWallet } from "@/lib/wallet";
 import { formatEth, shortAddress, relativeTime } from "@/lib/utils";
 import { BuyModal } from "./BuyModal";
 import { OfferModal } from "./OfferModal";
+import { ProposeSwapButton } from "@/components/swap/ProposeSwapButton";
 
 export function BuyPanel({ token }: { token: Token }) {
   const { connected } = useWallet();
@@ -66,6 +67,7 @@ export function BuyPanel({ token }: { token: Token }) {
             <Button variant="secondary" size="lg" onClick={handleOffer} className="w-full">
               Make offer
             </Button>
+            <ProposeSwapButton token={token} variant="ghost" size="md" className="w-full" />
           </div>
         </>
       ) : (
@@ -84,6 +86,7 @@ export function BuyPanel({ token }: { token: Token }) {
           <Button variant="accent" size="lg" onClick={handleOffer} className="mt-5 w-full">
             {connected ? "Make offer" : "Connect wallet to offer"}
           </Button>
+          <ProposeSwapButton token={token} variant="ghost" size="md" className="mt-2.5 w-full" />
         </>
       )}
 

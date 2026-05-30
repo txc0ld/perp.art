@@ -6,9 +6,8 @@
  * primary accent CTA sit in a gradient-overlaid panel. Art-forward, wide,
  * commerce-first. Server component.
  */
-import Link from "next/link";
-import { ButtonLink, Badge, StatusGlyph } from "@/components/ui";
-import { GenerativeArt } from "@/components/art/GenerativeArt";
+import { ButtonLink, Badge } from "@/components/ui";
+import { HeroArt3D } from "./HeroArt3D";
 import { getArtist } from "@/lib/mock-data";
 import { formatEth } from "@/lib/utils";
 import type { CollectionRanking } from "@/lib/mock-data";
@@ -30,30 +29,8 @@ export function HeroFeature({ feature }: { feature: CollectionRanking }) {
     <section className="border-b border-border">
       <div className="mx-auto w-full max-w-[1600px] px-4 pt-6 pb-10 sm:px-6 sm:pt-8 lg:pt-10">
         <div className="animate-rise grid grid-cols-1 gap-px overflow-hidden rounded-[10px] border border-border bg-border lg:grid-cols-[1.35fr_1fr]">
-          {/* Left - the art, brightest element, in a hairline frame */}
-          <Link
-            href={`/collections/${c.slug}`}
-            className="group relative block aspect-[16/11] overflow-hidden bg-background lg:aspect-auto"
-          >
-            <GenerativeArt
-              seed={c.coverSeed}
-              genre={c.genre}
-              size={1200}
-              className="h-full w-full transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03]"
-            />
-            {/* bottom gradient so overlaid chrome stays legible on mobile */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent lg:hidden"
-            />
-            <div className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-background/70 px-2.5 py-1 backdrop-blur-md">
-              <StatusGlyph status="verified" />
-              <span className="font-mono text-[10px] uppercase tracking-wider text-accent">Featured / Permanence verified</span>
-            </div>
-            <div className="absolute right-4 top-4">
-              <Badge tone="muted">{c.chain === "ethereum" ? "Mainnet" : "Base"}</Badge>
-            </div>
-          </Link>
+          {/* Left - the art, brightest element, as a tasteful 3D moment */}
+          <HeroArt3D slug={c.slug} coverSeed={c.coverSeed} genre={c.genre} chain={c.chain} />
 
           {/* Right - the pitch + numerics + CTA */}
           <div className="relative flex flex-col justify-between gap-7 bg-surface p-5 sm:gap-8 sm:p-8 lg:p-10">

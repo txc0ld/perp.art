@@ -194,3 +194,44 @@ export interface ShardOption {
   mandatory: boolean;
   defaultEnabled: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Swaps: NFT-for-NFT barter + cross-chain settlement (the differentiators)
+// Seaport natively supports multi-item / criteria barter orders, so this is
+// architecturally honest. Cross-chain legs settle atomically via an escrow
+// bridge with rollback (offered side locks on chain A, released on chain B).
+// ---------------------------------------------------------------------------
+
+export type SwapStatus = "open" | "accepted" | "declined" | "expired" | "countered";
+
+export interface SwapSide {
+  /** Specific tokens committed to this side of the trade. */
+  tokenIds: string[];
+  /** ETH added to this side to balance value (usually only one side has it). */
+  ethTopUp: number;
+  chain: Chain;
+}
+
+/** Criteria-based request: accept any token matching, not a specific id. */
+export interface SwapCriteria {
+  collectionSlug?: string;
+  traitKey?: string;
+  traitValue?: string;
+  label: string; // human summary, e.g. "Any Strata + 0.4 ETH"
+}
+
+export interface SwapOrder {
+  id: string;
+  status: SwapStatus;
+  maker: string;             // address proposing the swap
+  taker?: string;            // directed counterparty (owner of the requested token)
+  offer: SwapSide;           // what the maker gives
+  request: SwapSide;         // what the maker wants (specific tokens)
+  requestCriteria?: SwapCriteria; // OR an open criteria-based request
+  /** offer.chain !== request.chain -> settles cross-chain. */
+  crossChain: boolean;
+  createdAt: string;         // ISO
+  expiresAt: string;         // ISO
+  /** Primary token this swap targets, for token-page surfacing. */
+  targetTokenId?: string;
+}

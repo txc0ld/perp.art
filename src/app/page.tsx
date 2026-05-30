@@ -28,6 +28,7 @@ import type { CollectionRanking, RankWindow } from "@/lib/mock-data";
 
 import { Section } from "@/components/ui";
 import { HeroFeature } from "@/components/home/HeroFeature";
+import { Reveal3D } from "@/components/home/Reveal3D";
 import { CategoryPills } from "@/components/home/CategoryPills";
 import { TrendingTable } from "@/components/home/TrendingTable";
 import { FeaturedWorksGrid } from "@/components/home/FeaturedWorksGrid";
@@ -62,19 +63,27 @@ export default async function Home({
 
       <CategoryPills genres={GENRES} active={activeGenre} />
 
-      <Section id="trending">
-        <TrendingTable data={trendingByWindow} defaultWindow="24h" limit={6} />
-      </Section>
+      <Reveal3D>
+        <Section id="trending">
+          <TrendingTable data={trendingByWindow} defaultWindow="24h" limit={6} />
+        </Section>
+      </Reveal3D>
 
-      <Section id="notable" className="border-t border-border pt-12 sm:pt-14 lg:pt-16">
-        <FeaturedWorksGrid tokens={featured} />
-      </Section>
+      <Reveal3D>
+        <Section id="notable" className="border-t border-border pt-12 sm:pt-14 lg:pt-16">
+          <FeaturedWorksGrid tokens={featured} />
+        </Section>
+      </Reveal3D>
 
-      <Section id="movers" className="border-t border-border pb-14 pt-12 sm:pt-14 lg:pt-16">
-        <TopMovers movers={movers} />
-      </Section>
+      <Reveal3D>
+        <Section id="movers" className="border-t border-border pb-14 pt-12 sm:pt-14 lg:pt-16">
+          <TopMovers movers={movers} />
+        </Section>
+      </Reveal3D>
 
-      <PermanenceBand stats={stats} />
+      <Reveal3D>
+        <PermanenceBand stats={stats} />
+      </Reveal3D>
 
       <div className="h-12 sm:h-16" />
     </>

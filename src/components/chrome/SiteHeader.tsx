@@ -11,6 +11,7 @@ import { Wordmark } from "./Brand";
 const NAV = [
   { href: "/explore", label: "Explore" },
   { href: "/collections", label: "Collections" },
+  { href: "/swaps", label: "Swaps" },
   { href: "/stats", label: "Stats" },
   { href: "/permanence", label: "Permanence" },
   { href: "/mint", label: "Create" },

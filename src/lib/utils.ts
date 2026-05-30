@@ -73,3 +73,32 @@ export function feeBreakdown(priceEth: number, royaltyBps: number) {
   const toSeller = priceEth - protocol - royalty;
   return { price: priceEth, protocol, royalty, toSeller };
 }
+
+/**
+ * Settlement breakdown for a swap. Protocol fee applies only to the net ETH
+ * leg (NFT-for-NFT with no ETH carries no protocol fee). A flat bridge fee is
+ * added when the two sides settle on different chains.
+ */
+export function swapBreakdown(opts: {
+  offerEth: number;
+  requestEth: number;
+  crossChain: boolean;
+  bridgeFeeEth: number;
+}) {
+  const netEth = Math.abs(opts.offerEth - opts.requestEth);
+  const protocol = (netEth * PROTOCOL_FEE_BPS) / 10_000;
+  const bridge = opts.crossChain ? opts.bridgeFeeEth : 0;
+  return {
+    netEth,
+    protocol,
+    bridge,
+    total: +(protocol + bridge).toFixed(4),
+  };
+}
+
+/** Motion easings (gallery, not arcade). No bounce. */
+export const EASE = {
+  out: "cubic-bezier(0.22, 1, 0.36, 1)",      // primary deceleration
+  inOut: "cubic-bezier(0.65, 0, 0.35, 1)",
+  spring: "cubic-bezier(0.34, 1.4, 0.5, 1)",  // gentle settle (slight, never bouncy)
+} as const;
