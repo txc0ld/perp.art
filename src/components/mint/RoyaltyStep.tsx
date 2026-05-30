@@ -72,7 +72,8 @@ export function RoyaltyStep({
                 type="button"
                 onClick={() => set({ royaltyPct: q })}
                 className={cn(
-                  "rounded-full border px-3.5 py-1.5 font-mono text-[12px] tabular-nums transition-colors duration-200",
+                  "inline-flex min-h-[44px] items-center rounded-full border px-4 font-mono text-[12px] tabular-nums transition-colors duration-200",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
                   active
                     ? "border-accent/40 bg-accent/10 text-accent"
                     : "border-border text-muted hover:border-border-bright hover:text-foreground",
@@ -94,9 +95,9 @@ export function RoyaltyStep({
           <MonoLabel className="text-foreground">Enforced at settlement</MonoLabel>
         </div>
         <p className="text-sm leading-relaxed text-muted">
-          On Perpetual, your royalty isn&rsquo;t a request - it&rsquo;s enforced at the
-          protocol level. Every compliant sale settles your share automatically, on
-          every secondary trade, for as long as the work exists.
+          Here your royalty is not a polite request, it is enforced at the protocol
+          level. Every sale settles your share automatically, on every secondary trade,
+          for as long as the work exists.
         </p>
         <div className="mt-5 space-y-2.5 border-t border-border pt-5">
           {[

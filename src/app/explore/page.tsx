@@ -5,7 +5,7 @@ import { filtersFromSearchParams } from "@/components/explore/filters";
 
 export const metadata: Metadata = {
   title: "Explore - Perpetual",
-  description: "Browse art engineered to outlast everything. Filter by genre, chain, permanence, and price.",
+  description: "Browse art engineered to outlast its operator. Filter by genre, chain, storage, and price, then verify permanence per shard.",
 };
 
 /**

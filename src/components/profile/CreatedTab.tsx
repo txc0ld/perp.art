@@ -46,7 +46,7 @@ export function CreatedTab({ tokens }: { tokens: Token[] }) {
     return (
       <EmptyState
         title="Nothing minted yet"
-        body="Works you create will live here. Mint to a sovereign Forever Library contract you own outright."
+        body="Works you create live here. Mint to a sovereign Forever Library contract you own outright, with permanence configured from the first block."
         cta={{ href: "/mint", label: "Mint a work" }}
       />
     );
@@ -61,7 +61,7 @@ export function CreatedTab({ tokens }: { tokens: Token[] }) {
             {tokens.length} {tokens.length === 1 ? "work" : "works"} created
           </span>
         }
-        description="Every work you mint is hash-anchored onchain at mint and kept across independent permanence shards."
+        description="Every work you mint is hash-anchored onchain at mint and held across independent permanence shards."
         action={
           <SortSelect value={sort} onChange={setSort} options={SORTS} label="Sort works" />
         }

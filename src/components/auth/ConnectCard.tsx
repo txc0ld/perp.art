@@ -38,8 +38,8 @@ export function ConnectCard() {
             Enter the conservatory
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted">
-            Connect a wallet to hold art engineered to outlast everything. Perpetual is fully
-            non-custodial - you keep the keys, always.
+            Connect a wallet to hold art engineered to outlast its marketplace.
+            Perpetual is fully non-custodial. You keep the keys, always.
           </p>
 
           <div className="mt-8">
@@ -52,14 +52,15 @@ export function ConnectCard() {
             <div className="flex items-start gap-2.5">
               <ShieldGlyph />
               <p className="text-xs leading-relaxed text-muted">
-                Perpetual never takes custody of your assets or funds.
+                Perpetual never takes custody of your assets or funds. Connecting
+                only reads your public address.
               </p>
             </div>
             <div className="flex items-start gap-2.5">
               <EyeGlyph />
               <p className="text-xs leading-relaxed text-muted">
-                Every signing request is shown in full before you approve - we never ask you to
-                sign a blind or off-site transaction.
+                Every signing request is shown in full before you approve. We never
+                ask you to sign a blind or off-site transaction.
               </p>
             </div>
           </div>
@@ -86,7 +87,7 @@ function ConnectedState({
         You&rsquo;re connected
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-muted">
-        Your wallet is linked. Perpetual holds none of your assets - you can disconnect at any time.
+        Your wallet is linked. Perpetual holds none of your assets, and you can disconnect at any time.
       </p>
 
       <div className="mt-7 flex items-center gap-3 rounded-[8px] border border-border bg-surface-2 px-4 py-3.5">

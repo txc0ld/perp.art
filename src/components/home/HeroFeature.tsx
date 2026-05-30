@@ -48,7 +48,7 @@ export function HeroFeature({ feature }: { feature: CollectionRanking }) {
             />
             <div className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-background/70 px-2.5 py-1 backdrop-blur-md">
               <StatusGlyph status="verified" />
-              <span className="font-mono text-[10px] uppercase tracking-wider text-accent">Featured collection</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-accent">Featured / Permanence verified</span>
             </div>
             <div className="absolute right-4 top-4">
               <Badge tone="muted">{c.chain === "ethereum" ? "Mainnet" : "Base"}</Badge>
@@ -56,7 +56,7 @@ export function HeroFeature({ feature }: { feature: CollectionRanking }) {
           </Link>
 
           {/* Right - the pitch + numerics + CTA */}
-          <div className="relative flex flex-col justify-between gap-8 bg-surface p-6 sm:p-8 lg:p-10">
+          <div className="relative flex flex-col justify-between gap-7 bg-surface p-5 sm:gap-8 sm:p-8 lg:p-10">
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0 opacity-60"
@@ -87,7 +87,7 @@ export function HeroFeature({ feature }: { feature: CollectionRanking }) {
                   View collection
                 </ButtonLink>
                 <ButtonLink href="/explore" variant="secondary" size="lg">
-                  Explore all
+                  Browse the catalog
                 </ButtonLink>
               </div>
             </div>

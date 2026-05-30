@@ -16,7 +16,7 @@ export function DensityToggle({
 }) {
   return (
     <div
-      className="inline-flex h-10 items-center gap-0.5 rounded-[8px] border border-border bg-surface p-0.5"
+      className="inline-flex h-11 items-center gap-0.5 rounded-[8px] border border-border bg-surface p-0.5 sm:h-10"
       role="group"
       aria-label="Grid density"
     >

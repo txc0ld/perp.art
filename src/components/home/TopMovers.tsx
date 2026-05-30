@@ -12,7 +12,7 @@ import type { CollectionRanking } from "@/lib/mock-data";
 export function TopMovers({ movers }: { movers: CollectionRanking[] }) {
   return (
     <div>
-      <SectionHeader eyebrow="Last 24 hours" title="Top movers" />
+      <SectionHeader eyebrow="Floor change / 24h" title="Top movers" />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {movers.map((row) => {

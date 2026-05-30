@@ -101,12 +101,12 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
         role="dialog"
         aria-modal="true"
         aria-label="Confirm purchase"
-        className="animate-rise relative w-full max-w-[440px] rounded-[8px] border border-border-bright bg-surface shadow-2xl"
+        className="animate-rise relative flex max-h-[90dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-[8px] border border-border-bright bg-surface shadow-2xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
           <MonoLabel className="text-foreground">
-            {phase === "done" ? "Purchase complete" : "Confirm purchase"}
+            {phase === "done" ? "Acquired" : "Review purchase"}
           </MonoLabel>
           <button
             type="button"
@@ -122,7 +122,7 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
         </div>
 
         {/* Body */}
-        <div className="px-5 py-5">
+        <div className="overflow-y-auto px-5 py-5">
           {/* Item line */}
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <div className="min-w-0">
@@ -139,11 +139,11 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
               <div className="flex items-center gap-2.5 rounded-[8px] border border-verify/25 bg-verify/10 px-4 py-3">
                 <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-verify" />
                 <p className="text-[13px] text-foreground">
-                  Settled onchain. Ownership and provenance updated.
+                  Settled onchain. The work is yours, and the provenance now reflects it.
                 </p>
               </div>
               <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-                <MonoLabel>Tx</MonoLabel>
+                <MonoLabel>Transaction</MonoLabel>
                 <a
                   href={`https://etherscan.io/tx/${txHash}`}
                   target="_blank"
@@ -184,8 +184,8 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
 
               {/* Reassurance */}
               <ul className="mt-4 space-y-1.5">
-                <Reassure>Royalties enforced at settlement - not optional.</Reassure>
-                <Reassure>Non-custodial. Perpetual never holds your asset or funds.</Reassure>
+                <Reassure>The creator royalty is enforced at settlement, never optional.</Reassure>
+                <Reassure>Fully non-custodial. Perpetual never holds your work or your funds.</Reassure>
               </ul>
 
               <Button

@@ -5,7 +5,7 @@ import { RankingsTable } from "@/components/stats/RankingsTable";
 
 export const metadata: Metadata = {
   title: "Rankings - Perpetual",
-  description: "Top collections by volume, floor, and movement across every time window. Permanence-first, independently verifiable.",
+  description: "Collections ranked by volume, floor, and movement across every time window. Each figure traces to onchain-anchored, permanent work.",
 };
 
 const WINDOWS: RankWindow[] = ["1h", "6h", "24h", "7d", "30d"];
@@ -22,9 +22,9 @@ export default function StatsPage() {
     <Section>
       <SectionHeader
         as="h1"
-        eyebrow="Discover"
+        eyebrow="The Register"
         title="Rankings"
-        description="The top collections on Perpetual, ranked by trading volume. Filter by time window, category, and chain. Every floor and sale traces back to onchain-anchored, permanent work."
+        description="Every collection on Perpetual, ordered by trading volume and movement. Filter by time window, category, and chain. Each floor and sale traces back to onchain-anchored, permanent work."
       />
 
       <RankingsTable data={data} genres={GENRES} />

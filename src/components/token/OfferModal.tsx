@@ -103,10 +103,10 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
         role="dialog"
         aria-modal="true"
         aria-label="Make an offer"
-        className="animate-rise relative w-full max-w-[440px] rounded-[8px] border border-border-bright bg-surface shadow-2xl"
+        className="animate-rise relative flex max-h-[90dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-[8px] border border-border-bright bg-surface shadow-2xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
           <MonoLabel className="text-foreground">
             {phase === "done" ? "Offer placed" : "Make an offer"}
           </MonoLabel>
@@ -124,7 +124,7 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
         </div>
 
         {/* Body */}
-        <div className="px-5 py-5">
+        <div className="overflow-y-auto px-5 py-5">
           {/* Item line */}
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <div className="min-w-0">
@@ -141,7 +141,7 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
               <div className="flex items-center gap-2.5 rounded-[8px] border border-verify/25 bg-verify/10 px-4 py-3">
                 <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-verify" />
                 <p className="text-[13px] text-foreground">
-                  Signed and submitted. The owner can accept it at any time.
+                  Signed and submitted. The holder can accept it whenever they choose.
                 </p>
               </div>
               <dl className="mt-4 space-y-2.5 border-t border-border pt-4">
@@ -189,7 +189,7 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
                     aria-invalid={showError}
                     aria-describedby={showError ? errorId : undefined}
                     placeholder="0.000"
-                    className="w-full bg-transparent py-2.5 font-mono text-[15px] tabular-nums text-foreground placeholder:text-faint focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full bg-transparent py-3 font-mono text-[16px] tabular-nums text-foreground placeholder:text-faint focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <span className="font-mono text-[13px] text-muted">ETH</span>
                 </div>
@@ -215,7 +215,8 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
                         onClick={() => setExpiryDays(o.days)}
                         aria-pressed={active}
                         className={cn(
-                          "rounded-[8px] border px-2 py-2.5 font-mono text-[12px] tabular-nums transition-colors duration-200",
+                          "min-h-[44px] rounded-[8px] border px-2 font-mono text-[12px] tabular-nums transition-colors duration-200",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
                           active
                             ? "border-accent/40 bg-accent/10 text-accent"
                             : "border-border text-muted hover:border-border-bright hover:text-foreground",
@@ -231,12 +232,12 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
               {/* Fee note */}
               <ul className="mt-4 space-y-1.5">
                 <Reassure>
-                  Gasless and signature-based. No funds leave your wallet until the owner
+                  Gasless and signature-based. Nothing leaves your wallet until the holder
                   accepts.
                 </Reassure>
                 <Reassure>
-                  Protocol fee {bpsToPct(PROTOCOL_FEE_BPS)} and the {bpsToPct(token.royalty.bps)}{" "}
-                  creator royalty are settled on acceptance.
+                  The {bpsToPct(PROTOCOL_FEE_BPS)} protocol fee and {bpsToPct(token.royalty.bps)}{" "}
+                  creator royalty are settled only on acceptance.
                 </Reassure>
               </ul>
 

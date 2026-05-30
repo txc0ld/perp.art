@@ -46,7 +46,7 @@ export function BuyPanel({ token }: { token: Token }) {
         <>
           <div className="flex items-end justify-between gap-4">
             <div>
-              <MonoLabel className="text-faint">Price</MonoLabel>
+              <MonoLabel className="text-faint">Current price</MonoLabel>
               <p className="mt-1.5 font-mono text-[28px] font-semibold leading-none tabular-nums text-foreground">
                 {formatEth(listing.priceEth)}
                 <span className="ml-1.5 text-base font-medium text-muted">ETH</span>
@@ -56,7 +56,7 @@ export function BuyPanel({ token }: { token: Token }) {
           </div>
 
           <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-faint">
-            Listing expires {relativeTime(listing.expiresAt)}
+            Available until {relativeTime(listing.expiresAt)}
           </p>
 
           <div className="mt-5 flex flex-col gap-2.5">
@@ -73,13 +73,13 @@ export function BuyPanel({ token }: { token: Token }) {
           <div className="flex items-center justify-between gap-4">
             <div>
               <MonoLabel className="text-faint">Status</MonoLabel>
-              <p className="mt-1.5 text-lg font-medium text-foreground">Not listed</p>
+              <p className="mt-1.5 text-lg font-medium text-foreground">Not for sale</p>
             </div>
             <Badge tone="muted">{chainLabel}</Badge>
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-muted">
-            This work is not for sale right now. You can make a signed, gasless offer the
-            owner can accept at any time.
+            This work is not listed. Make a signed, gasless offer the holder can accept
+            whenever they choose.
           </p>
           <Button variant="accent" size="lg" onClick={handleOffer} className="mt-5 w-full">
             {connected ? "Make offer" : "Connect wallet to offer"}
@@ -88,10 +88,10 @@ export function BuyPanel({ token }: { token: Token }) {
       )}
 
       {/* Best current offer */}
-      <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
-        <MonoLabel className="text-faint">Best offer</MonoLabel>
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
+        <MonoLabel className="text-faint">Highest offer</MonoLabel>
         {bestOffer ? (
-          <span className="font-mono text-[13px] tabular-nums text-foreground">
+          <span className="truncate text-right font-mono text-[13px] tabular-nums text-foreground">
             {formatEth(bestOffer.priceEth)} ETH
             <span className="ml-2 text-faint">{shortAddress(bestOffer.from)}</span>
           </span>

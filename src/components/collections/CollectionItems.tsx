@@ -210,7 +210,7 @@ function buildActivity(tokens: Token[]): ActivityRow[] {
 
 function ActivityTable({ rows, collectionName }: { rows: ActivityRow[]; collectionName?: string }) {
   if (rows.length === 0) {
-    return <p className="mt-16 text-center text-sm text-muted">No recent activity.</p>;
+    return <p className="mt-16 text-center text-sm text-muted">No activity recorded yet.</p>;
   }
   return (
     <div className="mt-6 overflow-x-auto">
@@ -298,7 +298,7 @@ const TabButton = React.forwardRef<
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={cn(
-        "inline-flex h-9 min-h-[36px] items-center rounded-full px-4 font-mono text-[11px] font-semibold uppercase tracking-wider leading-none transition-colors",
+        "inline-flex h-10 min-h-[40px] items-center rounded-full px-4 font-mono text-[11px] font-semibold uppercase tracking-wider leading-none transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active ? "bg-accent text-background" : "text-muted hover:text-foreground",
       )}

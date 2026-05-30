@@ -146,7 +146,7 @@ export function DeployContractModal({
               <div className="flex items-center gap-2.5 rounded-[8px] border border-verify/25 bg-verify/10 px-4 py-3">
                 <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-verify" aria-hidden />
                 <p className="text-[13px] text-foreground">
-                  Deployed. You own this Forever Library contract outright.
+                  Deployed. This Forever Library contract is yours outright.
                 </p>
               </div>
               <dl className="mt-4 space-y-2.5 border-t border-border pt-4">
@@ -172,8 +172,8 @@ export function DeployContractModal({
           ) : (
             <>
               <p className="text-[13px] leading-relaxed text-muted">
-                Spin up your own ERC-721 + ERC-2981 Forever Library. Perpetual never holds the
-                keys, you can leave with it fully intact.
+                Deploy your own ERC-721 + ERC-2981 Forever Library. Perpetual never
+                holds the keys. Leave whenever you like and take it fully intact.
               </p>
 
               <div className="mt-5 flex flex-col gap-1.5">

@@ -71,15 +71,17 @@ export function SovereignContracts({
           <Badge tone="accent">You own these outright</Badge>
         </div>
         <p className="max-w-md text-xs leading-relaxed text-muted">
-          Your works live in Forever Library contracts that you, not Perpetual, control. If you
-          ever leave, you take them with you, fully intact.
+          Your works live in Forever Library contracts that you, not Perpetual, control.
+          Leave whenever you like and take them with you, fully intact, indexable by
+          anyone.
         </p>
       </div>
 
       {contracts.length === 0 ? (
         <Surface className="px-6 py-10 text-center">
           <p className="text-sm text-muted">
-            No sovereign contract deployed yet. Deploy one to own your collection outright.
+            No sovereign contract yet. Deploy one to own your collection outright,
+            on a contract Perpetual can never seize or freeze.
           </p>
         </Surface>
       ) : (
@@ -95,7 +97,7 @@ export function SovereignContracts({
         <div>
           <p className="text-sm font-medium text-foreground">Deploy a new sovereign contract</p>
           <p className="mt-1 text-xs leading-relaxed text-muted">
-            Spin up your own ERC-721 + ERC-2981 Forever Library. Perpetual never holds the keys.
+            Deploy your own ERC-721 + ERC-2981 Forever Library. Perpetual never holds the keys.
           </p>
         </div>
         <Button

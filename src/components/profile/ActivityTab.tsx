@@ -92,7 +92,7 @@ export function ActivityTab({ tokens }: { tokens: Token[] }) {
     return (
       <EmptyState
         title="No activity yet"
-        body="Mints, sales, transfers, and offers across your works will appear here as a verifiable timeline."
+        body="Mints, sales, transfers, and offers across your works appear here as a verifiable timeline, each event linking to its transaction onchain."
       />
     );
   }

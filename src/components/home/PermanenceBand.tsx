@@ -23,15 +23,17 @@ export function PermanenceBand({ stats }: { stats: MarketStats }) {
             <StatusGlyph status="verified" />
           </span>
           <p className="max-w-2xl text-[15px] leading-relaxed text-foreground">
-            Every work is written to four independent immutable backends and anchored by an onchain proof, so it survives even if Perpetual disappears.
+            Every work is written across four independent immutable backends and anchored by an onchain proof. It survives even if Perpetual disappears. That is the only guarantee we make, and we make it provable.
           </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-px overflow-hidden rounded-[10px] border border-border bg-border">
-          <BandStat label="Integrity" value={`${stats.permanenceIntegrity}%`} accent />
-          <BandStat label="Onchain proof" value={`${stats.onchainProofRate}%`} />
-          <BandStat label="Verified shards" value={String(stats.verifiedShards)} />
-          <div className="bg-surface px-4 py-3">
+        <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-px sm:overflow-hidden sm:rounded-[10px] sm:border sm:border-border sm:bg-border">
+          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[10px] border border-border bg-border sm:contents">
+            <BandStat label="Integrity" value={`${stats.permanenceIntegrity}%`} accent />
+            <BandStat label="Onchain proof" value={`${stats.onchainProofRate}%`} />
+            <BandStat label="Verified shards" value={String(stats.verifiedShards)} />
+          </div>
+          <div className="bg-surface sm:px-4 sm:py-3">
             <ButtonLink href="/permanence" variant="secondary" size="sm">
               How it works
             </ButtonLink>

@@ -40,7 +40,7 @@ import { IndexerSpec } from "@/components/permanence/IndexerSpec";
 export const metadata: Metadata = {
   title: "How permanence works - Perpetual",
   description:
-    "Every artwork on Perpetual is provably permanent, independent of Perpetual. An onchain proof shard backstops every token, a read-only verification service anyone can reproduce, and a published indexer schema keep the art alive even if Perpetual disappears.",
+    "How Perpetual keeps every artwork provably permanent, independent of Perpetual itself. A mandatory onchain proof shard, a read-only verification service anyone can reproduce, and a published indexer schema, documented in full.",
 };
 
 export default function PermanencePage() {
@@ -69,7 +69,7 @@ export default function PermanencePage() {
           <div className="max-w-3xl">
             <div className="animate-rise" style={{ animationDelay: "40ms" }}>
               <MonoLabel className="text-faint">
-                Permanence · the thesis, made verifiable
+                Documentation · Permanence, made verifiable
               </MonoLabel>
             </div>
 
@@ -88,10 +88,11 @@ export default function PermanencePage() {
               className="animate-rise mt-7 max-w-2xl text-[18px] leading-relaxed text-muted"
               style={{ animationDelay: "320ms" }}
             >
-              Every artwork on Perpetual is provably permanent - and that permanence
+              Every artwork on Perpetual is provably permanent, and that permanence
               does not depend on Perpetual. A mandatory onchain proof anchors each
-              token to Ethereum, anyone can reproduce the verification, and the
-              index can be rebuilt from public data alone.
+              token to Ethereum. Anyone can reproduce the verification, and the
+              entire index can be rebuilt from public data alone. This page explains,
+              precisely, how.
             </p>
 
             <div
@@ -116,8 +117,9 @@ export default function PermanencePage() {
               style={{ animationDelay: "640ms" }}
             >
               We claim exactly one thing, and we claim it precisely: the artwork
-              survives. The orderbook and index are centralized for speed - and
-              their failure can never touch your art or your ownership.
+              survives. The orderbook and index are run conventionally, centralized
+              for speed, and their failure can never touch your art or your ownership.
+              We do not claim a decentralization we have not built.
             </p>
           </div>
         </div>
@@ -128,9 +130,9 @@ export default function PermanencePage() {
       {/* ============================================================ */}
       <Section>
         <SectionHeader
-          eyebrow="The problem · §2"
+          eyebrow="The problem"
           title="Most NFT art is one missed invoice from gone."
-          description="The storage-failure epidemic is quiet but total. The token is forever; the file it points to usually is not."
+          description="The token lives on Ethereum forever. The file it points to usually does not. When a pin lapses or a server goes dark, the chain still records your ownership of something that no longer resolves to anything."
         />
         <div className="mt-12">
           <ProblemSection />
@@ -146,9 +148,9 @@ export default function PermanencePage() {
       {/* ============================================================ */}
       <Section>
         <SectionHeader
-          eyebrow="Storage model · §7.2"
+          eyebrow="The storage model"
           title="Four immutable copies. One mandatory backstop."
-          description="Each token carries parallel, immutable versions across independent backends. Shard 0 is the permanence guarantor - and it is the only one permanence actually requires."
+          description="Each token carries parallel, immutable versions of its artwork across independent storage backends. Three add resolution and redundancy. Shard 0, the onchain proof, is the permanence guarantor, and it is the only one permanence actually requires."
         />
         <div className="mt-12">
           <ShardDiagram />
@@ -158,15 +160,16 @@ export default function PermanencePage() {
         <Surface className="mt-12 p-6 sm:p-8">
           <div className="flex flex-wrap items-center gap-3">
             <Badge tone="accent">Shard 0 is the guarantee</Badge>
-            <MonoLabel className="text-faint">Sustainability · §13.3</MonoLabel>
+            <MonoLabel className="text-faint">Why this holds</MonoLabel>
           </div>
           <p className="mt-4 max-w-3xl text-[16px] leading-relaxed text-muted">
-            Because the onchain proof shard is the permanence guarantor, the
-            operator&apos;s ongoing IPFS and CDN costs are{" "}
+            Because the onchain proof shard carries the guarantee on its own, our
+            ongoing IPFS and CDN costs are{" "}
             <span className="text-foreground">performance optimizations, not
             permanence obligations</span>. If Perpetual stops paying for pinning,
-            permanence is unaffected. This decouples permanence from operator
-            solvency - the core of the guarantee.
+            permanence is unaffected. This is the point most architectures miss:
+            permanence is decoupled from operator solvency. The art does not depend
+            on us staying in business.
           </p>
         </Surface>
       </Section>
@@ -180,9 +183,9 @@ export default function PermanencePage() {
       {/* ============================================================ */}
       <Section id="verify">
         <SectionHeader
-          eyebrow="Verification · §9.4"
-          title="Don't trust us. Reproduce it."
-          description="A read-only service resolves every shard, hashes the content it gets back, and compares it to the onchain record. It uses only public data - so anyone can run the exact same checks and reach the exact same result."
+          eyebrow="The verification service"
+          title="Do not trust us. Reproduce it."
+          description="A read-only service continuously resolves every shard, hashes the content it gets back, and compares that hash against the record written onchain at mint. It reads only public data, so anyone can run the exact same checks and arrive at the exact same result. Verifiability, not our word."
         />
         <div className="mt-12">
           <VerificationFlow />
@@ -211,19 +214,19 @@ export default function PermanencePage() {
           />
           <div className="relative">
             <MonoLabel className="text-accent">
-              The architectural invariant · §6.1 · §18
+              The architectural invariant
             </MonoLabel>
             <blockquote className="mt-6 max-w-4xl text-balance text-[22px] font-medium leading-snug text-foreground sm:text-[28px]">
-              &ldquo;The operator can disappear entirely and every NFT remains
-              fully intact - owned by the correct wallet, resolving to its
-              artwork via the onchain proof shard, with complete provenance. A
-              third party can re-index the contracts and stand up a replacement
-              marketplace with zero cooperation from us.&rdquo;
+              &ldquo;Perpetual can disappear entirely and every NFT remains fully
+              intact: owned by the correct wallet, resolving to its artwork via
+              the onchain proof shard, with complete provenance. A third party can
+              re-index the contracts and stand up a replacement marketplace with
+              zero cooperation from us.&rdquo;
             </blockquote>
             <p className="mt-8 max-w-2xl text-[16px] leading-relaxed text-muted">
-              This is not a feature of Perpetual. It is the property Perpetual is built
-              to preserve. Every design decision is tested against it: if it
-              could break this sentence, it does not ship.
+              This is not a feature of Perpetual. It is the property Perpetual exists
+              to preserve. Every decision on this page is tested against the sentence
+              above. If a choice could break it, the choice does not ship.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -261,9 +264,9 @@ export default function PermanencePage() {
       {/* ============================================================ */}
       <Section id="indexer">
         <SectionHeader
-          eyebrow="Indexer · §9.3"
+          eyebrow="The published indexer spec"
           title="The index is public infrastructure, not a moat."
-          description="The indexer reads only public onchain and storage data, and its schema is published. Anyone can run their own - which is precisely what keeps the invariant true rather than merely promised."
+          description="The indexer reads only public onchain and storage data, and its schema is published in full. Anyone can run their own against the same sources. That openness is precisely what makes the invariant enforceable rather than merely promised."
         />
         <div className="mt-12">
           <IndexerSpec />
@@ -280,9 +283,9 @@ export default function PermanencePage() {
       <Section id="royalties">
         <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
           <SectionHeader
-            eyebrow="Royalties · §8.2"
+            eyebrow="Enforced royalties"
             title="Enforced at settlement. Not optional."
-            description="Royalties are checked at the protocol level via ERC-2981 against the token's onchain configuration. A sale that does not honor the artist's royalty is rejected by the settlement contract itself."
+            description="Royalties are checked at the protocol level, via ERC-2981, against the token's onchain configuration. A sale that does not honor the artist's royalty is rejected by the settlement contract itself. There is no marketplace toggle that turns this off."
           />
           <div className="flex flex-col justify-center gap-4">
             <div className="rounded-[8px] border border-border bg-surface px-5 py-4">
@@ -345,11 +348,11 @@ export default function PermanencePage() {
           <div className="flex flex-col items-start gap-6 px-6 py-10 sm:px-10 sm:py-12 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-xl">
               <h2 className="display-sm text-foreground">
-                This artwork survives even if Perpetual disappears.
+                The art survives, even if Perpetual does not.
               </h2>
               <p className="mt-3 text-[16px] leading-relaxed text-muted">
-                Browse work that is engineered to outlast everything - or mint
-                your own onto a permanent record.
+                Browse work engineered to outlast its marketplace, or mint your
+                own onto a record that cannot be revoked.
               </p>
             </div>
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row">

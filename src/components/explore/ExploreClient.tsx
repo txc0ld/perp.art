@@ -53,9 +53,9 @@ export function ExploreClient({
       {/* Page heading */}
       <SectionHeader
         as="h1"
-        eyebrow="Catalog"
+        eyebrow="The catalog"
         title="Explore"
-        description="Browse art engineered to outlast everything. Filter by genre, chain, permanence, and price."
+        description="Every work here is engineered to outlast its operator. Filter by genre, chain, storage, and price, then verify permanence per shard."
         className="border-b-0 pb-5"
       />
       <p className="sr-only" role="status" aria-live="polite">
@@ -71,7 +71,7 @@ export function ExploreClient({
             aria-expanded={railOpen}
             aria-controls="explore-filter-rail"
             className={cn(
-              "inline-flex h-10 shrink-0 items-center gap-2 rounded-[8px] border px-3 font-mono text-[11px] uppercase tracking-wider transition-colors",
+              "inline-flex h-11 shrink-0 items-center gap-2 rounded-[8px] border px-3.5 font-mono text-[11px] uppercase tracking-wider transition-colors sm:h-10 sm:px-3",
               railOpen
                 ? "border-border-bright bg-surface-2 text-foreground"
                 : "border-border bg-surface text-muted hover:border-border-bright hover:text-foreground",
@@ -186,7 +186,7 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="SEARCH WORKS, ARTISTS, TRAITS"
-        className="h-10 w-full rounded-[8px] border border-border bg-surface pl-9 pr-3 font-mono text-xs uppercase tracking-wider text-foreground placeholder:text-faint focus:border-accent/50 focus:outline-none"
+        className="h-11 w-full rounded-[8px] border border-border bg-surface pl-9 pr-3 font-mono text-xs uppercase tracking-wider text-foreground placeholder:text-faint focus:border-accent/50 focus:outline-none sm:h-10"
       />
     </div>
   );

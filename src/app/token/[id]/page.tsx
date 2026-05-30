@@ -42,9 +42,10 @@ export async function generateMetadata({
   const token = getToken(id);
   if (!token) return { title: "Artwork not found - Perpetual" };
   const artist = getArtist(token.artistHandle);
+  const artistName = artist?.name ?? token.artistHandle;
   return {
-    title: `${token.title} - ${artist?.name ?? token.artistHandle} · Perpetual`,
-    description: token.description,
+    title: `${token.title} by ${artistName} · Perpetual`,
+    description: `${token.title}, a permanent work by ${artistName}. Provenance recorded onchain and replicated across independent permanent backends, so it survives even if the operator disappears.`,
   };
 }
 
@@ -151,18 +152,32 @@ export default async function TokenPage({
         <span className="text-muted">#{token.tokenId}</span>
       </nav>
 
-      {/* Two-column: media left (~58%) + sticky buy box right (~42%) */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,58fr)_minmax(0,42fr)] lg:gap-10">
+      {/*
+        Two-column on desktop: media + detail cards left (~58%), sticky buy box
+        right (~42%). On mobile the single column reorders so the buy box sits
+        right under the artwork - price and Buy stay reachable without scrolling
+        past the long permanence/detail content.
+      */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,58fr)_minmax(0,42fr)] lg:gap-x-10 lg:gap-y-4">
         {/* ---------------------------------------------------------------- */}
-        {/* LEFT: media + accordion detail cards                              */}
+        {/* MEDIA - top-left, full width of the media column                  */}
         {/* ---------------------------------------------------------------- */}
-        <div className="flex flex-col gap-4">
+        <div className="order-1 flex flex-col gap-4 lg:col-start-1 lg:row-start-1">
           <div className="animate-fade">
             <ArtworkViewer token={token} />
           </div>
 
-          {/* In-page sub-nav - subtle anchors to each labelled section card. */}
-          <SectionNav items={navItems} className="mt-1" />
+          {/* In-page sub-nav - hidden on mobile (jumps belong below the buy box). */}
+          <SectionNav items={navItems} className="mt-1 hidden lg:flex" />
+        </div>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* DETAIL CARDS - left column, below the media on desktop;           */}
+        {/* on mobile they sit after the buy box (order-3).                   */}
+        {/* ---------------------------------------------------------------- */}
+        <div className="order-3 flex flex-col gap-4 lg:col-start-1 lg:row-start-2">
+          {/* In-page sub-nav for mobile - sits just above the detail cards. */}
+          <SectionNav items={navItems} className="lg:hidden" />
 
           {/* Permanence - the differentiator, default OPEN, brighter frame. */}
           <div className="animate-rise" style={{ animationDelay: "60ms" }}>
@@ -204,7 +219,7 @@ export default async function TokenPage({
           {collection && (
             <Accordion
               eyebrow="About"
-              title="About this collection"
+              title="The collection"
               anchorId="section-about"
             >
               <p className="max-w-2xl text-[14px] leading-relaxed text-muted">
@@ -220,7 +235,7 @@ export default async function TokenPage({
           )}
 
           {/* Details */}
-          <Accordion eyebrow="Details" title="Onchain details" anchorId="section-details">
+          <Accordion eyebrow="Details" title="Onchain record" anchorId="section-details">
             <div className="divide-y divide-border">
               <DetailRow
                 label="Contract"
@@ -247,9 +262,10 @@ export default async function TokenPage({
         </div>
 
         {/* ---------------------------------------------------------------- */}
-        {/* RIGHT: sticky buy box                                             */}
+        {/* BUY BOX - right column on desktop (sticky), directly under the    */}
+        {/* artwork on mobile (order-2) so price + Buy are reachable early.   */}
         {/* ---------------------------------------------------------------- */}
-        <div className="flex flex-col gap-5 lg:sticky lg:top-24 lg:self-start">
+        <div className="order-2 flex flex-col gap-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-24 lg:self-start">
           {/* Collection + verified/sovereign */}
           <div className="animate-rise flex items-center justify-between gap-3">
             {collection ? (
@@ -268,13 +284,13 @@ export default async function TokenPage({
 
           {/* Title + favorite/share */}
           <div className="animate-rise flex items-start justify-between gap-4">
-            <h1 className="display-sm text-foreground">{token.title}</h1>
+            <h1 className="display-sm text-balance text-foreground">{token.title}</h1>
             <ItemActions />
           </div>
 
-          {/* Owner line */}
+          {/* Provenance line */}
           <p className="animate-rise font-mono text-[12px] text-muted">
-            Owned by{" "}
+            Held by{" "}
             <span className="text-foreground">{shortAddress(token.owner)}</span>
           </p>
 
@@ -291,7 +307,7 @@ export default async function TokenPage({
             style={{ animationDelay: "120ms" }}
           >
             <StatusGlyph status="verified" />
-            Survives even if Perpetual disappears
+            Endures even if Perpetual does not
           </p>
         </div>
       </div>
@@ -323,7 +339,7 @@ export default async function TokenPage({
         <div className="mt-16 lg:mt-20">
           <SectionHeader
             eyebrow="Collection"
-            title={`More from ${collection?.name ?? "this collection"}`}
+            title={`More from ${collection?.name ?? "the collection"}`}
             action={
               collection && (
                 <Link

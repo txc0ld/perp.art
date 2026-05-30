@@ -78,8 +78,12 @@ export function RankingsTable({
     <div>
       {/* Controls */}
       <div className="flex flex-col gap-4 border-b border-border pb-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Time window">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div
+            className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="group"
+            aria-label="Time window"
+          >
             {WINDOWS.map((w) => (
               <Pill key={w} active={window === w} onClick={() => setWindow(w)}>
                 {WINDOW_LABEL[w]}
@@ -88,7 +92,7 @@ export function RankingsTable({
           </div>
           <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
           <div
-            className="ml-auto flex items-center gap-2 sm:ml-0"
+            className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:ml-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="group"
             aria-label="Chain"
           >
@@ -98,7 +102,11 @@ export function RankingsTable({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Category">
+        <div
+          className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="group"
+          aria-label="Category"
+        >
           <Pill active={genre === "all"} onClick={() => setGenre("all")}>All</Pill>
           {genres.map((g) => (
             <Pill key={g} active={genre === g} onClick={() => setGenre(g)}>{g}</Pill>
@@ -110,7 +118,7 @@ export function RankingsTable({
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[760px] border-collapse">
           <caption className="sr-only">
-            Top collections ranked by {WINDOW_LABEL[window]} trading volume. Use the column
+            Collections ranked by {WINDOW_LABEL[window]} trading volume. Use the column
             headers to sort, and the filters above to narrow by chain and category.
           </caption>
           <colgroup>
@@ -188,7 +196,7 @@ export function RankingsTable({
 
         {rows.length === 0 && (
           <p className="py-16 text-center text-sm text-muted">
-            No collections match these filters.
+            No collections match these filters. Try a wider time window or category.
           </p>
         )}
       </div>
@@ -338,7 +346,7 @@ function Pill({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "inline-flex h-9 items-center rounded-full px-3.5 font-mono text-[11px] font-semibold uppercase tracking-wider leading-none transition-colors",
+        "inline-flex h-11 shrink-0 items-center rounded-full px-3.5 font-mono text-[11px] font-semibold uppercase tracking-wider leading-none transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active
           ? "bg-accent text-background"

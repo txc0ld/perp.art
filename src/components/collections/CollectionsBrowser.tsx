@@ -25,14 +25,18 @@ export function CollectionsBrowser({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-6">
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by category">
+      <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:flex-wrap sm:items-center">
+        <div
+          className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="group"
+          aria-label="Filter by category"
+        >
           <Pill active={genre === "all"} onClick={() => setGenre("all")}>All</Pill>
           {genres.map((g) => (
             <Pill key={g} active={genre === g} onClick={() => setGenre(g)}>{g}</Pill>
           ))}
         </div>
-        <span className="ml-auto font-mono text-xs tabular-nums text-muted" aria-live="polite">
+        <span className="font-mono text-xs tabular-nums text-faint sm:ml-auto" aria-live="polite">
           {results.length} {results.length === 1 ? "COLLECTION" : "COLLECTIONS"}
         </span>
       </div>
@@ -46,7 +50,7 @@ export function CollectionsBrowser({
           ))}
         </div>
       ) : (
-        <p className="mt-16 text-center text-sm text-muted">No collections in this category.</p>
+        <p className="mt-16 text-center text-sm text-muted">No collections in this category yet.</p>
       )}
     </div>
   );
@@ -67,7 +71,7 @@ function Pill({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "inline-flex h-9 items-center rounded-full px-3.5 font-mono text-[11px] font-semibold uppercase tracking-wider leading-none transition-colors",
+        "inline-flex h-11 shrink-0 items-center rounded-full px-3.5 font-mono text-[11px] font-semibold uppercase tracking-wider leading-none transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active
           ? "bg-accent text-background"

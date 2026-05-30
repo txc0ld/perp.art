@@ -3,9 +3,9 @@ import { SHARD_OPTIONS, GENRES } from "@/lib/mock-data";
 import { MintWizard } from "@/components/mint/MintWizard";
 
 export const metadata: Metadata = {
-  title: "Mint - Perpetual",
+  title: "Mint · Perpetual",
   description:
-    "Commit your work to permanence. A calm, guided mint flow that writes provenance onchain and replicates across independent permanent backends.",
+    "Commit a work to permanence. A calm, guided flow that writes provenance onchain and replicates across independent permanent backends, so the work endures even if the operator does not.",
 };
 
 /**

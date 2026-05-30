@@ -12,7 +12,7 @@ import { ProfileTabs } from "@/components/profile/ProfileTabs";
 export const metadata: Metadata = {
   title: "Profile - Perpetual",
   description:
-    "Your collection, creations, activity, and the sovereign contracts you own outright.",
+    "Your collection, your creations, your activity, and the sovereign contracts you own outright. Non-custodial throughout.",
 };
 
 /**

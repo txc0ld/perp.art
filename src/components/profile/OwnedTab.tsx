@@ -45,8 +45,8 @@ export function CollectedTab({ tokens, preview }: { tokens: Token[]; preview?: b
   if (tokens.length === 0) {
     return (
       <EmptyState
-        title="No works held yet"
-        body="Artworks you collect will be held here, each one anchored onchain and independently verifiable."
+        title="Nothing collected yet"
+        body="Works you acquire appear here, each one anchored onchain and independently verifiable, the day you own it and in twenty years."
         cta={{ href: "/explore", label: "Explore the catalog" }}
       />
     );

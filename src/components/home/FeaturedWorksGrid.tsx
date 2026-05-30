@@ -11,7 +11,7 @@ export function FeaturedWorksGrid({ tokens }: { tokens: Token[] }) {
   return (
     <div>
       <SectionHeader
-        eyebrow="Curated by community vote"
+        eyebrow="Selected by the community"
         title="Notable works"
         action={
           <Link

@@ -197,18 +197,19 @@ function DisconnectedState({
           </svg>
         </div>
         <h1 className="mt-6 text-xl font-medium text-foreground">
-          Connect your wallet to view your collection
+          Connect a wallet to see your collection
         </h1>
         <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted">
-          Your collected works, creations, activity, and sovereign contracts live here.
-          Perpetual never takes custody of your assets.
+          Your collected works, creations, activity, and sovereign contracts all
+          live here. Perpetual never takes custody. Connecting only reads your
+          public holdings.
         </p>
         <Button variant="accent" size="lg" className="mt-7 w-full" onClick={onConnect}>
           Connect wallet
         </Button>
         {previewCount > 0 && (
           <p className="mt-4 font-mono text-[11px] uppercase tracking-wider text-faint">
-            {previewCount} works waiting in the sample collection
+            {previewCount} works in the sample collection
           </p>
         )}
       </Surface>

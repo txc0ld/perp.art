@@ -20,20 +20,29 @@ function Toggle({
       type="button"
       role="switch"
       aria-checked={on}
+      aria-label={on ? "Backend enabled" : "Backend disabled"}
       disabled={locked}
       onClick={onClick}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors duration-200",
-        on ? "border-accent/40 bg-accent/20" : "border-border bg-surface-2",
-        locked ? "cursor-not-allowed opacity-90" : "cursor-pointer hover:border-border-bright",
+        "relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+        locked ? "cursor-not-allowed" : "cursor-pointer",
       )}
     >
       <span
         className={cn(
-          "inline-block h-3.5 w-3.5 rounded-full transition-transform duration-200",
-          on ? "translate-x-[18px] bg-accent" : "translate-x-[3px] bg-muted",
+          "relative inline-flex h-5 w-9 items-center rounded-full border transition-colors duration-200",
+          on ? "border-accent/40 bg-accent/20" : "border-border bg-surface-2",
+          locked ? "opacity-90" : "group-hover:border-border-bright",
         )}
-      />
+      >
+        <span
+          className={cn(
+            "inline-block h-3.5 w-3.5 rounded-full transition-transform duration-200",
+            on ? "translate-x-[18px] bg-accent" : "translate-x-[3px] bg-muted",
+          )}
+        />
+      </span>
     </button>
   );
 }

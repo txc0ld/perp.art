@@ -37,7 +37,7 @@ export function SortMenu({ value, onChange }: { value: SortKey; onChange: (v: So
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={`Sort by ${current.label}`}
-        className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-border bg-surface px-3 text-sm text-foreground transition-colors hover:border-border-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="inline-flex h-11 items-center gap-2 rounded-[8px] border border-border bg-surface px-3 text-sm text-foreground transition-colors hover:border-border-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 sm:h-10"
       >
         <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Sort</span>
         <span className="text-sm">{current.label}</span>

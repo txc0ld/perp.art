@@ -17,9 +17,9 @@ export function LockStep({
   return (
     <div className="space-y-6">
       <p className="max-w-[64ch] text-sm leading-relaxed text-muted">
-        Locking permanently freezes the storage shards for this work. No one - not
-        you, not Perpetual, not any future operator - can alter, replace, or remove the
-        underlying art once it is locked.
+        Locking permanently freezes the storage shards for this work. Once sealed, no
+        one, not you, not Perpetual, not any future operator, can alter, replace, or
+        remove the underlying art.
       </p>
 
       {/* The prominent toggle */}
@@ -58,12 +58,12 @@ export function LockStep({
           </span>
           <div>
             <h3 className="text-[15px] font-medium text-foreground">
-              Lock shards for guaranteed immutability
+              Seal the shards for guaranteed immutability
             </h3>
             <p className="mt-1.5 max-w-[52ch] text-[13px] leading-relaxed text-muted">
-              Surfaced on the token as a permanent trust signal -{" "}
-              <span className="font-mono text-foreground">Shards locked · immutable</span>{" "}
-              - proving to every future collector that the work can never change.
+              Carried on the token as a permanent trust signal,{" "}
+              <span className="font-mono text-foreground">Shards locked · immutable</span>,
+              proof to every future collector that the work can never change.
             </p>
           </div>
         </div>
@@ -91,11 +91,11 @@ export function LockStep({
           <path d="M8 7.2v4M8 4.8v.01" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
         <div className="space-y-1">
-          <MonoLabel className="text-foreground">Permanent decision</MonoLabel>
+          <MonoLabel className="text-foreground">A permanent decision</MonoLabel>
           <p className="text-[13px] leading-relaxed text-muted">
             {locked
-              ? "This work will be sealed at mint. Immutability is forever and cannot be undone."
-              : "Leaving shards unlocked lets you re-pin or migrate storage later, but the work won’t carry the immutability trust signal."}
+              ? "This work will be sealed at mint. Immutability is forever, and cannot be undone."
+              : "Left unlocked, you can re-pin or migrate storage later, but the work will not carry the immutability trust signal."}
           </p>
         </div>
       </div>

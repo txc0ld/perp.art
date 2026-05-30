@@ -45,15 +45,15 @@ export function ProblemSection() {
         <p className="text-[17px] leading-relaxed text-muted">
           Most NFTs are a pointer to a file held somewhere fragile. The token is
           permanent; the art it references is not. When the pin lapses or the
-          server dies, the chain still says you own it - but there is nothing left
+          server dies, the chain still says you own it, but there is nothing left
           to see.
         </p>
         <p className="mt-5 text-[17px] leading-relaxed text-foreground">
           Perpetual inverts the dependency. The artwork itself is written into
           Ethereum as a mandatory{" "}
           <span className="text-accent">onchain proof shard</span>. The other
-          backends are redundancy and speed, never the thing that keeps the art
-          alive.
+          backends add resolution and redundancy. None of them is what keeps the
+          art alive, so none of them can take it down.
         </p>
         <p className="mt-6 font-mono text-[11px] uppercase tracking-wider text-faint">
           tokenURI → fragile host&nbsp; · &nbsp;Perpetual → onchain content

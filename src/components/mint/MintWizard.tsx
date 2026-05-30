@@ -23,28 +23,28 @@ import {
 const STEP_COPY: Record<StepKey, { title: string; eyebrow: string; blurb: string }> = {
   upload: {
     eyebrow: "Step 01 · Artwork",
-    title: "Upload your work",
-    blurb: "The art, and the few facts that travel with it forever.",
+    title: "Begin with the work",
+    blurb: "The art, and the handful of facts that will travel with it forever.",
   },
   royalty: {
     eyebrow: "Step 02 · Royalty",
-    title: "Set your royalty",
-    blurb: "Your share of every future sale - enforced at the protocol level.",
+    title: "Claim your royalty",
+    blurb: "Your share of every future sale, enforced at the protocol level.",
   },
   permanence: {
     eyebrow: "Step 03 · Permanence",
-    title: "Configure permanence",
-    blurb: "Layer independent permanent backends behind an onchain proof.",
+    title: "Choose how it endures",
+    blurb: "Layer independent permanent backends behind a single onchain proof.",
   },
   lock: {
     eyebrow: "Step 04 · Lock",
-    title: "Seal for immutability",
-    blurb: "Optionally freeze the work so it can never change.",
+    title: "Seal it, if you wish",
+    blurb: "Optionally freeze the work so it can never be altered.",
   },
   review: {
     eyebrow: "Step 05 · Review",
-    title: "Review and mint",
-    blurb: "Confirm everything, then commit your work to permanence.",
+    title: "Confirm and commit",
+    blurb: "A last look at the record, then it becomes permanent.",
   },
 };
 
@@ -104,13 +104,13 @@ export function MintWizard({
       {/* Header */}
       <header className="mb-8">
         <MonoLabel className="text-accent">Mint · Forever Library</MonoLabel>
-        <h1 className="display-sm mt-3 text-foreground">
-          {minted ? "Minted to permanence" : "Commit a work to permanence"}
+        <h1 className="display-sm mt-3 text-balance text-foreground">
+          {minted ? "Committed to permanence" : "Commit a work to permanence"}
         </h1>
         <p className="mt-2 max-w-[60ch] text-sm leading-relaxed text-muted">
           {minted
-            ? "Your provenance is recorded onchain and replicated across independent permanent backends."
-            : "A calm, guided flow. Each step writes part of a record meant to outlast everything - including us."}
+            ? "Provenance recorded onchain and replicated across independent permanent backends."
+            : "A calm, guided flow. Each step lays down part of a record built to outlast everything, including us."}
         </p>
       </header>
 
@@ -169,14 +169,14 @@ export function MintWizard({
 
           <div className="flex items-center gap-3">
             {step.key === "upload" && !canAdvance && (
-              <span className="hidden font-mono text-[11px] text-faint sm:inline">
-                Add artwork, title &amp; artist to continue
+              <span className="font-mono text-[11px] leading-tight text-faint">
+                Add artwork, title, and artist to continue
               </span>
             )}
 
             {isLast ? (
               <Button variant="accent" size="lg" onClick={handleMint}>
-                {wallet.connected ? "Mint to permanence" : "Connect wallet"}
+                {wallet.connected ? "Mint to permanence" : "Connect wallet to mint"}
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" aria-hidden>
                   <path d="M3 8h9m0 0L8 4m4 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>

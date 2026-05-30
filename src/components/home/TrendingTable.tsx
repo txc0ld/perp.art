@@ -68,7 +68,7 @@ export function TrendingTable({
             aria-pressed={w === window}
             aria-label={`Show ${w} window`}
             className={cn(
-              "min-h-[34px] rounded-full px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider tabular-nums transition-colors duration-200",
+              "min-h-[40px] rounded-full px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-wider tabular-nums transition-colors duration-200 sm:px-3",
               w === window
                 ? "bg-accent text-background"
                 : "text-muted hover:text-foreground focus-visible:text-foreground",
@@ -93,7 +93,7 @@ export function TrendingTable({
   return (
     <div>
       <SectionHeader
-        eyebrow="Live rankings"
+        eyebrow="Live market / Ranked by volume"
         title="Trending collections"
         action={windowToggle}
       />

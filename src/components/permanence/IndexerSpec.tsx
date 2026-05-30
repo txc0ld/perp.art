@@ -75,8 +75,8 @@ export function IndexerSpec() {
       <div className="border-t border-border px-5 py-4">
         <p className="text-sm leading-relaxed text-faint">
           Because every input is public, a third party can stand up an identical
-          index with zero cooperation from Perpetual. The schema being open is what
-          makes the invariant enforceable rather than a promise.
+          index with zero cooperation from Perpetual. An open schema is what turns
+          the invariant from a promise into something you can verify for yourself.
         </p>
       </div>
     </div>

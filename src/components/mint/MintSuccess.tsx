@@ -107,12 +107,12 @@ export function MintSuccess({
             </span>
           )}
           <div>
-            <h2 className="display-sm text-foreground">
-              {phase === "writing" ? "Writing provenance onchain…" : "Provenance written onchain"}
+            <h2 className="display-sm text-balance text-foreground">
+              {phase === "writing" ? "Writing provenance onchain…" : "Committed to permanence"}
             </h2>
             {phase === "done" && (
               <p className="mt-1 text-sm text-muted animate-fade">
-                Your work now survives even if Perpetual disappears.
+                The record is written and replicated. Your work endures, even if Perpetual does not.
               </p>
             )}
           </div>
@@ -173,10 +173,10 @@ export function MintSuccess({
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <ButtonLink href="/explore" variant="accent" size="lg" className="flex-1">
-                View artwork
+                View the work
               </ButtonLink>
               <Button variant="secondary" size="lg" onClick={onReset} className="flex-1">
-                Create another
+                Mint another
               </Button>
             </div>
           </div>

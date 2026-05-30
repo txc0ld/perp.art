@@ -5,7 +5,7 @@ import { ConnectCard } from "@/components/auth/ConnectCard";
 export const metadata: Metadata = {
   title: "Connect - Perpetual",
   description:
-    "Connect a wallet to Perpetual. Fully non-custodial - you keep the keys, always.",
+    "Connect a wallet to Perpetual. Fully non-custodial. You keep the keys, always, and every signing request is shown in full before you approve.",
 };
 
 /**

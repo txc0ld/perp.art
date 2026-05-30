@@ -33,8 +33,8 @@ export function PermanenceStep({
     <div className="space-y-6">
       <p className="max-w-[64ch] text-sm leading-relaxed text-muted">
         Your work is written across independent permanent backends, each one a
-        complete copy. If any single network fails, the others - and the onchain
-        proof beneath them all - keep the work intact.
+        complete copy. Should any single network fail, the others, and the onchain
+        proof beneath them all, hold the work intact.
       </p>
 
       <div className="grid gap-3.5">
@@ -58,7 +58,7 @@ export function PermanenceStep({
               {activeCount} of {shardOptions.length} backends
             </MonoLabel>
             <p className="mt-0.5 text-[12px] text-faint">
-              Layered redundancy - the more, the more durable.
+              Each layer adds redundancy. More copies, greater durability.
             </p>
           </div>
         </div>
