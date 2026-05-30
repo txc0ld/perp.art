@@ -7,7 +7,7 @@
 A permanence-first NFT marketplace with OpenSea-grade trading UX, built on a single
 guarantee: **the artwork is provably permanent and survives even if the operator disappears.**
 
-[**Live demo**](https://perpetual-art-tx-build.vercel.app) · [Features](./docs/FEATURES.md) · [Architecture](./docs/ARCHITECTURE.md) · [Indexer spec](./docs/INDEXER_SPEC.md) · [Contracts](./contracts/README.md)
+[**Live demo**](https://perpetual-art-tx-build.vercel.app) · [Features](./docs/FEATURES.md) · [Architecture](./docs/ARCHITECTURE.md) · [Indexer spec](./docs/INDEXER_SPEC.md) · [Contracts](./contracts/README.md) · [Go-live checklist](./docs/GO-LIVE.md)
 
 `Next.js 16` · `React 19` · `Tailwind v4` · `TypeScript`
 
