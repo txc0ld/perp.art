@@ -73,7 +73,10 @@ export function ConnectorList() {
   }
 
   return (
-    <ul className="flex flex-col gap-2.5" aria-label="Wallet connectors">
+    <ul className="flex flex-col gap-2.5" aria-label="Wallet connectors" aria-busy={pending !== null}>
+      <li aria-live="polite" className="sr-only">
+        {pending ? `Connecting to ${pending}…` : ""}
+      </li>
       {CONNECTORS.map((conn, i) => {
         const isPending = pending === conn.name;
         const recommended = i === 0;
@@ -82,9 +85,13 @@ export function ConnectorList() {
             <button
               type="button"
               disabled={pending !== null}
+              aria-busy={isPending}
+              aria-label={
+                recommended ? `Connect with ${conn.name} (recommended)` : `Connect with ${conn.name}`
+              }
               onClick={() => handleConnect(conn.name)}
               className={
-                "group flex w-full items-center gap-3.5 rounded-[8px] border bg-surface px-4 py-3.5 text-left transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] disabled:pointer-events-none " +
+                "group flex min-h-[44px] w-full items-center gap-3.5 rounded-[8px] border bg-surface px-4 py-3.5 text-left transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none " +
                 (recommended
                   ? "border-border-bright hover:border-accent/50"
                   : "border-border hover:border-border-bright") +

@@ -16,7 +16,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
   return (
     <Link
       href={`/collections/${collection.slug}`}
-      className="group block overflow-hidden rounded-[10px] border border-border bg-surface transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:border-border-bright hover:shadow-[0_16px_44px_-28px_rgba(0,0,0,0.9)]"
+      className="group flex h-full flex-col overflow-hidden rounded-[10px] border border-border bg-surface transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:border-border-bright hover:shadow-[0_16px_44px_-28px_rgba(0,0,0,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       {/* Cover */}
       <div className="relative aspect-[16/9] overflow-hidden bg-background">
@@ -45,7 +45,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
         </div>
       </div>
 
-      <div className="px-4 pb-4 pt-9">
+      <div className="flex flex-1 flex-col px-4 pb-4 pt-9">
         <div className="flex items-center gap-1.5">
           <h3 className="truncate text-[15px] font-semibold text-foreground">{collection.name}</h3>
           {(collection.sovereign || artist?.verified) && (
@@ -54,7 +54,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
         </div>
         <p className="mt-0.5 truncate text-xs text-muted">{artist?.name ?? collection.artistHandle}</p>
 
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-auto grid grid-cols-3 gap-2 pt-4">
           <Stat label="Floor" value={`${formatEth(collection.floorEth)} ETH`} />
           <Stat label="Volume" value={`${formatEth(collection.volumeEth)} ETH`} />
           <Stat label="Items" value={String(collection.itemCount)} />

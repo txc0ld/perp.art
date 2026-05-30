@@ -3,14 +3,12 @@
  * and rarity as a mono percentage.
  */
 import type { Trait } from "@/lib/types";
-import { MonoLabel } from "@/components/ui";
 
 export function TraitsGrid({ traits }: { traits: Trait[] }) {
   if (traits.length === 0) return null;
   return (
     <div>
-      <MonoLabel className="text-foreground">Traits</MonoLabel>
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {traits.map((t) => (
           <div
             key={t.key}

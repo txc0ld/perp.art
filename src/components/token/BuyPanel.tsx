@@ -12,10 +12,12 @@ import { Button, Badge, MonoLabel } from "@/components/ui";
 import { useWallet, connectWallet } from "@/lib/wallet";
 import { formatEth, shortAddress, relativeTime } from "@/lib/utils";
 import { BuyModal } from "./BuyModal";
+import { OfferModal } from "./OfferModal";
 
 export function BuyPanel({ token }: { token: Token }) {
   const { connected } = useWallet();
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [offerOpen, setOfferOpen] = React.useState(false);
 
   const listing = token.listing;
   const bestOffer = token.offers.length > 0 ? token.offers[0] : undefined;
@@ -32,13 +34,14 @@ export function BuyPanel({ token }: { token: Token }) {
   function handleOffer() {
     if (!connected) {
       connectWallet();
+      return;
     }
-    // Offer composer is out of scope for this surface; the listing/offer flow is
-    // gasless and signature-based (PRD §9.2). Intentional no-op beyond connect.
+    // Open the gasless, signature-based offer composer (PRD §9.2).
+    setOfferOpen(true);
   }
 
   return (
-    <div className="rounded-[8px] border border-border bg-surface p-5">
+    <div className="rounded-[10px] border border-border-bright bg-surface p-5 shadow-[0_1px_0_rgba(255,255,255,0.02)]">
       {listing ? (
         <>
           <div className="flex items-end justify-between gap-4">
@@ -98,6 +101,7 @@ export function BuyPanel({ token }: { token: Token }) {
       </div>
 
       {modalOpen && listing && <BuyModal token={token} onClose={() => setModalOpen(false)} />}
+      {offerOpen && <OfferModal token={token} onClose={() => setOfferOpen(false)} />}
     </div>
   );
 }

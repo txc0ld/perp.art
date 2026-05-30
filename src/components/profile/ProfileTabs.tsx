@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Artist, Collection, Genre, Token } from "@/lib/types";
 import { useWallet, connectWallet } from "@/lib/wallet";
 import { Button, Surface } from "@/components/ui";
@@ -37,6 +37,7 @@ export function ProfileTabs({
 }) {
   const wallet = useWallet();
   const [tab, setTab] = useState<TabId>("collected");
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const connected = wallet.connected && wallet.address;
   const activeAddress = connected ? wallet.address! : previewAddress;
@@ -74,6 +75,20 @@ export function ProfileTabs({
     { id: "contracts", label: "Sovereign Contracts" },
   ];
 
+  const activeIndex = tabs.findIndex((t) => t.id === tab);
+
+  function onTabKeyDown(e: React.KeyboardEvent) {
+    let next = activeIndex;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (activeIndex + 1) % tabs.length;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (activeIndex - 1 + tabs.length) % tabs.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = tabs.length - 1;
+    else return;
+    e.preventDefault();
+    setTab(tabs[next].id);
+    tabRefs.current[next]?.focus();
+  }
+
   return (
     <div className="flex flex-col gap-10">
       <ProfileHeader
@@ -89,23 +104,31 @@ export function ProfileTabs({
         collectionsCount={collectionsHeld}
       />
 
-      {/* Tab bar - hairline underline, accent active indicator */}
+      {/* Tab bar - hairline underline, accent active indicator. Horizontal scroll on mobile. */}
       <div className="-mx-1 overflow-x-auto">
         <div
           role="tablist"
           aria-label="Profile sections"
+          onKeyDown={onTabKeyDown}
           className="flex min-w-max items-center gap-1 border-b border-border"
         >
-          {tabs.map((t) => {
+          {tabs.map((t, i) => {
             const active = tab === t.id;
             return (
               <button
                 key={t.id}
+                ref={(el) => {
+                  tabRefs.current[i] = el;
+                }}
+                id={`profile-tab-${t.id}`}
                 role="tab"
+                type="button"
                 aria-selected={active}
+                aria-controls={`profile-panel-${t.id}`}
+                tabIndex={active ? 0 : -1}
                 onClick={() => setTab(t.id)}
                 className={
-                  "relative flex items-center gap-2 px-4 py-3 font-mono text-[12px] font-semibold uppercase tracking-wider transition-colors " +
+                  "relative flex min-h-[44px] items-center gap-2 px-4 py-3 font-mono text-[12px] font-semibold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-inset " +
                   (active ? "text-accent" : "text-muted hover:text-foreground")
                 }
               >
@@ -123,6 +146,7 @@ export function ProfileTabs({
                   </span>
                 )}
                 <span
+                  aria-hidden
                   className={
                     "absolute inset-x-3 -bottom-px h-0.5 rounded-full transition-all duration-300 " +
                     (active ? "bg-accent opacity-100" : "bg-accent opacity-0")
@@ -135,7 +159,13 @@ export function ProfileTabs({
       </div>
 
       {/* Panels */}
-      <div role="tabpanel" className="min-h-[40vh]">
+      <div
+        id={`profile-panel-${tab}`}
+        role="tabpanel"
+        aria-labelledby={`profile-tab-${tab}`}
+        tabIndex={0}
+        className="min-h-[40vh] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
         {tab === "collected" && (
           <CollectedTab tokens={ownedTokens} preview={!wallet.connected} />
         )}

@@ -26,12 +26,12 @@ import {
   MonoLabel,
   MonoValue,
   Section,
+  SectionHeader,
   StatusGlyph,
   Surface,
 } from "@/components/ui";
 import { getMarketStats } from "@/lib/mock-data";
 
-import { SectionHeader } from "@/components/permanence/SectionHeader";
 import { ProblemSection } from "@/components/permanence/ProblemSection";
 import { ShardDiagram } from "@/components/permanence/ShardDiagram";
 import { VerificationFlow } from "@/components/permanence/VerificationFlow";
@@ -130,7 +130,7 @@ export default function PermanencePage() {
         <SectionHeader
           eyebrow="The problem · §2"
           title="Most NFT art is one missed invoice from gone."
-          lede="The storage-failure epidemic is quiet but total. The token is forever; the file it points to usually is not."
+          description="The storage-failure epidemic is quiet but total. The token is forever; the file it points to usually is not."
         />
         <div className="mt-12">
           <ProblemSection />
@@ -148,7 +148,7 @@ export default function PermanencePage() {
         <SectionHeader
           eyebrow="Storage model · §7.2"
           title="Four immutable copies. One mandatory backstop."
-          lede="Each token carries parallel, immutable versions across independent backends. Shard 0 is the permanence guarantor - and it is the only one permanence actually requires."
+          description="Each token carries parallel, immutable versions across independent backends. Shard 0 is the permanence guarantor - and it is the only one permanence actually requires."
         />
         <div className="mt-12">
           <ShardDiagram />
@@ -182,7 +182,7 @@ export default function PermanencePage() {
         <SectionHeader
           eyebrow="Verification · §9.4"
           title="Don't trust us. Reproduce it."
-          lede="A read-only service resolves every shard, hashes the content it gets back, and compares it to the onchain record. It uses only public data - so anyone can run the exact same checks and reach the exact same result."
+          description="A read-only service resolves every shard, hashes the content it gets back, and compares it to the onchain record. It uses only public data - so anyone can run the exact same checks and reach the exact same result."
         />
         <div className="mt-12">
           <VerificationFlow />
@@ -263,7 +263,7 @@ export default function PermanencePage() {
         <SectionHeader
           eyebrow="Indexer · §9.3"
           title="The index is public infrastructure, not a moat."
-          lede="The indexer reads only public onchain and storage data, and its schema is published. Anyone can run their own - which is precisely what keeps the invariant true rather than merely promised."
+          description="The indexer reads only public onchain and storage data, and its schema is published. Anyone can run their own - which is precisely what keeps the invariant true rather than merely promised."
         />
         <div className="mt-12">
           <IndexerSpec />
@@ -282,7 +282,7 @@ export default function PermanencePage() {
           <SectionHeader
             eyebrow="Royalties · §8.2"
             title="Enforced at settlement. Not optional."
-            lede="Royalties are checked at the protocol level via ERC-2981 against the token's onchain configuration. A sale that does not honor the artist's royalty is rejected by the settlement contract itself."
+            description="Royalties are checked at the protocol level via ERC-2981 against the token's onchain configuration. A sale that does not honor the artist's royalty is rejected by the settlement contract itself."
           />
           <div className="flex flex-col justify-center gap-4">
             <div className="rounded-[8px] border border-border bg-surface px-5 py-4">

@@ -8,7 +8,7 @@ import {
   getCollection,
   getTokensByCollection,
 } from "@/lib/mock-data";
-import { Section, MonoLabel, Badge, StatusGlyph } from "@/components/ui";
+import { Section, SectionHeader, Badge, StatusGlyph } from "@/components/ui";
 import { ArtTile } from "@/components/art/ArtTile";
 import { ArtworkViewer } from "@/components/token/ArtworkViewer";
 import { BuyPanel } from "@/components/token/BuyPanel";
@@ -19,6 +19,7 @@ import { OffersList } from "@/components/token/OffersList";
 import { Accordion } from "@/components/token/Accordion";
 import { ItemTabs } from "@/components/token/ItemTabs";
 import { ItemActions } from "@/components/token/ItemActions";
+import { SectionNav } from "@/components/token/SectionNav";
 import {
   shortAddress,
   shortHash,
@@ -113,6 +114,21 @@ export default async function TokenPage({
     verifiedShards === token.permanence.shards.length &&
     token.permanence.contentHashMatches;
 
+  // In-page sub-nav: only the sections actually rendered for this token.
+  const navItems = [
+    { id: "section-permanence", label: "Permanence" },
+    ...(token.traits.length > 0
+      ? [{ id: "section-traits", label: "Traits" }]
+      : []),
+    ...(collection ? [{ id: "section-about", label: "About" }] : []),
+    { id: "section-details", label: "Details" },
+    { id: "section-market", label: "Offers" },
+    { id: "section-market", label: "Activity" },
+  ].filter(
+    // de-dupe the shared market anchor (Offers + Activity live in one section)
+    (item, i, arr) => arr.findIndex((x) => x.label === item.label) === i,
+  );
+
   return (
     <Section>
       {/* Breadcrumb */}
@@ -145,10 +161,15 @@ export default async function TokenPage({
             <ArtworkViewer token={token} />
           </div>
 
+          {/* In-page sub-nav - subtle anchors to each labelled section card. */}
+          <SectionNav items={navItems} className="mt-1" />
+
           {/* Permanence - the differentiator, default OPEN, brighter frame. */}
           <div className="animate-rise" style={{ animationDelay: "60ms" }}>
             <Accordion
-              title="Permanence"
+              eyebrow="Permanence"
+              title="Provably permanent"
+              anchorId="section-permanence"
               defaultOpen
               bright
               icon={<StatusGlyph status="verified" className="h-4 w-4" />}
@@ -169,7 +190,9 @@ export default async function TokenPage({
           {/* Traits */}
           {token.traits.length > 0 && (
             <Accordion
-              title="Traits"
+              eyebrow="Traits"
+              title="Attributes"
+              anchorId="section-traits"
               defaultOpen
               badge={<Badge tone="muted">{token.traits.length}</Badge>}
             >
@@ -179,7 +202,11 @@ export default async function TokenPage({
 
           {/* About this collection */}
           {collection && (
-            <Accordion title="About this collection">
+            <Accordion
+              eyebrow="About"
+              title="About this collection"
+              anchorId="section-about"
+            >
               <p className="max-w-2xl text-[14px] leading-relaxed text-muted">
                 {collection.description}
               </p>
@@ -193,7 +220,7 @@ export default async function TokenPage({
           )}
 
           {/* Details */}
-          <Accordion title="Details">
+          <Accordion eyebrow="Details" title="Onchain details" anchorId="section-details">
             <div className="divide-y divide-border">
               <DetailRow
                 label="Contract"
@@ -272,7 +299,7 @@ export default async function TokenPage({
       {/* ------------------------------------------------------------------ */}
       {/* Full-width tabs: Offers / Activity                                  */}
       {/* ------------------------------------------------------------------ */}
-      <div className="mt-16 lg:mt-20">
+      <div id="section-market" className="mt-16 scroll-mt-24 lg:mt-20">
         <ItemTabs
           tabs={[
             {
@@ -294,20 +321,21 @@ export default async function TokenPage({
       {/* More from this collection */}
       {siblings.length > 0 && (
         <div className="mt-16 lg:mt-20">
-          <div className="flex items-baseline justify-between border-b border-border pb-5">
-            <MonoLabel className="text-foreground">
-              More from {collection?.name ?? "this collection"}
-            </MonoLabel>
-            {collection && (
-              <Link
-                href={`/collections/${collection.slug}`}
-                className="font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-accent"
-              >
-                View all
-              </Link>
-            )}
-          </div>
-          <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 lg:gap-5">
+          <SectionHeader
+            eyebrow="Collection"
+            title={`More from ${collection?.name ?? "this collection"}`}
+            action={
+              collection && (
+                <Link
+                  href={`/collections/${collection.slug}`}
+                  className="font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-accent"
+                >
+                  View all
+                </Link>
+              )
+            }
+          />
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 lg:gap-5">
             {siblings.map((t, i) => (
               <div
                 key={t.id}

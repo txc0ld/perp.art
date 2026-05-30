@@ -27,18 +27,24 @@ function Chevron({ open }: { open: boolean }) {
 
 export function Accordion({
   title,
+  eyebrow,
   icon,
   badge,
   defaultOpen = false,
   bright = false,
+  anchorId,
   children,
 }: {
   title: string;
+  /** Optional mono eyebrow that names the section type for quick scanning. */
+  eyebrow?: string;
   icon?: React.ReactNode;
   badge?: React.ReactNode;
   defaultOpen?: boolean;
   /** Use the brighter border to give a card real weight (Permanence). */
   bright?: boolean;
+  /** Stable id so an in-page sub-nav can anchor to this section. */
+  anchorId?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
@@ -46,8 +52,9 @@ export function Accordion({
 
   return (
     <section
+      id={anchorId}
       className={cn(
-        "overflow-hidden rounded-[10px] border bg-surface",
+        "scroll-mt-24 overflow-hidden rounded-[10px] border bg-surface",
         bright ? "border-border-bright" : "border-border",
       )}
     >
@@ -56,10 +63,17 @@ export function Accordion({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={id}
-        className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-surface-2 sm:px-5"
+        className="flex min-h-[56px] w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-surface-2 sm:px-5"
       >
         {icon && <span className="flex shrink-0 items-center">{icon}</span>}
-        <span className="label-mono text-foreground">{title}</span>
+        <span className="flex min-w-0 flex-col">
+          {eyebrow && (
+            <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+              {eyebrow}
+            </span>
+          )}
+          <span className="label-mono text-foreground">{title}</span>
+        </span>
         {badge && <span className="flex items-center">{badge}</span>}
         <span className="ml-auto flex items-center">
           <Chevron open={open} />

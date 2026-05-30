@@ -21,29 +21,31 @@ export function CategoryPills({
   const activeKey = active ?? "all";
 
   return (
-    <div className="border-b border-border">
+    <nav aria-label="Browse by category" className="border-b border-border">
       <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6">
-        <div className="-mx-1 flex items-center gap-2 overflow-x-auto py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="-mx-1 flex items-center gap-2 overflow-x-auto py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {items.map((item) => {
             const isActive = item.key === activeKey;
             return (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={cn(
-                  "shrink-0 rounded-full border px-4 py-2 text-[13px] font-medium transition-colors duration-200",
-                  isActive
-                    ? "border-accent bg-accent text-background"
-                    : "border-border bg-surface text-muted hover:border-border-bright hover:text-foreground",
-                )}
-              >
-                {item.label}
-              </Link>
+              <li key={item.key} className="shrink-0">
+                <Link
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "inline-flex min-h-[44px] items-center rounded-full border px-4 text-[13px] font-medium transition-colors duration-200",
+                    isActive
+                      ? "border-accent bg-accent text-background"
+                      : "border-border bg-surface text-muted hover:border-border-bright hover:text-foreground",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              </li>
             );
           })}
-        </div>
+        </ul>
       </div>
-    </div>
+    </nav>
   );
 }
 

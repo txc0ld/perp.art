@@ -3,20 +3,17 @@
  * Empty state when there are none.
  */
 import type { Offer } from "@/lib/types";
-import { MonoLabel } from "@/components/ui";
 import { formatEth, shortAddress, relativeTime } from "@/lib/utils";
 
 export function OffersList({ offers }: { offers: Offer[] }) {
   return (
     <div>
-      <MonoLabel className="text-foreground">Offers</MonoLabel>
-
       {offers.length === 0 ? (
-        <p className="mt-5 rounded-[8px] border border-dashed border-border px-4 py-6 text-center text-[13px] text-muted">
+        <p className="rounded-[8px] border border-dashed border-border px-4 py-6 text-center text-[13px] text-muted">
           No open offers. Be the first to make a signed, gasless offer.
         </p>
       ) : (
-        <div className="mt-5 overflow-hidden rounded-[8px] border border-border">
+        <div className="overflow-hidden rounded-[8px] border border-border">
           {/* Header row */}
           <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-3 border-b border-border bg-surface px-4 py-2.5">
             {["Price", "From", "Scope", "Expires"].map((h) => (

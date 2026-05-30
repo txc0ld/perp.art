@@ -4,19 +4,64 @@ import { useState } from "react";
 import type { Collection } from "@/lib/types";
 import { Surface, Button, Badge, MonoLabel, Divider } from "@/components/ui";
 import { shortAddress, bpsToPct } from "@/lib/utils";
+import { DeployContractModal, type DeployedContract } from "./DeployContractModal";
+
+/** Minimal shape every contract card renders from (mock Collections + freshly deployed). */
+interface ContractView {
+  key: string;
+  name: string;
+  contractAddress: string;
+  chain: "ethereum" | "base";
+  itemCount: number;
+  ownerCount: number;
+  royaltyBps: number;
+  justDeployed?: boolean;
+}
+
+function fromCollection(c: Collection): ContractView {
+  return {
+    key: c.slug,
+    name: c.name,
+    contractAddress: c.contractAddress,
+    chain: c.chain === "ethereum" ? "ethereum" : "base",
+    itemCount: c.itemCount,
+    ownerCount: c.ownerCount,
+    royaltyBps: c.royaltyBps,
+  };
+}
 
 /**
  * Sovereign Contracts surface (design prompt §4.5, PRD §7.5).
- * Artists own their Forever Library contracts outright and can leave with them
- * intact. Lists each sovereign contract with chain, items, royalty, and a copyable
- * address, plus a (visual) deploy CTA.
+ * Artists own their Forever Library contracts outright. Lists each sovereign
+ * contract with chain, items, royalty, and a copyable address, plus a working
+ * Deploy CTA that opens DeployContractModal and prepends the new contract.
  */
 export function SovereignContracts({
   collections,
 }: {
   collections: Collection[];
 }) {
-  const sovereign = collections.filter((c) => c.sovereign);
+  const [deployed, setDeployed] = useState<ContractView[]>([]);
+  const [deploying, setDeploying] = useState(false);
+
+  const base = collections.filter((c) => c.sovereign).map(fromCollection);
+  const contracts = [...deployed, ...base];
+
+  function onDeployed(c: DeployedContract) {
+    setDeployed((prev) => [
+      {
+        key: c.contractAddress,
+        name: c.name,
+        contractAddress: c.contractAddress,
+        chain: c.chain,
+        itemCount: 0,
+        ownerCount: 1,
+        royaltyBps: c.royaltyBps,
+        justDeployed: true,
+      },
+      ...prev,
+    ]);
+  }
 
   return (
     <div>
@@ -31,7 +76,7 @@ export function SovereignContracts({
         </p>
       </div>
 
-      {sovereign.length === 0 ? (
+      {contracts.length === 0 ? (
         <Surface className="px-6 py-10 text-center">
           <p className="text-sm text-muted">
             No sovereign contract deployed yet. Deploy one to own your collection outright.
@@ -39,13 +84,13 @@ export function SovereignContracts({
         </Surface>
       ) : (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {sovereign.map((c) => (
-            <ContractCard key={c.slug} collection={c} />
+          {contracts.map((c) => (
+            <ContractCard key={c.key} contract={c} />
           ))}
         </div>
       )}
 
-      {/* Deploy CTA - visual only */}
+      {/* Deploy CTA */}
       <div className="mt-6 flex flex-col items-start justify-between gap-4 rounded-[10px] border border-dashed border-border bg-surface/40 px-6 py-5 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-medium text-foreground">Deploy a new sovereign contract</p>
@@ -53,61 +98,71 @@ export function SovereignContracts({
             Spin up your own ERC-721 + ERC-2981 Forever Library. Perpetual never holds the keys.
           </p>
         </div>
-        <Button variant="accent" size="md" className="shrink-0">
+        <Button
+          variant="accent"
+          size="md"
+          className="min-h-[44px] w-full shrink-0 sm:w-auto"
+          onClick={() => setDeploying(true)}
+        >
           Deploy contract
         </Button>
       </div>
+
+      {deploying && (
+        <DeployContractModal onClose={() => setDeploying(false)} onDeployed={onDeployed} />
+      )}
     </div>
   );
 }
 
-function ContractCard({
-  collection,
-}: {
-  collection: Collection;
-}) {
+function ContractCard({ contract: c }: { contract: ContractView }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(collection.contractAddress);
+      await navigator.clipboard.writeText(c.contractAddress);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
+      setTimeout(() => setCopied(false), 1600);
     } catch {
       /* ignore */
     }
   }
 
   const rows: Array<{ label: string; value: string }> = [
-    { label: "Chain", value: collection.chain === "ethereum" ? "Ethereum Mainnet" : "Base" },
-    { label: "Items", value: String(collection.itemCount) },
-    { label: "Owners", value: String(collection.ownerCount) },
-    { label: "Royalty", value: bpsToPct(collection.royaltyBps) },
+    { label: "Chain", value: c.chain === "ethereum" ? "Ethereum Mainnet" : "Base" },
+    { label: "Items", value: String(c.itemCount) },
+    { label: "Owners", value: String(c.ownerCount) },
+    { label: "Royalty", value: bpsToPct(c.royaltyBps) },
   ];
 
   return (
     <Surface className="flex flex-col p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-base font-medium text-foreground">{collection.name}</p>
+          <p className="truncate text-base font-medium text-foreground">{c.name}</p>
           <button
             type="button"
             onClick={copy}
-            className="group mt-1.5 inline-flex items-center gap-1.5 font-mono text-xs text-muted transition-colors hover:text-foreground"
-            title="Copy contract address"
+            aria-label={`Copy contract address ${c.contractAddress}`}
+            className="group mt-1.5 inline-flex min-h-[32px] items-center gap-1.5 font-mono text-xs text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           >
-            <span className="tabular-nums">{shortAddress(collection.contractAddress)}</span>
+            <span className="tabular-nums">{shortAddress(c.contractAddress)}</span>
             {copied ? (
               <span className="text-accent">copied</span>
             ) : (
-              <svg viewBox="0 0 16 16" className="h-3 w-3 text-faint transition-colors group-hover:text-muted" fill="none" aria-label="copy">
+              <svg viewBox="0 0 16 16" className="h-3 w-3 text-faint transition-colors group-hover:text-muted" fill="none" aria-hidden>
                 <rect x="5.5" y="5.5" width="7" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
                 <path d="M3.5 10.5V4a.5.5 0 01.5-.5h6.5" stroke="currentColor" strokeWidth="1.2" />
               </svg>
             )}
           </button>
+          <span aria-live="polite" className="sr-only">
+            {copied ? "Contract address copied to clipboard." : ""}
+          </span>
         </div>
-        <Badge tone="muted">Sovereign</Badge>
+        <Badge tone={c.justDeployed ? "accent" : "muted"}>
+          {c.justDeployed ? "New · Sovereign" : "Sovereign"}
+        </Badge>
       </div>
 
       <Divider className="my-5" />

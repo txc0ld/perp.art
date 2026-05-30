@@ -4,6 +4,7 @@ import * as React from "react";
 import type { Token } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { searchTokens } from "@/lib/mock-data";
+import { SectionHeader } from "@/components/ui";
 import { FilterRail } from "./FilterRail";
 import { SortMenu } from "./SortMenu";
 import { DensityToggle } from "./DensityToggle";
@@ -50,10 +51,16 @@ export function ExploreClient({
   return (
     <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6">
       {/* Page heading */}
-      <div className="pb-5">
-        <p className="label-mono text-faint">Catalog</p>
-        <h1 className="display-sm mt-2 font-brand text-foreground">Explore</h1>
-      </div>
+      <SectionHeader
+        as="h1"
+        eyebrow="Catalog"
+        title="Explore"
+        description="Browse art engineered to outlast everything. Filter by genre, chain, permanence, and price."
+        className="border-b-0 pb-5"
+      />
+      <p className="sr-only" role="status" aria-live="polite">
+        {results.length} {results.length === 1 ? "item" : "items"} match the current filters.
+      </p>
 
       {/* Sticky toolbar: filter toggle, search, count, sort, density */}
       <div className="sticky top-0 z-30 -mx-4 border-y border-border bg-background/85 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6">
@@ -62,17 +69,23 @@ export function ExploreClient({
             type="button"
             onClick={() => setRailOpen((v) => !v)}
             aria-expanded={railOpen}
+            aria-controls="explore-filter-rail"
             className={cn(
-              "inline-flex h-9 shrink-0 items-center gap-2 rounded-[8px] border px-3 font-mono text-[11px] uppercase tracking-wider transition-colors",
+              "inline-flex h-10 shrink-0 items-center gap-2 rounded-[8px] border px-3 font-mono text-[11px] uppercase tracking-wider transition-colors",
               railOpen
                 ? "border-border-bright bg-surface-2 text-foreground"
                 : "border-border bg-surface text-muted hover:border-border-bright hover:text-foreground",
             )}
           >
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none">
+            <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none">
               <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
             Filters
+            {chips.length > 0 && (
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent/15 px-1 font-mono text-[9px] tabular-nums text-accent">
+                {chips.length}
+              </span>
+            )}
           </button>
 
           <SearchInput
@@ -95,7 +108,7 @@ export function ExploreClient({
       <div className="flex items-start gap-6 pt-6 lg:gap-8">
         {/* Collapsible filter rail */}
         {railOpen ? (
-          <aside className="animate-fade w-full shrink-0 lg:w-64">
+          <aside id="explore-filter-rail" aria-label="Filters" className="animate-fade w-full shrink-0 lg:w-64">
             <div className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
               <FilterRail filters={filters} setFilters={setFilters} onReset={reset} />
             </div>
@@ -113,16 +126,17 @@ export function ExploreClient({
 
             {chips.length > 0 && (
               <>
-                <ul className="flex flex-wrap items-center gap-2">
+                <ul aria-label="Active filters" className="flex flex-wrap items-center gap-2">
                   {chips.map((c) => (
                     <li key={c.key}>
                       <button
                         type="button"
                         onClick={() => setFilters(c.clear)}
-                        className="group inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider leading-none text-accent transition-colors hover:bg-accent/20"
+                        aria-label={`Remove filter ${c.label}`}
+                        className="group inline-flex min-h-[32px] items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider leading-none text-accent transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                       >
                         {c.label}
-                        <svg viewBox="0 0 16 16" className="h-3 w-3 opacity-70 group-hover:opacity-100" fill="none">
+                        <svg aria-hidden viewBox="0 0 16 16" className="h-3 w-3 opacity-70 group-hover:opacity-100" fill="none">
                           <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
                       </button>
@@ -132,7 +146,7 @@ export function ExploreClient({
                 <button
                   type="button"
                   onClick={reset}
-                  className="font-mono text-[10px] uppercase tracking-wider text-faint transition-colors hover:text-accent"
+                  className="inline-flex min-h-[32px] items-center font-mono text-[10px] uppercase tracking-wider text-faint transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-[6px]"
                 >
                   Clear all
                 </button>
@@ -154,7 +168,11 @@ export function ExploreClient({
 function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="relative w-full min-w-0 flex-1 sm:max-w-72">
+      <label htmlFor="explore-search" className="sr-only">
+        Search the catalog
+      </label>
       <svg
+        aria-hidden
         viewBox="0 0 16 16"
         className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint"
         fill="none"
@@ -163,12 +181,12 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
         <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
       <input
+        id="explore-search"
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="SEARCH WORKS, ARTISTS, TRAITS"
-        className="h-9 w-full rounded-[8px] border border-border bg-surface pl-9 pr-3 font-mono text-xs uppercase tracking-wider text-foreground placeholder:text-faint focus:border-accent/50 focus:outline-none"
-        aria-label="Search the catalog"
+        className="h-10 w-full rounded-[8px] border border-border bg-surface pl-9 pr-3 font-mono text-xs uppercase tracking-wider text-foreground placeholder:text-faint focus:border-accent/50 focus:outline-none"
       />
     </div>
   );
@@ -177,7 +195,7 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
 function EmptyState({ onReset }: { onReset: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-border px-6 py-24 text-center">
-      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-border text-faint">
+      <div aria-hidden className="mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-border text-faint">
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
           <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.5" />
           <path d="M15.5 15.5L21 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -190,7 +208,7 @@ function EmptyState({ onReset }: { onReset: () => void }) {
       <button
         type="button"
         onClick={onReset}
-        className="mt-6 font-mono text-[11px] uppercase tracking-wider text-accent transition-opacity hover:opacity-80"
+        className="mt-6 inline-flex min-h-[44px] items-center rounded-[8px] border border-accent/40 bg-accent/10 px-4 font-mono text-[11px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       >
         Clear all filters
       </button>

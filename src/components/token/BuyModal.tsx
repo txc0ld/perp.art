@@ -38,11 +38,13 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
   const fees = feeBreakdown(price, token.royalty.bps);
   const txHash = React.useMemo(() => fabricateTx(token), [token]);
 
-  // Focus the primary action on open.
+  // Focus the primary action on open; return focus to the opener on close.
   React.useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
     dialogRef.current
       ?.querySelector<HTMLButtonElement>("[data-confirm]")
       ?.focus();
+    return () => opener?.focus?.();
   }, []);
 
   // Esc to close + lightweight focus trap.
@@ -107,9 +109,10 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
             {phase === "done" ? "Purchase complete" : "Confirm purchase"}
           </MonoLabel>
           <button
+            type="button"
             onClick={onClose}
             disabled={phase === "confirming"}
-            className="text-faint transition-colors hover:text-foreground disabled:opacity-30"
+            className="flex h-9 w-9 items-center justify-center rounded-[8px] text-faint transition-colors hover:text-foreground disabled:opacity-30"
             aria-label="Close"
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none">

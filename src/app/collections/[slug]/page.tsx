@@ -48,14 +48,17 @@ export default async function CollectionDetailPage({
 
   return (
     <Section className="pt-6 sm:pt-8">
+      {/* Banner -> identity */}
       <CollectionHero collection={collection} artist={artist} />
 
-      <div className="mt-8">
+      {/* Stats bar */}
+      <section aria-label="Collection statistics" className="mt-8">
         <CollectionStatsBar collection={collection} ranking={ranking} listedCount={listedCount} />
-      </div>
+      </section>
 
+      {/* Toolbar / tabs -> grid */}
       <div className="mt-10">
-        <CollectionItems tokens={tokens} />
+        <CollectionItems tokens={tokens} collectionName={collection.name} />
       </div>
     </Section>
   );

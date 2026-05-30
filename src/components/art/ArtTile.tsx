@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { Token } from "@/lib/types";
 import { GenerativeArt } from "./GenerativeArt";
 import { getArtist } from "@/lib/mock-data";
@@ -14,7 +13,6 @@ import { StatusGlyph } from "@/components/ui";
  * permanence indicator (top-left) and locked glyph (top-right) as the differentiator.
  */
 export function ArtTile({ token, priority = false }: { token: Token; priority?: boolean }) {
-  const router = useRouter();
   const artist = getArtist(token.artistHandle);
   const verifiedShards = token.permanence.shards.filter((s) => s.status === "verified").length;
   const lastSale = [...token.provenance].find((e) => e.kind === "sale")?.priceEth;
@@ -22,7 +20,8 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
   return (
     <Link
       href={`/token/${token.id}`}
-      className="group relative flex flex-col overflow-hidden rounded-[10px] border border-border bg-surface transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-border-bright hover:shadow-[0_12px_40px_-24px_rgba(0,0,0,0.9)]"
+      aria-label={`${token.title} by ${artist?.name ?? token.artistHandle}${token.listing ? `, listed for ${formatEth(token.listing.priceEth)} ETH` : ""}`}
+      className="group relative flex flex-col overflow-hidden rounded-[10px] border border-border bg-surface transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-border-bright hover:shadow-[0_12px_40px_-24px_rgba(0,0,0,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <div className="relative aspect-square overflow-hidden bg-background">
         <GenerativeArt
@@ -39,24 +38,24 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
         </div>
         {token.permanence.locked && (
           <div className="absolute right-2.5 top-2.5 rounded-full border border-border/60 bg-background/70 p-1.5 backdrop-blur-md" title="Shards locked, immutable">
-            <svg viewBox="0 0 16 16" className="h-3 w-3 text-accent" fill="none">
+            <span className="sr-only">Shards locked, immutable</span>
+            <svg viewBox="0 0 16 16" className="h-3 w-3 text-accent" fill="none" aria-hidden>
               <rect x="3.5" y="7" width="9" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.3" />
               <path d="M5.5 7V5.5a2.5 2.5 0 015 0V7" stroke="currentColor" strokeWidth="1.3" />
             </svg>
           </div>
         )}
 
-        {/* Buy now bar, slides up on hover (OpenSea signature) */}
+        {/* Buy now bar, slides up on hover (OpenSea signature). Decorative:
+            the whole card is the link, so this duplicates navigation and is
+            hidden from assistive tech / keyboard. */}
         {token.listing && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              router.push(`/token/${token.id}`);
-            }}
-            className="absolute inset-x-0 bottom-0 translate-y-full bg-accent py-2.5 text-center text-sm font-semibold text-background transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0"
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-accent py-2.5 text-center text-sm font-semibold text-background transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0"
           >
             Buy now
-          </button>
+          </span>
         )}
       </div>
 

@@ -4,7 +4,6 @@
  * linking to a block explorer. Engineered, archival feel with a hairline connector.
  */
 import type { ProvenanceEvent } from "@/lib/types";
-import { MonoLabel } from "@/components/ui";
 import { shortAddress, shortHash, formatEth, relativeTime, cn } from "@/lib/utils";
 
 const KIND_LABEL: Record<ProvenanceEvent["kind"], string> = {
@@ -19,8 +18,7 @@ const KIND_LABEL: Record<ProvenanceEvent["kind"], string> = {
 export function ProvenanceTimeline({ events }: { events: ProvenanceEvent[] }) {
   return (
     <div>
-      <MonoLabel className="text-foreground">Provenance</MonoLabel>
-      <ol className="mt-5 space-y-0">
+      <ol className="space-y-0">
         {events.map((e, i) => {
           const last = i === events.length - 1;
           const accent = e.kind === "minted" || e.kind === "created";

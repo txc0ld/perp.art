@@ -26,11 +26,13 @@ export function CollectionsBrowser({
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-6">
-        <Pill active={genre === "all"} onClick={() => setGenre("all")}>All</Pill>
-        {genres.map((g) => (
-          <Pill key={g} active={genre === g} onClick={() => setGenre(g)}>{g}</Pill>
-        ))}
-        <span className="ml-auto font-mono text-xs tabular-nums text-muted">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by category">
+          <Pill active={genre === "all"} onClick={() => setGenre("all")}>All</Pill>
+          {genres.map((g) => (
+            <Pill key={g} active={genre === g} onClick={() => setGenre(g)}>{g}</Pill>
+          ))}
+        </div>
+        <span className="ml-auto font-mono text-xs tabular-nums text-muted" aria-live="polite">
           {results.length} {results.length === 1 ? "COLLECTION" : "COLLECTIONS"}
         </span>
       </div>
@@ -38,7 +40,7 @@ export function CollectionsBrowser({
       {results.length > 0 ? (
         <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {results.map((c, i) => (
-            <div key={c.slug} className="animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
+            <div key={c.slug} className="h-full animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
               <CollectionCard collection={c} />
             </div>
           ))}
@@ -65,7 +67,8 @@ function Pill({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "inline-flex h-8 items-center rounded-full px-3.5 font-mono text-[11px] font-semibold uppercase tracking-wider leading-none transition-colors",
+        "inline-flex h-9 items-center rounded-full px-3.5 font-mono text-[11px] font-semibold uppercase tracking-wider leading-none transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active
           ? "bg-accent text-background"
           : "border border-border bg-surface text-muted hover:border-border-bright hover:text-foreground",

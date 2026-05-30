@@ -156,3 +156,41 @@ export function Section({
     </section>
   );
 }
+
+// ---------------------------------------------------------------------------
+// SectionHeader - consistent, identifiable section heads app-wide.
+// Mono eyebrow + title + optional trailing action, over a hairline rule.
+// ---------------------------------------------------------------------------
+
+export function SectionHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+  as: As = "h2",
+  className,
+  id,
+}: {
+  eyebrow?: string;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  as?: React.ElementType;
+  className?: string;
+  id?: string;
+}) {
+  return (
+    <div className={cn("mb-6 border-b border-border pb-4", className)}>
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          {eyebrow && <MonoLabel className="text-faint">{eyebrow}</MonoLabel>}
+          <As id={id} className={cn("font-brand text-foreground", eyebrow && "mt-2", "text-[22px] font-semibold leading-tight tracking-[-0.01em] sm:text-[26px]")}>
+            {title}
+          </As>
+          {description && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{description}</p>}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
+    </div>
+  );
+}

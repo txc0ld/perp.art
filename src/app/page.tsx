@@ -66,11 +66,11 @@ export default async function Home({
         <TrendingTable data={trendingByWindow} defaultWindow="24h" limit={6} />
       </Section>
 
-      <Section id="notable" className="pt-0">
+      <Section id="notable" className="border-t border-border pt-12 sm:pt-14 lg:pt-16">
         <FeaturedWorksGrid tokens={featured} />
       </Section>
 
-      <Section id="movers" className="pt-0 pb-14">
+      <Section id="movers" className="border-t border-border pb-14 pt-12 sm:pt-14 lg:pt-16">
         <TopMovers movers={movers} />
       </Section>
 

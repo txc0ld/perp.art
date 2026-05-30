@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTrendingCollections, GENRES, type RankWindow, type CollectionRanking } from "@/lib/mock-data";
-import { Section, MonoLabel } from "@/components/ui";
+import { Section, SectionHeader } from "@/components/ui";
 import { RankingsTable } from "@/components/stats/RankingsTable";
 
 export const metadata: Metadata = {
@@ -20,14 +20,12 @@ export default function StatsPage() {
 
   return (
     <Section>
-      <div className="pb-8">
-        <MonoLabel className="text-faint">Discover</MonoLabel>
-        <h1 className="display-sm mt-2 font-brand text-foreground">Rankings</h1>
-        <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
-          The top collections on Perpetual, ranked by trading volume. Filter by time window,
-          category, and chain. Every floor and sale traces back to onchain-anchored, permanent work.
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        eyebrow="Discover"
+        title="Rankings"
+        description="The top collections on Perpetual, ranked by trading volume. Filter by time window, category, and chain. Every floor and sale traces back to onchain-anchored, permanent work."
+      />
 
       <RankingsTable data={data} genres={GENRES} />
     </Section>

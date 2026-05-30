@@ -20,16 +20,25 @@ function Field({
   htmlFor,
   children,
   hint,
+  required,
 }: {
   label: string;
   htmlFor?: string;
   children: React.ReactNode;
   hint?: string;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-2">
       <label htmlFor={htmlFor} className="flex items-baseline justify-between">
-        <MonoLabel>{label}</MonoLabel>
+        <MonoLabel>
+          {label}
+          {required && (
+            <span className="ml-1 text-accent" aria-hidden>
+              *
+            </span>
+          )}
+        </MonoLabel>
         {hint && <span className="font-mono text-[10px] text-faint">{hint}</span>}
       </label>
       {children}
@@ -52,6 +61,9 @@ export function UploadStep({
   genres: Genre[];
 }) {
   const seed = previewSeed(form);
+  const [touched, setTouched] = React.useState<{ artist?: boolean; title?: boolean }>({});
+  const artistError = touched.artist && form.artistName.trim().length === 0;
+  const titleError = touched.title && form.title.trim().length === 0;
 
   const simulateSelect = () => {
     const names = [
@@ -135,26 +147,46 @@ export function UploadStep({
 
       {/* Metadata */}
       <div className="space-y-5">
-        <Field label="Artist name" htmlFor="mint-artist">
+        <Field label="Artist name" htmlFor="mint-artist" required>
           <input
             id="mint-artist"
-            className={inputCls}
+            className={cn(inputCls, artistError && "border-[#fda4af]/60")}
             value={form.artistName}
             onChange={(e) => set({ artistName: e.target.value })}
+            onBlur={() => setTouched((t) => ({ ...t, artist: true }))}
+            required
+            aria-required="true"
+            aria-invalid={artistError || undefined}
+            aria-describedby={artistError ? "mint-artist-err" : undefined}
             placeholder="Your name or handle"
             autoComplete="off"
           />
+          {artistError && (
+            <p id="mint-artist-err" className="font-mono text-[11px] text-[#fda4af]">
+              Artist name is required.
+            </p>
+          )}
         </Field>
 
-        <Field label="Title" htmlFor="mint-title" hint="drives the preview">
+        <Field label="Title" htmlFor="mint-title" hint="drives the preview" required>
           <input
             id="mint-title"
-            className={inputCls}
+            className={cn(inputCls, titleError && "border-[#fda4af]/60")}
             value={form.title}
             onChange={(e) => set({ title: e.target.value })}
+            onBlur={() => setTouched((t) => ({ ...t, title: true }))}
+            required
+            aria-required="true"
+            aria-invalid={titleError || undefined}
+            aria-describedby={titleError ? "mint-title-err" : undefined}
             placeholder="Name this work"
             autoComplete="off"
           />
+          {titleError && (
+            <p id="mint-title-err" className="font-mono text-[11px] text-[#fda4af]">
+              Title is required.
+            </p>
+          )}
         </Field>
 
         <div className="grid gap-5 sm:grid-cols-2">
@@ -166,9 +198,11 @@ export function UploadStep({
                   <button
                     key={m.value}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => set({ mediaType: m.value })}
                     className={cn(
-                      "rounded-[8px] border px-2 py-2 font-mono text-[11px] transition-colors duration-200",
+                      "min-h-[44px] rounded-[8px] border px-2 py-2 font-mono text-[11px] transition-colors duration-200",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       active
                         ? "border-border-bright bg-surface-2 text-foreground"
                         : "border-border text-muted hover:border-border-bright hover:text-foreground",

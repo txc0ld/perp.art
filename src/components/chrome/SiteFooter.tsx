@@ -33,9 +33,15 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-background">
       <div className="mx-auto w-full max-w-[1600px] px-4 py-16 sm:px-6">
-        <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <div>
-            <Wordmark markSize={26} />
+        <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-12">
+          <div className="col-span-full md:col-span-1">
+            <Link
+              href="/"
+              className="inline-flex rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              aria-label="perpetual.art home"
+            >
+              <Wordmark markSize={26} />
+            </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
               Art, engineered to outlast everything. Every artwork is provably permanent,
               and it survives even if perpetual.art disappears.
@@ -45,10 +51,13 @@ export function SiteFooter() {
           {COLS.map((col) => (
             <div key={col.title}>
               <MonoLabel className="text-faint">{col.title}</MonoLabel>
-              <ul className="mt-4 space-y-2.5">
+              <ul className="mt-4 space-y-1">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <Link href={l.href} className="text-sm text-muted transition-colors hover:text-foreground">
+                    <Link
+                      href={l.href}
+                      className="-mx-2 inline-flex rounded-[8px] px-2 py-1.5 text-sm text-muted transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    >
                       {l.label}
                     </Link>
                   </li>

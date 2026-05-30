@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import type { Token } from "@/lib/types";
 import { ArtTile } from "@/components/art/ArtTile";
-import { ButtonLink, MonoLabel } from "@/components/ui";
+import { ButtonLink, SectionHeader } from "@/components/ui";
 import { formatEth } from "@/lib/utils";
+import { SortSelect } from "./SortSelect";
 
 type SortKey = "recent" | "price-desc" | "price-asc" | "title";
 
@@ -55,45 +56,23 @@ export function CollectedTab({ tokens, preview }: { tokens: Token[]; preview?: b
 
   return (
     <div>
-      {/* Sub-toolbar: result count + sort */}
-      <div className="mb-6 flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <MonoLabel className="text-foreground">
+      <SectionHeader
+        eyebrow="Collected"
+        title={
+          <span className="font-mono tabular-nums">
             {tokens.length} {tokens.length === 1 ? "item" : "items"}
-          </MonoLabel>
-          <span className="hidden font-mono text-[11px] uppercase tracking-wider text-faint sm:inline">
-            Est. {formatEth(estValue)} ETH
           </span>
-          {preview && (
-            <span className="font-mono text-[11px] uppercase tracking-wider text-faint">
-              Preview, sample collection
-            </span>
-          )}
-        </div>
-
-        <label className="relative inline-flex items-center">
-          <span className="sr-only">Sort items</span>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="appearance-none rounded-full border border-border bg-surface py-1.5 pl-3.5 pr-8 font-mono text-[12px] text-muted transition-colors hover:border-border-bright hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-          >
-            {SORTS.map((s) => (
-              <option key={s.key} value={s.key} className="bg-surface text-foreground">
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <svg
-            viewBox="0 0 16 16"
-            className="pointer-events-none absolute right-3 h-3 w-3 text-faint"
-            fill="none"
-            aria-hidden
-          >
-            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </label>
-      </div>
+        }
+        description={
+          <>
+            Est. {formatEth(estValue)} ETH
+            {preview ? " · preview, sample collection" : ""}
+          </>
+        }
+        action={
+          <SortSelect value={sort} onChange={setSort} options={SORTS} label="Sort items" />
+        }
+      />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 lg:gap-5">
         {sorted.map((t, i) => (

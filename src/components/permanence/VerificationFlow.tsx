@@ -155,13 +155,15 @@ export function VerificationFlow() {
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              {done ? (
-                <StatusGlyph status="verified" />
-              ) : active ? (
-                <StatusGlyph status="resolving" />
-              ) : (
-                <StatusGlyph status="not-configured" />
-              )}
+              <span aria-hidden>
+                {done ? (
+                  <StatusGlyph status="verified" />
+                ) : active ? (
+                  <StatusGlyph status="resolving" />
+                ) : (
+                  <StatusGlyph status="not-configured" />
+                )}
+              </span>
             </div>
 
             <p

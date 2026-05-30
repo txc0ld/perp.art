@@ -26,7 +26,7 @@ function Pill({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "rounded-full border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider leading-none transition-all duration-200",
+        "inline-flex min-h-[36px] items-center rounded-full border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider leading-none transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
         active
           ? "border-accent/40 bg-accent/10 text-accent"
           : "border-border bg-surface text-muted hover:border-border-bright hover:text-foreground",
@@ -59,7 +59,7 @@ function Accordion({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between py-3.5 text-left transition-colors hover:text-foreground"
+        className="flex w-full items-center justify-between py-3.5 text-left transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       >
         <span className="flex items-center gap-2">
           <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-foreground">
@@ -72,6 +72,7 @@ function Accordion({
           ) : null}
         </span>
         <svg
+          aria-hidden
           viewBox="0 0 16 16"
           className={cn("h-3.5 w-3.5 text-muted transition-transform duration-200", open && "rotate-180")}
           fill="none"
@@ -119,7 +120,7 @@ export function FilterRail({
           <button
             type="button"
             onClick={onReset}
-            className="font-mono text-[10px] uppercase tracking-wider text-faint transition-colors hover:text-accent"
+            className="inline-flex min-h-[32px] items-center rounded-[6px] font-mono text-[10px] uppercase tracking-wider text-faint transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           >
             Clear all
           </button>

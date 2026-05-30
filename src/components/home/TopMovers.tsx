@@ -5,20 +5,16 @@
  */
 import Link from "next/link";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
+import { SectionHeader } from "@/components/ui";
 import { formatEth, cn } from "@/lib/utils";
 import type { CollectionRanking } from "@/lib/mock-data";
 
 export function TopMovers({ movers }: { movers: CollectionRanking[] }) {
   return (
     <div>
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <p className="label-mono text-faint">Last 24 hours</p>
-          <h2 className="display-sm mt-3 font-brand text-foreground">Top movers</h2>
-        </div>
-      </div>
+      <SectionHeader eyebrow="Last 24 hours" title="Top movers" />
 
-      <div className="mt-7 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {movers.map((row) => {
           const c = row.collection;
           const positive = row.changePct >= 0;
@@ -26,13 +22,13 @@ export function TopMovers({ movers }: { movers: CollectionRanking[] }) {
             <Link
               key={c.slug}
               href={`/collections/${c.slug}`}
-              className="group flex items-center gap-3 rounded-[10px] border border-border bg-surface p-3 transition-colors duration-200 hover:border-border-bright hover:bg-surface-2"
+              className="group flex min-h-[44px] items-center gap-3 rounded-[10px] border border-border bg-surface p-3 transition-colors duration-200 hover:border-border-bright hover:bg-surface-2"
             >
               <div className="h-14 w-14 shrink-0 overflow-hidden rounded-[8px] border border-border bg-background">
                 <GenerativeArt seed={c.coverSeed} genre={c.genre} size={160} className="h-full w-full" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-foreground">{c.name}</p>
+                <p className="truncate text-sm font-semibold text-foreground group-hover:text-accent">{c.name}</p>
                 <p className="font-mono text-[11px] tabular-nums text-faint">
                   Floor {formatEth(c.floorEth)} ETH
                 </p>
@@ -43,7 +39,8 @@ export function TopMovers({ movers }: { movers: CollectionRanking[] }) {
                   positive ? "text-verify" : "text-[#fda4af]",
                 )}
               >
-                {positive ? "▲" : "▼"} {Math.abs(row.changePct).toFixed(1)}%
+                <span aria-hidden>{positive ? "▲" : "▼"}</span> {positive ? "+" : "-"}
+                {Math.abs(row.changePct).toFixed(1)}%
               </span>
             </Link>
           );

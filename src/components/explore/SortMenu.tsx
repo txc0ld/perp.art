@@ -36,11 +36,12 @@ export function SortMenu({ value, onChange }: { value: SortKey; onChange: (v: So
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-border bg-surface px-3 text-sm text-foreground transition-colors hover:border-border-bright"
+        aria-label={`Sort by ${current.label}`}
+        className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-border bg-surface px-3 text-sm text-foreground transition-colors hover:border-border-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       >
         <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Sort</span>
         <span className="text-sm">{current.label}</span>
-        <svg viewBox="0 0 16 16" className={cn("h-3.5 w-3.5 text-muted transition-transform", open && "rotate-180")} fill="none">
+        <svg aria-hidden viewBox="0 0 16 16" className={cn("h-3.5 w-3.5 text-muted transition-transform", open && "rotate-180")} fill="none">
           <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
@@ -67,7 +68,7 @@ export function SortMenu({ value, onChange }: { value: SortKey; onChange: (v: So
                 >
                   {o.label}
                   {active && (
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none">
+                    <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none">
                       <path d="M3.5 8.5l3 3 6-6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}
