@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
     PERPETUAL - UNAUDITED REFERENCE SCAFFOLD - DO NOT DEPLOY WITH VALUE
     ---------------------------------------------------------------------
     This interface is part of a reference scaffold for the Perpetual
-    permanence-first NFT marketplace (formerly "Vellum"). It expresses the
+    permanence-first NFT marketplace. It expresses the
     contract architecture described in the PRD and is intended for review,
     indexer/frontend integration, and audit preparation - NOT production.
 //////////////////////////////////////////////////////////////////////////*/

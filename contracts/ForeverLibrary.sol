@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
     PERPETUAL - UNAUDITED REFERENCE SCAFFOLD - DO NOT DEPLOY WITH VALUE
     ---------------------------------------------------------------------
     Reference implementation SKETCH of the Forever Library token contract for
-    the Perpetual permanence-first NFT marketplace (formerly "Vellum").
+    the Perpetual permanence-first NFT marketplace.
 
     This file is a faithful, well-documented expression of the PRD §7 contract
     architecture. It is NOT audited and MUST NOT be deployed to hold value

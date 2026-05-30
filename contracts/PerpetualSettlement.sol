@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
     PERPETUAL - UNAUDITED REFERENCE SCAFFOLD - DO NOT DEPLOY WITH VALUE
     ---------------------------------------------------------------------
     Reference implementation SKETCH of the Seaport-compatible Settlement layer
-    for the Perpetual permanence-first NFT marketplace (formerly "Vellum").
+    for the Perpetual permanence-first NFT marketplace.
 
     Faithful expression of PRD §8 (settlement + royalty enforcement) and §12
     (security). NOT audited; MUST be audited before mainnet handling of value
