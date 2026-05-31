@@ -10,6 +10,18 @@ import { ChainBadge } from "@/components/chain/ChainBadge";
 import { Tilt3D } from "@/components/visual/Tilt3D";
 
 /**
+ * Derive the token detail href. Live on-chain tokens use
+ * `/token/onchain/{chainId}/{tokenId}`; mock tokens use `/token/{id}`.
+ */
+function tokenHref(token: Token): string {
+  if (token.source === "onchain") {
+    const chainId = token.chain === "base" ? 84532 : 11155111;
+    return `/token/onchain/${chainId}/${token.tokenId}`;
+  }
+  return `/token/${token.id}`;
+}
+
+/**
  * OpenSea-style NFT card in the Perpetual theme, lifted with a tasteful pointer
  * tilt (Tilt3D): the artwork leans toward the cursor with a soft specular sheen.
  * Keeps the signature permanence indicator and the hover "Buy now" bar.
@@ -19,10 +31,11 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
   const verifiedShards = token.permanence.shards.filter((s) => s.status === "verified").length;
   const lastSale = [...token.provenance].find((e) => e.kind === "sale")?.priceEth;
   const currency = getChainMeta(token.chain).currency;
+  const isOnchain = token.source === "onchain";
 
   return (
     <Link
-      href={`/token/${token.id}`}
+      href={tokenHref(token)}
       aria-label={`${token.title} by ${artist?.name ?? token.artistHandle}${token.listing ? `, listed for ${formatEth(token.listing.priceEth)} ${currency}` : ""}`}
       className="block rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
@@ -44,6 +57,13 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
             <StatusGlyph status="verified" />
             <span className="font-mono text-[10px] uppercase tracking-wider text-accent">{verifiedShards}</span>
           </div>
+
+          {/* on-chain badge for live tokens */}
+          {isOnchain && (
+            <div className="absolute bottom-2.5 left-2.5 rounded-full border border-accent/40 bg-background/80 px-2 py-0.5 backdrop-blur-md">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-accent">On-chain</span>
+            </div>
+          )}
           {token.permanence.locked && (
             <div className="absolute right-2.5 top-2.5 rounded-full border border-border/60 bg-background/70 p-1.5 backdrop-blur-md" title="Shards locked, immutable">
               <span className="sr-only">Shards locked, immutable</span>
