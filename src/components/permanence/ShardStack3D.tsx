@@ -62,10 +62,12 @@ const PLANES: Plane[] = [
 ];
 
 // Depth spacing between planes, in px of translateZ. The foundation (Shard 0)
-// sits deepest; redundant mirrors layer above it toward the viewer.
-const Z_STEP = 64;
-// Slight vertical offset per layer so the stack reads as a leaning deck.
-const Y_STEP = 26;
+// sits deepest; redundant mirrors layer above it toward the viewer. Tuned so
+// all FIVE planes separate cleanly without their labels colliding.
+const Z_STEP = 70;
+// Vertical offset per layer so the stack reads as a leaning deck and each
+// plane's label clears the one above it.
+const Y_STEP = 32;
 
 export function ShardStack3D({ className }: { className?: string }) {
   const stageRef = React.useRef<HTMLDivElement>(null);
@@ -121,10 +123,11 @@ export function ShardStack3D({ className }: { className?: string }) {
         }}
       />
 
-      {/* Perspective viewport */}
+      {/* Perspective viewport — tall enough that the 5-plane stack never spills
+          into the caption below. */}
       <div
         className="perspective-1400 relative"
-        style={{ height: 420 }}
+        style={{ height: 560 }}
         onPointerMove={onMove}
         onPointerLeave={onLeave}
       >
@@ -146,10 +149,11 @@ export function ShardStack3D({ className }: { className?: string }) {
             } as React.CSSProperties
           }
         >
-          {/* A fixed gentle base tilt so depth reads even at rest. */}
+          {/* A fixed gentle base tilt so depth reads even at rest. Slightly less
+              steep than before so the five planes' labels read without crowding. */}
           <div
-            className="preserve-3d relative h-[260px] w-[300px]"
-            style={{ transform: "rotateX(54deg) rotateZ(-32deg)" }}
+            className="preserve-3d relative h-[240px] w-[300px]"
+            style={{ transform: "rotateX(49deg) rotateZ(-30deg)" }}
           >
             {PLANES.map((plane, i) => {
               // i runs top-of-list (Irys, highest) to bottom (Onchain, deepest).
@@ -222,7 +226,7 @@ export function ShardStack3D({ className }: { className?: string }) {
         </div>
       </div>
 
-      <p className="mt-2 text-center font-mono text-[10px] uppercase tracking-wider text-faint">
+      <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-wider text-faint">
         Five parallel shards, layered in depth. One consensus-guaranteed STATE backstop.
       </p>
     </div>
