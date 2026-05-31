@@ -8,6 +8,7 @@
  * projectId comes from NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID via env.ts.
  */
 import { cookieStorage, createStorage } from "wagmi";
+import { http, type Transport } from "viem";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import {
   mainnet,
@@ -19,7 +20,8 @@ import {
   shape,
   type AppKitNetwork,
 } from "@reown/appkit/networks";
-import { publicEnv } from "@/lib/env";
+import { publicEnv, getRpcUrl } from "@/lib/env";
+import type { Chain } from "@/lib/types";
 
 export const projectId = publicEnv.walletConnectProjectId;
 
@@ -39,11 +41,31 @@ export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [
   shape,
 ];
 
+/**
+ * Per-chain transports: use our configured RPC (Alchemy etc.) when present,
+ * otherwise fall back to the chain's default public RPC (http() with no url).
+ */
+function rpc(chain: Chain): Transport {
+  const url = getRpcUrl(chain);
+  return url ? http(url) : http();
+}
+
+const transports: Record<number, Transport> = {
+  [mainnet.id]: rpc("ethereum"),
+  [base.id]: rpc("base"),
+  [polygon.id]: rpc("polygon"),
+  [arbitrum.id]: rpc("arbitrum"),
+  [optimism.id]: rpc("optimism"),
+  [zora.id]: rpc("zora"),
+  [shape.id]: rpc("shape"),
+};
+
 export const wagmiAdapter = new WagmiAdapter({
   storage: createStorage({ storage: cookieStorage }),
   ssr: true,
   projectId: projectId || "perpetual-dev",
   networks,
+  transports,
 });
 
 export const wagmiConfig = wagmiAdapter.wagmiConfig;
