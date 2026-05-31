@@ -68,8 +68,14 @@ contract LogLedgerTest is Test {
         vm.prank(author);
         ledger.open(FILE_ID);
         vm.prank(author);
-        vm.expectRevert(LogLedger.AlreadySealed.selector);
+        vm.expectRevert(LogLedger.AlreadyOpened.selector);
         ledger.open(FILE_ID);
+    }
+
+    function test_UploadBeforeOpenReverts() public {
+        vm.prank(author);
+        vm.expectRevert(LogLedger.NotOpened.selector);
+        ledger.upload(FILE_ID, 0, hex"00");
     }
 
     function test_OnlyAuthorUploads() public {

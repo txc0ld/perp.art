@@ -27,6 +27,7 @@ contract LogLedger {
     event FileSealed(bytes32 indexed fileId, bytes32 root, uint256 size, uint32 chunks, uint8 codec);
 
     error NotAuthor();
+    error AlreadyOpened();
     error AlreadySealed();
     error NotOpened();
 
@@ -34,7 +35,7 @@ contract LogLedger {
     /// @dev    Recommended fileId = keccak256(abi.encode(collection, contentHash, version)).
     function open(bytes32 fileId) external {
         File storage f = files[fileId];
-        if (f.author != address(0)) revert AlreadySealed(); // already opened/used.
+        if (f.author != address(0)) revert AlreadyOpened(); // fileId already claimed.
         f.author = msg.sender;
         f.deployBlock = uint32(block.number);
         emit FileOpened(fileId, msg.sender);
@@ -43,6 +44,7 @@ contract LogLedger {
     /// @notice Emit one chunk of media. Logs only (~8 gas/byte of data).
     function upload(bytes32 fileId, uint32 chunkIndex, bytes calldata data) external {
         File storage f = files[fileId];
+        if (f.author == address(0)) revert NotOpened();
         if (f.author != msg.sender) revert NotAuthor();
         if (f.finalized) revert AlreadySealed();
         emit FileChunk(fileId, chunkIndex, data);
