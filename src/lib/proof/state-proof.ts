@@ -143,7 +143,10 @@ function videoPosterToProof(file: Blob): Promise<ProofBytes | null> {
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
+    // Guard against a browser that stalls without firing onseeked/onerror.
+    const timeout = setTimeout(() => done(null), 10_000);
     const done = (out: ProofBytes | null) => {
+      clearTimeout(timeout);
       URL.revokeObjectURL(url);
       resolve(out);
     };

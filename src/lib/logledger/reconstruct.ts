@@ -27,6 +27,11 @@ export interface ReconstructDeps {
  * Reassemble a LogLedger file from its chunk logs and verify it against the
  * on-chain commitment BEFORE trusting any bytes: order + completeness, Merkle
  * root, then size. Returns the decompressed original bytes.
+ *
+ * PRECONDITION: `getChunks()` must NOT return duplicate indices. When reading
+ * from chain logs, an interrupted/retried relayer upload can emit duplicate
+ * FileChunk events for the same index — dedup by keeping the last event per
+ * chunkIndex before passing them here, or the count check will throw.
  */
 export async function reconstructFile(deps: ReconstructDeps): Promise<Uint8Array> {
   const file = await deps.readFile();
