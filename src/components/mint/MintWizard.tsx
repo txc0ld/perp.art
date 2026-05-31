@@ -4,6 +4,8 @@ import * as React from "react";
 import type { Genre, ShardOption } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWallet, connectWallet } from "@/lib/wallet";
+import { useOnchainMint } from "./useOnchainMint";
+import { chainLabelForId } from "@/lib/web3/contracts";
 import { Button, MonoLabel, Surface } from "@/components/ui";
 import { Stepper } from "./Stepper";
 import { UploadStep } from "./UploadStep";
@@ -56,12 +58,16 @@ export function MintWizard({
   genres: Genre[];
 }) {
   const wallet = useWallet();
+  const onchain = useOnchainMint();
   const [form, setForm] = React.useState<MintForm>(() =>
     initialForm(shardOptions, genres),
   );
   const [stepIndex, setStepIndex] = React.useState(0);
   const [furthest, setFurthest] = React.useState(0);
   const [minted, setMinted] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [txHash, setTxHash] = React.useState<`0x${string}` | undefined>();
+  const [mintError, setMintError] = React.useState<string | undefined>();
 
   const set = React.useCallback((patch: Partial<MintForm>) => {
     setForm((f) => ({ ...f, ...patch }));
@@ -84,11 +90,31 @@ export function MintWizard({
   };
   const back = () => goTo(stepIndex - 1);
 
-  const handleMint = () => {
+  const handleMint = async () => {
     if (!wallet.connected) {
       connectWallet();
       return;
     }
+    setMintError(undefined);
+
+    // Real on-chain mint when a Forever Library is deployed on the connected
+    // chain; otherwise a simulated mint (the contracts live on testnets today).
+    if (onchain.canMintOnchain) {
+      setSubmitting(true);
+      try {
+        const hash = await onchain.mint(form);
+        setTxHash(hash);
+        setMinted(true);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Mint failed.";
+        // Trim noisy wallet-rejection messages to something human.
+        setMintError(/denied|rejected/i.test(msg) ? "Transaction rejected in wallet." : msg.split("\n")[0]);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     setMinted(true);
   };
 
@@ -97,6 +123,8 @@ export function MintWizard({
     setStepIndex(0);
     setFurthest(0);
     setMinted(false);
+    setTxHash(undefined);
+    setMintError(undefined);
   };
 
   return (
@@ -123,7 +151,7 @@ export function MintWizard({
       {/* Focused surface per step */}
       <Surface className="p-6 sm:p-8 lg:p-10">
         {minted ? (
-          <MintSuccess form={form} shardOptions={shardOptions} onReset={reset} />
+          <MintSuccess form={form} shardOptions={shardOptions} onReset={reset} txHash={txHash} chainId={onchain.chainId} />
         ) : (
           <>
             <div className="mb-7">
@@ -175,12 +203,32 @@ export function MintWizard({
             )}
 
             {isLast ? (
-              <Button variant="accent" size="lg" onClick={handleMint}>
-                {wallet.connected ? "Mint to permanence" : "Connect wallet to mint"}
-                <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" aria-hidden>
-                  <path d="M3 8h9m0 0L8 4m4 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </Button>
+              <div className="flex flex-col items-end gap-1.5">
+                {mintError && (
+                  <span className="max-w-[260px] text-right font-mono text-[11px] leading-tight text-[#fda4af]">
+                    {mintError}
+                  </span>
+                )}
+                {wallet.connected && (
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+                    {onchain.canMintOnchain
+                      ? `Onchain mint on ${chainLabelForId(onchain.chainId)}`
+                      : "Simulated — switch to Base Sepolia or Ethereum Sepolia for a real mint"}
+                  </span>
+                )}
+                <Button variant="accent" size="lg" onClick={handleMint} disabled={submitting}>
+                  {!wallet.connected
+                    ? "Connect wallet to mint"
+                    : submitting
+                      ? "Confirm in your wallet…"
+                      : onchain.canMintOnchain
+                        ? "Mint onchain"
+                        : "Mint to permanence"}
+                  <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" aria-hidden>
+                    <path d="M3 8h9m0 0L8 4m4 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </Button>
+              </div>
             ) : (
               <Button variant="primary" size="lg" onClick={next} disabled={!canAdvance}>
                 Continue

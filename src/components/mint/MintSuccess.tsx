@@ -5,6 +5,7 @@ import type { ShardOption } from "@/lib/types";
 import { cn, hashSeed, shortHash } from "@/lib/utils";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { Button, ButtonLink, MonoLabel, Badge, Divider, StatusGlyph } from "@/components/ui";
+import { explorerTx } from "@/lib/web3/contracts";
 import type { MintForm } from "./state";
 import { previewSeed } from "./state";
 
@@ -37,10 +38,15 @@ export function MintSuccess({
   form,
   shardOptions,
   onReset,
+  txHash,
+  chainId,
 }: {
   form: MintForm;
   shardOptions: ShardOption[];
   onReset: () => void;
+  /** Set when the mint was a real on-chain transaction. */
+  txHash?: `0x${string}`;
+  chainId?: number;
 }) {
   const seed = previewSeed(form);
   const artifacts = React.useMemo(() => deriveTokenArtifacts(form), [form]);
@@ -156,9 +162,28 @@ export function MintSuccess({
         {phase === "done" && (
           <div className="space-y-4 animate-rise">
             <div className="divide-y divide-border">
-              <Detail label="Token ID" value={`#${artifacts.tokenId}`} />
-              <Detail label="Tx hash" value={shortHash(artifacts.txHash, 10)} title={artifacts.txHash} />
-              <Detail label="Content hash" value={shortHash(artifacts.contentHash, 10)} title={artifacts.contentHash} />
+              {txHash ? (
+                <div className="flex items-center justify-between gap-4 py-2.5">
+                  <MonoLabel className="text-faint">Transaction</MonoLabel>
+                  <a
+                    href={explorerTx(chainId, txHash)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 font-mono text-[13px] tabular-nums text-accent transition-colors hover:text-foreground"
+                  >
+                    {shortHash(txHash, 10)}
+                    <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" aria-hidden>
+                      <path d="M6 3h7v7M13 3L6.5 9.5M11 9.5V13H3V5h3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </a>
+                </div>
+              ) : (
+                <>
+                  <Detail label="Token ID" value={`#${artifacts.tokenId}`} />
+                  <Detail label="Tx hash" value={shortHash(artifacts.txHash, 10)} title={artifacts.txHash} />
+                  <Detail label="Content hash" value={shortHash(artifacts.contentHash, 10)} title={artifacts.contentHash} />
+                </>
+              )}
               <div className="flex items-center justify-between py-2.5">
                 <MonoLabel className="text-faint">Lock status</MonoLabel>
                 {form.lockShards ? (

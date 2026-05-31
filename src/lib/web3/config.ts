@@ -18,6 +18,8 @@ import {
   optimism,
   zora,
   shape,
+  baseSepolia,
+  sepolia,
   type AppKitNetwork,
 } from "@reown/appkit/networks";
 import { publicEnv, getRpcUrl } from "@/lib/env";
@@ -39,6 +41,9 @@ export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [
   optimism,
   zora,
   shape,
+  // Testnets (where the contracts are deployed today).
+  baseSepolia,
+  sepolia,
 ];
 
 /**
