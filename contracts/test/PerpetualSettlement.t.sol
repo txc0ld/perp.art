@@ -30,7 +30,7 @@ contract PerpetualSettlementTest is Test {
         vm.prank(creator);
         tokenId = fl.mint(
             creator, "Creator", "Work", "image/png",
-            ROYALTY_BPS, keccak256("m"), "ethfs://p", keccak256("p"), 0
+            ROYALTY_BPS, keccak256("m"), bytes("proof"), 0
         );
         vm.prank(creator);
         fl.transferFrom(creator, seller, tokenId);
@@ -90,7 +90,7 @@ contract PerpetualSettlementTest is Test {
         vm.prank(creator);
         uint256 hostedId = fl.mint(
             creator, "Creator", "Hosted", "image/png",
-            ROYALTY_BPS, keccak256("m2"), "ethfs://p2", keccak256("p2"), 150
+            ROYALTY_BPS, keccak256("m2"), bytes("proof2"), 150
         );
         vm.prank(creator);
         fl.transferFrom(creator, seller, hostedId);

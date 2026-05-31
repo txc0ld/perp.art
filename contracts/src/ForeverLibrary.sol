@@ -19,6 +19,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {IForeverLibrary} from "./interfaces/IForeverLibrary.sol";
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
+import {SSTORE2} from "solady/utils/SSTORE2.sol";
 
 /// @title ForeverLibrary
 /// @notice Asset & Provenance layer (PRD §6, §7): an ERC-721 + ERC-2981 token
@@ -49,6 +51,8 @@ contract ForeverLibrary is
     error MandatoryProofMissing();
     error InvalidRoyalty();
     error EmptyContentHash();
+    error EmptyProof();
+    error ProofTooLarge();
     error HostingFeeTooHigh();
     error InsufficientStorageFee();
     error UnexpectedPayment();
@@ -69,6 +73,10 @@ contract ForeverLibrary is
         // ...
     }
 
+    /// @dev Max bytes for the on-chain STATE proof. Kept under the EIP-170
+    ///      contract-size limit (24,576) that bounds a single SSTORE2 write.
+    uint256 public constant MAX_PROOF_BYTES = 24_000;
+
     /*//////////////////////////////////////////////////////////////////////
                                     STORAGE
     //////////////////////////////////////////////////////////////////////*/
@@ -86,6 +94,9 @@ contract ForeverLibrary is
     /// @dev tokenId => ordered shards. Index 0 is always the mandatory onchain
     ///      proof shard once configured (PRD §7.2).
     mapping(uint256 => Shard[]) private _shards;
+
+    /// @dev tokenId => SSTORE2 pointer holding Shard 0's raw on-chain bytes.
+    mapping(uint256 => address) private _statePointer;
 
     /// @dev tokenId => whether the mandatory onchain proof (Shard 0) exists.
     mapping(uint256 => bool) private _shard0Configured;
@@ -189,8 +200,9 @@ contract ForeverLibrary is
     /// @param mediaType       MIME type of the media (provenance).
     /// @param royaltyBps      creator royalty in basis points (ERC-2981).
     /// @param metadataHash    keccak256 of canonical metadata (verification).
-    /// @param proofURI        resolvable locator for the onchain proof shard.
-    /// @param proofContentHash keccak256 of the onchain proof shard content.
+    /// @param proofData       raw low-res canonical bytes for the on-chain STATE
+    ///        proof shard (Shard 0); stored via SSTORE2, hashed on-chain. Must be
+    ///        1..MAX_PROOF_BYTES bytes.
     /// @return tokenId        the newly minted token id.
     /// @param hostingFeeBps_  0 == artist pre-pays storage (must send >=
     ///        storageFeeWei, token is fee-exempt on resale); >0 (<= MAX) ==
@@ -202,13 +214,13 @@ contract ForeverLibrary is
         string calldata mediaType,
         uint96 royaltyBps,
         bytes32 metadataHash,
-        string calldata proofURI,
-        bytes32 proofContentHash,
+        bytes calldata proofData,
         uint16 hostingFeeBps_
     ) external payable nonReentrant returns (uint256 tokenId) {
         if (royaltyBps > _feeDenominator()) revert InvalidRoyalty(); // <= 100%.
         if (metadataHash == bytes32(0)) revert EmptyContentHash();
-        if (proofContentHash == bytes32(0)) revert EmptyContentHash();
+        if (proofData.length == 0) revert EmptyProof();
+        if (proofData.length > MAX_PROOF_BYTES) revert ProofTooLarge();
         if (hostingFeeBps_ > MAX_HOSTING_FEE_BPS) revert HostingFeeTooHigh();
 
         // Hosting model. fee == 0: the artist self-funds permanent storage by
@@ -243,16 +255,18 @@ contract ForeverLibrary is
         // Open the edit window (PRD §7.3).
         _editDeadline[tokenId] = uint64(block.timestamp) + editWindow;
 
-        // MANDATORY onchain proof shard (Shard 0, ethfs). This is the
-        // permanence backstop and the listing-eligibility precondition
-        // (PRD §7.2, §7.3, §9.6). It is written atomically with the mint so a
-        // token can never exist without its proof.
+        // MANDATORY on-chain STATE proof shard (Shard 0). The low-res canonical
+        // bytes are written to SSTORE2 (bytes-as-bytecode) so they live in
+        // consensus-guaranteed contract state; the content hash is computed
+        // on-chain (trustless). This is the permanence backstop and the sole
+        // listing-eligibility precondition (PRD §7.2, §7.3, §9.6).
+        _statePointer[tokenId] = SSTORE2.write(proofData);
         _configureShard(
             tokenId,
             0,
             ShardBackend.Onchain,
-            proofURI,
-            proofContentHash
+            "", // Shard 0 URI is derived on-chain in shardURI() from SSTORE2.
+            keccak256(proofData)
         );
 
         _safeMint(to, tokenId);
@@ -406,6 +420,7 @@ contract ForeverLibrary is
     /// @inheritdoc IForeverLibrary
     function shardURI(uint256 tokenId, uint256 index) external view returns (string memory) {
         if (index >= _shards[tokenId].length) revert ShardIndexOutOfRange();
+        if (index == 0) return _stateDataURI(tokenId);
         return _shards[tokenId][index].uri;
     }
 
@@ -439,9 +454,8 @@ contract ForeverLibrary is
         _requireMinted(tokenId);
         uint256 idx = _selectedShardIndex[tokenId];
         Shard[] storage shards = _shards[tokenId];
-        // Defensive fallback to Shard 0 (the onchain proof) - the permanence
-        // backstop must always resolve (PRD §18).
         if (idx >= shards.length) idx = 0;
+        if (idx == 0) return _stateDataURI(tokenId);
         return shards[idx].uri;
     }
 
@@ -465,6 +479,18 @@ contract ForeverLibrary is
     /*//////////////////////////////////////////////////////////////////////
                                 INTERNAL
     //////////////////////////////////////////////////////////////////////*/
+
+    /// @dev Build Shard 0's on-chain data URI from the SSTORE2-stored bytes and
+    ///      the token's recorded media type. Zero external dependencies.
+    function _stateDataURI(uint256 tokenId) internal view returns (string memory) {
+        bytes memory data = SSTORE2.read(_statePointer[tokenId]);
+        return string.concat(
+            "data:",
+            _mintData[tokenId].mediaType,
+            ";base64,",
+            Base64.encode(data)
+        );
+    }
 
     /// @dev Reverts if `tokenId` has not been minted.
     function _requireMinted(uint256 tokenId) internal view {
