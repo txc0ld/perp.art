@@ -45,6 +45,10 @@ describe("codec round-trips", () => {
     expect(() => decompress(new Uint8Array([1, 2, 3]), Codec.Brotli)).toThrow();
   });
 
+  it("compress throws on the unimplemented Brotli codec", () => {
+    expect(() => compress(new Uint8Array([1, 2, 3]), Codec.Brotli)).toThrow();
+  });
+
   it("RLE handles runs longer than 255", () => {
     const data = new Uint8Array(1000).fill(0x7a);
     expect(decompress(compress(data, Codec.RLE), Codec.RLE)).toEqual(data);

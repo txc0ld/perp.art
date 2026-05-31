@@ -2,7 +2,9 @@
  *  under block gas limits. MUST match every consumer of the module. */
 export const CHUNK_SIZE = 12 * 1024;
 
-/** Split bytes into <= CHUNK_SIZE pieces, in order. Empty input → []. */
+/** Split bytes into <= CHUNK_SIZE pieces, in order. Empty input → [].
+ *  NOTE: the returned chunks are `subarray` VIEWS into `data`, not copies —
+ *  do not mutate `data` after calling, or the chunks change with it. */
 export function chunkBytes(data: Uint8Array): Uint8Array[] {
   const chunks: Uint8Array[] = [];
   for (let off = 0; off < data.length; off += CHUNK_SIZE) {
