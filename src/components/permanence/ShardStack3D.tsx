@@ -3,12 +3,12 @@
 /**
  * ShardStack3D - the signature permanence visual.
  *
- * The four storage shards rendered as translucent hairline planes stacked in
+ * The five storage shards rendered as translucent hairline planes stacked in
  * real CSS 3D: a perspective container holds a preserve-3d stage, and each
  * shard is a panel pushed back on translateZ (with a slight Y offset) so they
- * read as parallel, immutable copies layered in depth. Shard 0 (the onchain
- * proof) is the foundation plane, emphasized with an accent hairline as the
- * permanent backstop that cannot fail.
+ * read as parallel, immutable copies layered in depth. Shard 0 (the STATE shard,
+ * SSTORE2) is the foundation plane, emphasized with an accent hairline as the
+ * consensus-guaranteed permanent backstop.
  *
  * On pointer move the whole stage tilts gently toward the cursor and the layers
  * separate slightly, revealing the depth. On idle it breathes with a very slow
@@ -29,28 +29,34 @@ type Plane = {
 
 const PLANES: Plane[] = [
   {
-    index: 3,
+    index: 4,
     name: "Irys",
     backend: "datachain",
     note: "Separate failure domain",
   },
   {
-    index: 2,
+    index: 3,
     name: "Arweave",
     backend: "permaweb",
     note: "Endowment funded, independent",
   },
   {
-    index: 1,
+    index: 2,
     name: "IPFS",
     backend: "content-addressed",
     note: "CID = hash(content)",
   },
   {
+    index: 1,
+    name: "LOG",
+    backend: "LogLedger",
+    note: "Merkle-verified · retention-monitored",
+  },
+  {
     index: 0,
-    name: "Onchain",
-    backend: "ethfs",
-    note: "The permanent backstop",
+    name: "STATE",
+    backend: "SSTORE2",
+    note: "Consensus-guaranteed backstop",
     mandatory: true,
   },
 ];
@@ -190,7 +196,7 @@ export function ShardStack3D({ className }: { className?: string }) {
                         isBackstop ? "text-accent/80" : "text-faint",
                       )}
                     >
-                      {isBackstop ? "Permanent backstop" : plane.backend}
+                      {isBackstop ? "Consensus-guaranteed backstop" : plane.backend}
                     </p>
                     {isBackstop && (
                       <p className="mt-1 font-mono text-[8.5px] uppercase tracking-[0.1em] text-faint">
@@ -217,7 +223,7 @@ export function ShardStack3D({ className }: { className?: string }) {
       </div>
 
       <p className="mt-2 text-center font-mono text-[10px] uppercase tracking-wider text-faint">
-        Four parallel immutable copies, layered in depth. One mandatory backstop.
+        Five parallel shards, layered in depth. One consensus-guaranteed STATE backstop.
       </p>
     </div>
   );

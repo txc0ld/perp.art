@@ -9,7 +9,7 @@
  * Sections (PRD §2, §6.1, §7.2, §8.2, §9.3, §9.4, §13.3, §18):
  *   1. Hero - AmbientField behind the thesis statement
  *   2. The problem - the storage-failure epidemic
- *   3. URI sharding model - the four shards as a layered diagram
+ *   3. URI sharding model - the five shards as a layered diagram
  *   4. Verification service (#verify) - the read-only, reproducible checks
  *   5. The architectural invariant - the centerpiece pledge
  *   6. Indexer spec (#indexer) - published, public-data-only schema
@@ -99,10 +99,10 @@ export default function PermanencePage() {
               style={{ animationDelay: "320ms" }}
             >
               Every artwork on Perpetual is provably permanent, and that permanence
-              does not depend on Perpetual. A mandatory onchain proof anchors each
-              token to Ethereum. Anyone can reproduce the verification, and the
-              entire index can be rebuilt from public data alone. This page explains,
-              precisely, how.
+              does not depend on Perpetual. A mandatory on-chain STATE shard
+              (SSTORE2) anchors each token to Ethereum. Anyone can reproduce the
+              verification, and the entire index can be rebuilt from public data
+              alone. This page explains, precisely, how.
             </p>
 
             <div
@@ -159,8 +159,8 @@ export default function PermanencePage() {
       <Section>
         <SectionHeader
           eyebrow="The storage model"
-          title="Four immutable copies. One mandatory backstop."
-          description="Each token carries parallel, immutable versions of its artwork across independent storage backends. Three add resolution and redundancy. Shard 0, the onchain proof, is the permanence guarantor, and it is the only one permanence actually requires."
+          title="Five parallel shards. One consensus-guaranteed backstop."
+          description="Each token carries five parallel, independently-verifiable shards across independent storage backends. Four add resolution and redundancy. Shard 0 — the STATE shard, stored on-chain via SSTORE2 — is the consensus-guaranteed permanence backstop, and the only one permanence actually requires."
         />
         {/* The signature visual: shards as translucent planes stacked in depth. */}
         <div className="mt-12">
@@ -179,13 +179,14 @@ export default function PermanencePage() {
             <MonoLabel className="text-faint">Why this holds</MonoLabel>
           </div>
           <p className="mt-4 max-w-3xl text-[16px] leading-relaxed text-muted">
-            Because the onchain proof shard carries the guarantee on its own, our
-            ongoing IPFS and CDN costs are{" "}
-            <span className="text-foreground">performance optimizations, not
-            permanence obligations</span>. If Perpetual stops paying for pinning,
-            permanence is unaffected. This is the point most architectures miss:
-            permanence is decoupled from operator solvency. The art does not depend
-            on us staying in business.
+            Because the STATE shard (SSTORE2) is consensus-guaranteed and lives
+            in contract state, it is the permanence backstop on its own. The LOG
+            shard and off-chain copies (IPFS, Arweave, Irys) are{" "}
+            <span className="text-foreground">performance and redundancy
+            optimizations, not permanence obligations</span>. If Perpetual stops
+            paying for pinning, permanence is unaffected. This is the point most
+            architectures miss: permanence is decoupled from operator solvency.
+            The art does not depend on us staying in business.
           </p>
         </Surface>
       </Section>

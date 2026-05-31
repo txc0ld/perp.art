@@ -36,7 +36,7 @@ const STEP_COPY: Record<StepKey, { title: string; eyebrow: string; blurb: string
   permanence: {
     eyebrow: "Step 03 · Permanence",
     title: "Choose how it endures",
-    blurb: "Layer independent permanent backends behind a single onchain proof.",
+    blurb: "Layer independent permanent backends behind a consensus-guaranteed STATE shard.",
   },
   lock: {
     eyebrow: "Step 04 · Lock",
@@ -126,9 +126,9 @@ export function MintWizard({
     storing:
       onchain.uploadPct > 0 && onchain.uploadPct < 100
         ? `Uploading the artwork… ${onchain.uploadPct}%`
-        : "Storing the artwork across shards (IPFS / Arweave / Irys)…",
-    minting: "Writing provenance + the onchain proof. Confirm in your wallet…",
-    recording: "Recording each shard onchain. Confirm in your wallet…",
+        : "Pinning to IPFS / Arweave / Irys and publishing LOG shard…",
+    minting: "Writing provenance + STATE shard (SSTORE2). Confirm in your wallet…",
+    recording: "Recording shard descriptors onchain. Confirm in your wallet…",
   };
 
   return (
@@ -263,7 +263,8 @@ export function MintWizard({
 }
 
 const SHARD_LABEL: Record<string, string> = {
-  onchain: "Onchain proof (ethfs)",
+  onchain: "STATE shard (SSTORE2)",
+  log: "LOG shard (LogLedger)",
   ipfs: "IPFS",
   arweave: "Arweave",
   irys: "Irys",

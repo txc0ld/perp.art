@@ -4,7 +4,7 @@
  * VanishTest - the signature proof. An interactive simulation of operator
  * shutdown: we take the operator-dependent layers offline one by one
  * (Perpetual indexer, the CDN mirror, then even the IPFS pin), while the
- * onchain proof shard (ethfs) stays lit and keeps resolving the artwork from
+ * STATE shard (SSTORE2) stays lit and keeps resolving the artwork from
  * Ethereum itself. The piece survives even if Perpetual disappears.
  *
  * On-brand: near-black, hairlines, mono, one accent. Restrained dimming + a
@@ -37,7 +37,7 @@ const BACKEND_TO_LAYER: Record<string, Omit<Layer, "key">> = {
   ipfs: { label: "IPFS pin", sub: "operator-maintained pin", operatorDependent: true },
   arweave: { label: "Arweave", sub: "independent permanent net", operatorDependent: false },
   irys: { label: "Irys", sub: "independent permanent net", operatorDependent: false },
-  onchain: { label: "Onchain (ethfs)", sub: "stored in Ethereum state", operatorDependent: false },
+  onchain: { label: "STATE shard (SSTORE2)", sub: "consensus-guaranteed · in contract state", operatorDependent: false },
 };
 
 /** Build the takedown stack: indexer first (always), then operator shards, onchain last and untouchable. */
@@ -296,7 +296,7 @@ export function VanishTest({ token }: { token: Token }) {
                 <p className="text-[12px] leading-relaxed text-muted">
                   Simulate operator shutdown. We take the indexer, CDN, and even
                   the IPFS pin offline, then watch the work keep resolving from
-                  the onchain proof.
+                  the STATE shard (SSTORE2) in Ethereum contract state.
                 </p>
                 <div>
                   <Button

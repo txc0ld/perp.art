@@ -32,9 +32,11 @@ export function PermanenceStep({
   return (
     <div className="space-y-6">
       <p className="max-w-[64ch] text-sm leading-relaxed text-muted">
-        Your work is written across independent permanent backends, each one a
-        complete copy. Should any single network fail, the others, and the onchain
-        proof beneath them all, hold the work intact.
+        Your work is written across five parallel shards. The STATE shard
+        (SSTORE2) is the consensus-guaranteed backstop — always on. The LOG
+        shard holds the high-resolution primary copy via LogLedger. IPFS,
+        Arweave, and Irys add redundant permanent copies. Should any individual
+        layer fail, the STATE shard holds the work intact.
       </p>
 
       <div className="grid gap-3.5">

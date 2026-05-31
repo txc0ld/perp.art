@@ -23,7 +23,7 @@ export function PermanenceBand({ stats }: { stats: MarketStats }) {
             <StatusGlyph status="verified" />
           </span>
           <p className="max-w-2xl text-[15px] leading-relaxed text-foreground">
-            Every work is written across four independent immutable backends and anchored by an onchain proof. It survives even if Perpetual disappears. That is the only guarantee we make, and we make it provable.
+            Every work is stored across five parallel shards — including a consensus-guaranteed STATE shard written on-chain via SSTORE2 — and survives even if Perpetual disappears. That is the only guarantee we make, and we make it provable.
           </p>
         </div>
 

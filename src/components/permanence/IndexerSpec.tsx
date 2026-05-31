@@ -31,8 +31,8 @@ record mint {
 
 record shard_status {
   token_id       uint256
-  index          uint8        # 0 = onchain proof (mandatory)
-  backend        enum         # onchain | ipfs | arweave | irys | cdn
+  index          uint8        # 0 = STATE (SSTORE2, mandatory) · 1 = LOG (LogLedger)
+  backend        enum         # onchain | log | ipfs | arweave | irys | cdn
   resolves       bool
   hash_matches   bool         # hash(content) == mint.metadata_hash
   locked         bool         # isLocked(tokenId)

@@ -33,7 +33,7 @@ import { Callout, DefRow, DocSection, Term } from "@/components/docs/DocsKit";
 export const metadata: Metadata = {
   title: "Documentation - Perpetual",
   description:
-    "The definitive guide to how Perpetual works: the four-shard permanence model with a mandatory onchain proof, nine supported networks, NFT-for-NFT and criteria swaps, atomic cross-chain settlement, enforced ERC-2981 royalties, ENS identities, the Permanence Score, the Vanish Test, the Certificate of Permanence, sovereign contracts, and a rebuildable, public-data indexer.",
+    "The definitive guide to how Perpetual works: the five-shard permanence model — a mandatory SSTORE2 STATE shard plus a high-res LOG shard and three permanent off-chain copies — nine supported networks, NFT-for-NFT and criteria swaps, atomic cross-chain settlement, enforced ERC-2981 royalties, ENS identities, the Permanence Score, the Vanish Test, the Certificate of Permanence, sovereign contracts, and a rebuildable, public-data indexer.",
 };
 
 export default function DocsPage() {
@@ -154,38 +154,47 @@ export default function DocsPage() {
               id="permanence"
               index="02"
               eyebrow="The storage model"
-              title="Four immutable copies. One mandatory backstop."
+              title="Five parallel shards. One consensus-guaranteed backstop."
               lede={
                 <>
-                  Each token carries parallel, immutable versions of its artwork,
-                  called shards, across independent storage backends. Three add
-                  resolution and redundancy. <Term>shard 0</Term>, the onchain
-                  proof, carries the guarantee on its own.
+                  Each token carries five parallel, independently-verifiable
+                  shards across independent storage backends. Four add resolution
+                  and redundancy. <Term>shard 0</Term> — the STATE shard, written
+                  on-chain via <Term>SSTORE2</Term> — is the only one permanence
+                  actually requires.
                 </>
               }
             >
               <div className="rounded-[10px] border border-border bg-surface px-5 py-2 sm:px-6">
-                <DefRow term="shard 0 · ethfs" glyph={<StatusGlyph status="verified" />}>
-                  The onchain proof. A fully onchain copy stored via the Ethereum
-                  File System (<Term>ethfs</Term>). It survives as long as
-                  Ethereum and is always a valid fallback.{" "}
+                <DefRow term="shard 0 · STATE (SSTORE2)" glyph={<StatusGlyph status="verified" />}>
+                  The consensus-guaranteed backstop. A low-res canonical image
+                  written on-chain as contract bytecode via <Term>SSTORE2</Term>{" "}
+                  inside the ForeverLibrary contract. Its content hash is computed
+                  on-chain. Lives in contract state — cannot be pruned.{" "}
                   <span className="text-foreground">
                     Mandatory for every listed token.
                   </span>
                 </DefRow>
-                <DefRow term="shard 1 · IPFS" glyph={<StatusGlyph status="verified" />}>
-                  Content-addressed high-resolution media, referenced by{" "}
-                  <Term>CID</Term>. Fast to serve; backstopped if a pin ever
-                  lapses.
+                <DefRow term="shard 1 · LOG (LogLedger)" glyph={<StatusGlyph status="verified" />}>
+                  The high-resolution primary copy. Full-resolution media stored
+                  cheaply in event logs via a standalone <Term>LogLedger</Term>{" "}
+                  contract (~8 gas/byte); only a Merkle root + size live in
+                  contract state. Root-verifiable by anyone; retention-monitored
+                  (nodes may prune historical logs per EIP-4444), backstopped by
+                  the STATE shard. Cost-efficient, not consensus-guaranteed.
                 </DefRow>
-                <DefRow term="shard 2 · Arweave" glyph={<StatusGlyph status="verified" />}>
-                  Pay-once permanent storage. An architecturally distinct, second
-                  permanence layer.
+                <DefRow term="shard 2 · IPFS" glyph={<StatusGlyph status="verified" />}>
+                  Content-addressed redundant off-chain copy, pinned via Pinata,
+                  referenced by <Term>CID</Term>. Fast to serve; backstopped if a
+                  pin ever lapses.
                 </DefRow>
-                <DefRow term="shard 3 · Irys" glyph={<StatusGlyph status="verified" />}>
-                  Additional permanent redundancy on the Datachain. The model is
-                  extensible: a CDN shard can be added for speed without weakening
-                  the guarantee, because <Term>shard 0</Term> always backstops.
+                <DefRow term="shard 3 · Arweave" glyph={<StatusGlyph status="verified" />}>
+                  Pay-once permanent storage. An architecturally distinct,
+                  independent permanence layer.
+                </DefRow>
+                <DefRow term="shard 4 · Irys" glyph={<StatusGlyph status="verified" />}>
+                  Additional permanent redundancy on the Datachain. A separate
+                  operator and separate failure domain from Arweave.
                 </DefRow>
               </div>
 
@@ -211,10 +220,12 @@ export default function DocsPage() {
               </p>
 
               <Callout label="Why shard 0 is the guarantee" accent>
-                Because the onchain proof carries permanence on its own, our IPFS
-                and CDN costs are performance optimizations, not permanence
-                obligations. If Perpetual stops paying for pinning, permanence is
-                unaffected. Permanence is decoupled from operator solvency.
+                Because the STATE shard (SSTORE2) is consensus-guaranteed and
+                lives in contract state, it is the permanence backstop on its own.
+                The LOG shard and off-chain copies are cost-efficient performance
+                and redundancy layers, not permanence obligations. If Perpetual
+                stops paying for pinning, permanence is unaffected. Permanence is
+                decoupled from operator solvency.
               </Callout>
 
               <p className="text-sm">
@@ -562,11 +573,11 @@ export default function DocsPage() {
                   <span className="mt-0.5 font-mono text-[12px] text-accent">02</span>
                   <p>
                     <span className="text-foreground">Mint with shards.</span>{" "}
-                    Upload your work, set the royalty, and configure permanence.
-                    The mandatory <Term>shard 0</Term> onchain proof is
-                    auto-configured; IPFS, Arweave, and Irys shards are added by
-                    default. Optionally lock the shards for guaranteed
-                    immutability.
+                    Upload your work (up to ~100 MB), set the royalty, and
+                    configure permanence. The mandatory <Term>shard 0</Term>{" "}
+                    STATE shard (SSTORE2) is auto-configured; the LOG shard plus
+                    IPFS, Arweave, and Irys copies are added by default.
+                    Optionally lock the shards for guaranteed immutability.
                   </p>
                 </li>
                 <li className="flex gap-4">

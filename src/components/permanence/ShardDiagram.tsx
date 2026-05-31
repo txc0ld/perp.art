@@ -1,7 +1,8 @@
 /**
  * ShardDiagram - the URI sharding model rendered as a layered CSS diagram
- * (PRD §7.2). No images. Four stacked shard planes; Shard 0 is the load-bearing
- * onchain backstop and is visually emphasized as the permanence guarantor.
+ * (PRD §7.2). No images. Five shard planes; Shard 0 (STATE/SSTORE2) is the
+ * load-bearing onchain backstop and is visually emphasized as the permanence
+ * guarantor.
  *
  * Server component - static, no interactivity.
  */
@@ -20,31 +21,38 @@ type Shard = {
 const SHARDS: Shard[] = [
   {
     index: 0,
-    name: "Onchain proof",
-    backend: "ethfs",
-    plain: "A full copy of the artwork written into Ethereum itself.",
-    detail: "shard0Configured(tokenId) · mandatory · survives as long as Ethereum",
+    name: "STATE",
+    backend: "SSTORE2",
+    plain: "Low-res canonical image written on-chain as contract bytecode via SSTORE2. Content hash computed on-chain. Consensus-guaranteed — lives in contract state, cannot be pruned.",
+    detail: "shard0Configured(tokenId) · mandatory · consensus-guaranteed",
     mandatory: true,
   },
   {
     index: 1,
-    name: "IPFS",
-    backend: "content-addressed",
-    plain: "High-resolution media, addressed by the hash of its own content.",
-    detail: "CID = hash(content) · auto-pinned · performance, not permanence",
+    name: "LOG",
+    backend: "LogLedger",
+    plain: "Full-resolution primary copy stored in event logs via a standalone LogLedger contract (~8 gas/byte). Merkle root + size live in contract state; root-verifiable by anyone.",
+    detail: "Merkle-verified · retention-monitored (EIP-4444) · not consensus-guaranteed",
   },
   {
     index: 2,
+    name: "IPFS",
+    backend: "content-addressed",
+    plain: "Redundant off-chain copy, pinned via Pinata, addressed by the hash of its own content.",
+    detail: "CID = hash(content) · auto-pinned · backstopped by STATE",
+  },
+  {
+    index: 3,
     name: "Arweave",
     backend: "permaweb",
     plain: "Pay-once permanent storage on an independent network.",
     detail: "confirmed permanent · endowment-funded · independent of Perpetual",
   },
   {
-    index: 3,
+    index: 4,
     name: "Irys",
     backend: "datachain",
-    plain: "A second permanent network, for redundant independence.",
+    plain: "A second permanent off-chain network, for redundant independence.",
     detail: "confirmed · separate operator · separate failure domain",
   },
 ];
@@ -104,7 +112,7 @@ export function ShardDiagram() {
           })}
         </div>
         <p className="mt-4 text-center font-mono text-[10px] uppercase tracking-wider text-faint">
-          Four parallel immutable copies · one mandatory backstop
+          Five parallel shards · one consensus-guaranteed STATE backstop
         </p>
       </div>
 

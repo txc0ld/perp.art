@@ -43,7 +43,7 @@ export function DocSection({
   );
 }
 
-// Inline monospace technical term (ethfs, ERC-2981, CID, shard 0, ...).
+// Inline monospace technical term (SSTORE2, ERC-2981, CID, shard 0, ...).
 export function Term({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <code
