@@ -6,6 +6,14 @@ import { cn, hashSeed, shortHash } from "@/lib/utils";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { Button, ButtonLink, MonoLabel, Badge, Divider, StatusGlyph } from "@/components/ui";
 import { explorerTx } from "@/lib/web3/contracts";
+import type { ShardRecord } from "./useOnchainMint";
+
+const REAL_SHARD_LABEL: Record<string, string> = {
+  onchain: "Onchain proof (ethfs)",
+  ipfs: "IPFS",
+  arweave: "Arweave",
+  irys: "Irys",
+};
 import type { MintForm } from "./state";
 import { previewSeed } from "./state";
 
@@ -40,6 +48,8 @@ export function MintSuccess({
   onReset,
   txHash,
   chainId,
+  tokenId,
+  shards,
 }: {
   form: MintForm;
   shardOptions: ShardOption[];
@@ -47,6 +57,8 @@ export function MintSuccess({
   /** Set when the mint was a real on-chain transaction. */
   txHash?: `0x${string}`;
   chainId?: number;
+  tokenId?: string;
+  shards?: ShardRecord[];
 }) {
   const seed = previewSeed(form);
   const artifacts = React.useMemo(() => deriveTokenArtifacts(form), [form]);
@@ -98,7 +110,7 @@ export function MintSuccess({
         </div>
         <div className="flex items-center justify-between">
           <span className="truncate text-sm text-foreground">{form.title || "Untitled"}</span>
-          <span className="font-mono text-[11px] text-faint">#{artifacts.tokenId}</span>
+          <span className="font-mono text-[11px] text-faint">#{tokenId ?? artifacts.tokenId}</span>
         </div>
       </div>
 
@@ -128,34 +140,60 @@ export function MintSuccess({
         <div className="rounded-[8px] border border-border bg-surface-2/40 p-5">
           <MonoLabel className="text-faint">Permanence shards</MonoLabel>
           <ul className="mt-3 space-y-2.5">
-            {selected.map((o, i) => {
-              const isVerified = i < verified;
-              return (
-                <li
-                  key={o.backend}
-                  className="flex items-center justify-between gap-3"
-                >
-                  <span className="flex items-center gap-2.5">
-                    <span className="font-mono text-[10px] text-faint tabular-nums">
-                      SHARD {i}
+            {shards
+              ? shards.map((s, i) => (
+                  <li key={s.backend} className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2.5">
+                      <span className="font-mono text-[10px] text-faint tabular-nums">SHARD {i}</span>
+                      <span className="font-mono text-[13px] text-foreground">{REAL_SHARD_LABEL[s.backend]}</span>
                     </span>
-                    <span className="font-mono text-[13px] text-foreground">{o.label}</span>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    {isVerified ? (
-                      <>
-                        <span className="font-mono text-[11px] text-muted animate-fade">
-                          {o.mandatory ? "stored onchain" : "confirmed"}
-                        </span>
-                        <StatusGlyph status="verified" />
-                      </>
-                    ) : (
-                      <span className="font-mono text-[11px] text-faint">writing…</span>
-                    )}
-                  </span>
-                </li>
-              );
-            })}
+                    <span className="flex items-center gap-2">
+                      {s.gateway && (
+                        <a
+                          href={s.gateway}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[10px] uppercase tracking-wider text-faint underline-offset-2 transition-colors hover:text-accent hover:underline"
+                        >
+                          view
+                        </a>
+                      )}
+                      <span className="font-mono text-[11px] uppercase tracking-wider">
+                        {s.recorded ? (
+                          <span className="text-accent">onchain</span>
+                        ) : s.stored ? (
+                          <span className="text-verify">stored</span>
+                        ) : (
+                          <span className="text-faint">{/not set|not configured/i.test(s.error || "") ? "not set" : "skipped"}</span>
+                        )}
+                      </span>
+                      {(s.recorded || s.stored) && <StatusGlyph status="verified" />}
+                    </span>
+                  </li>
+                ))
+              : selected.map((o, i) => {
+                  const isVerified = i < verified;
+                  return (
+                    <li key={o.backend} className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-2.5">
+                        <span className="font-mono text-[10px] text-faint tabular-nums">SHARD {i}</span>
+                        <span className="font-mono text-[13px] text-foreground">{o.label}</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        {isVerified ? (
+                          <>
+                            <span className="font-mono text-[11px] text-muted animate-fade">
+                              {o.mandatory ? "stored onchain" : "confirmed"}
+                            </span>
+                            <StatusGlyph status="verified" />
+                          </>
+                        ) : (
+                          <span className="font-mono text-[11px] text-faint">writing…</span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
           </ul>
         </div>
 

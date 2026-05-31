@@ -4,7 +4,7 @@ import * as React from "react";
 import type { Genre, ShardOption } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWallet, connectWallet } from "@/lib/wallet";
-import { useOnchainMint } from "./useOnchainMint";
+import { useOnchainMint, type ShardRecord } from "./useOnchainMint";
 import { chainLabelForId } from "@/lib/web3/contracts";
 import { Button, MonoLabel, Surface } from "@/components/ui";
 import { Stepper } from "./Stepper";
@@ -65,13 +65,23 @@ export function MintWizard({
   const [stepIndex, setStepIndex] = React.useState(0);
   const [furthest, setFurthest] = React.useState(0);
   const [minted, setMinted] = React.useState(false);
-  const [submitting, setSubmitting] = React.useState(false);
-  const [txHash, setTxHash] = React.useState<`0x${string}` | undefined>();
-  const [mintError, setMintError] = React.useState<string | undefined>();
 
   const set = React.useCallback((patch: Partial<MintForm>) => {
     setForm((f) => ({ ...f, ...patch }));
   }, []);
+
+  const busy =
+    onchain.phase === "storing" ||
+    onchain.phase === "minting" ||
+    onchain.phase === "recording";
+
+  // Advance to the success screen once the on-chain sequence completes.
+  React.useEffect(() => {
+    if (onchain.phase === "done") {
+      const t = setTimeout(() => setMinted(true), 0);
+      return () => clearTimeout(t);
+    }
+  }, [onchain.phase]);
 
   const step = STEPS[stepIndex];
   const copy = STEP_COPY[step.key];
@@ -95,26 +105,12 @@ export function MintWizard({
       connectWallet();
       return;
     }
-    setMintError(undefined);
-
-    // Real on-chain mint when a Forever Library is deployed on the connected
-    // chain; otherwise a simulated mint (the contracts live on testnets today).
+    // Real, multi-shard on-chain mint when a contract is deployed on the
+    // connected chain; otherwise a simulated mint (mainnets have none yet).
     if (onchain.canMintOnchain) {
-      setSubmitting(true);
-      try {
-        const hash = await onchain.mint(form);
-        setTxHash(hash);
-        setMinted(true);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Mint failed.";
-        // Trim noisy wallet-rejection messages to something human.
-        setMintError(/denied|rejected/i.test(msg) ? "Transaction rejected in wallet." : msg.split("\n")[0]);
-      } finally {
-        setSubmitting(false);
-      }
+      await onchain.start(form);
       return;
     }
-
     setMinted(true);
   };
 
@@ -123,8 +119,13 @@ export function MintWizard({
     setStepIndex(0);
     setFurthest(0);
     setMinted(false);
-    setTxHash(undefined);
-    setMintError(undefined);
+    onchain.reset();
+  };
+
+  const PHASE_LABEL: Record<string, string> = {
+    storing: "Storing the artwork across shards (IPFS / Arweave / Irys)…",
+    minting: "Writing provenance + the onchain proof. Confirm in your wallet…",
+    recording: "Recording each shard onchain. Confirm in your wallet…",
   };
 
   return (
@@ -142,7 +143,7 @@ export function MintWizard({
         </p>
       </header>
 
-      {!minted && (
+      {!minted && !busy && (
         <div className="mb-8">
           <Stepper current={stepIndex} furthest={furthest} onJump={goTo} />
         </div>
@@ -151,7 +152,23 @@ export function MintWizard({
       {/* Focused surface per step */}
       <Surface className="p-6 sm:p-8 lg:p-10">
         {minted ? (
-          <MintSuccess form={form} shardOptions={shardOptions} onReset={reset} txHash={txHash} chainId={onchain.chainId} />
+          <MintSuccess
+            form={form}
+            shardOptions={shardOptions}
+            onReset={reset}
+            txHash={onchain.mintTxHash}
+            chainId={onchain.chainId}
+            tokenId={onchain.tokenId}
+            shards={onchain.shards.length ? onchain.shards : undefined}
+          />
+        ) : busy ? (
+          <div className="space-y-7">
+            <div className="flex items-center gap-3">
+              <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-verify animate-verify-pulse" aria-hidden />
+              <p className="text-sm text-foreground">{PHASE_LABEL[onchain.phase]}</p>
+            </div>
+            <ShardProgress shards={onchain.shards} />
+          </div>
         ) : (
           <>
             <div className="mb-7">
@@ -180,7 +197,7 @@ export function MintWizard({
       </Surface>
 
       {/* Footer controls */}
-      {!minted && (
+      {!minted && !busy && (
         <div className="mt-6 flex items-center justify-between gap-4">
           <Button
             variant="ghost"
@@ -204,9 +221,9 @@ export function MintWizard({
 
             {isLast ? (
               <div className="flex flex-col items-end gap-1.5">
-                {mintError && (
-                  <span className="max-w-[260px] text-right font-mono text-[11px] leading-tight text-[#fda4af]">
-                    {mintError}
+                {onchain.error && (
+                  <span className="max-w-[280px] text-right font-mono text-[11px] leading-tight text-[#fda4af]">
+                    {onchain.error}
                   </span>
                 )}
                 {wallet.connected && (
@@ -216,14 +233,12 @@ export function MintWizard({
                       : "Simulated — switch to Base Sepolia or Ethereum Sepolia for a real mint"}
                   </span>
                 )}
-                <Button variant="accent" size="lg" onClick={handleMint} disabled={submitting}>
+                <Button variant="accent" size="lg" onClick={handleMint}>
                   {!wallet.connected
                     ? "Connect wallet to mint"
-                    : submitting
-                      ? "Confirm in your wallet…"
-                      : onchain.canMintOnchain
-                        ? "Mint onchain"
-                        : "Mint to permanence"}
+                    : onchain.canMintOnchain
+                      ? "Mint onchain"
+                      : "Mint to permanence"}
                   <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" aria-hidden>
                     <path d="M3 8h9m0 0L8 4m4 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -241,5 +256,39 @@ export function MintWizard({
         </div>
       )}
     </div>
+  );
+}
+
+const SHARD_LABEL: Record<string, string> = {
+  onchain: "Onchain proof (ethfs)",
+  ipfs: "IPFS",
+  arweave: "Arweave",
+  irys: "Irys",
+};
+
+/** Live per-shard storage + on-chain recording status. */
+export function ShardProgress({ shards }: { shards: ShardRecord[] }) {
+  return (
+    <ul className="space-y-2.5">
+      {shards.map((s) => (
+        <li
+          key={s.backend}
+          className="flex items-center justify-between gap-3 rounded-[8px] border border-border bg-surface-2/40 px-4 py-3"
+        >
+          <span className="font-mono text-[13px] text-foreground">{SHARD_LABEL[s.backend]}</span>
+          <span className="font-mono text-[11px] uppercase tracking-wider">
+            {s.recorded ? (
+              <span className="text-accent">recorded onchain</span>
+            ) : s.stored ? (
+              <span className="text-verify">stored</span>
+            ) : (
+              <span className="text-faint">
+                {s.error && /not set|not configured/i.test(s.error) ? "not configured" : "skipped"}
+              </span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }

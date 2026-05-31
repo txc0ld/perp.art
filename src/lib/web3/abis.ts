@@ -19,6 +19,19 @@ export const FOREVER_LIBRARY_ABI = [
   },
   {
     type: "function",
+    name: "configureShard",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "tokenId", type: "uint256" },
+      { name: "index", type: "uint256" },
+      { name: "backend", type: "uint8" },
+      { name: "uri", type: "string" },
+      { name: "contentHash", type: "bytes32" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
     name: "shard0Configured",
     stateMutability: "view",
     inputs: [{ name: "tokenId", type: "uint256" }],
