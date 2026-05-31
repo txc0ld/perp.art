@@ -77,7 +77,7 @@ describe("reconstructFile", () => {
     const { commitment, rawChunks } = fixture();
     await expect(
       reconstructFile({
-        readFile: async () => ({ ...commitment, size: commitment.size + 1n }),
+        readFile: async () => ({ ...commitment, size: commitment.size + BigInt(1) }),
         getChunks: async () => rawChunks,
       }),
     ).rejects.toThrow(/size/i);
