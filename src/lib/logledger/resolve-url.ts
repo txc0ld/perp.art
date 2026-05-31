@@ -5,6 +5,9 @@ export interface ResolveOpts {
   mime?: string;
   /** Chain hint forwarded to the LOG resolver (else inferred from ledger). */
   chainId?: number;
+  /** Content hash, so the LOG resolver can fall back to a re-emitted version
+   *  if the original logs were pruned (same hash → same root). */
+  contentHash?: string;
 }
 
 /**
@@ -21,6 +24,7 @@ export function resolveShardUrl(uri: string, opts: ResolveOpts = {}): string {
     const params = new URLSearchParams();
     if (opts.mime) params.set("mime", opts.mime);
     if (opts.chainId) params.set("chainId", String(opts.chainId));
+    if (opts.contentHash) params.set("contentHash", opts.contentHash);
     const qs = params.toString();
     return `/api/shard/log/${ledger}/${fileId}${qs ? `?${qs}` : ""}`;
   }

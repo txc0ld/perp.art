@@ -1,10 +1,13 @@
 import "server-only";
-import { createPublicClient, http, parseAbiItem, hexToBytes, type Hex, type PublicClient } from "viem";
+import { createPublicClient, http, parseAbiItem, hexToBytes, keccak256, type Hex, type PublicClient } from "viem";
 import { baseSepolia, sepolia } from "viem/chains";
-import { reconstructFile, type RawChunk, type CodecValue } from "@/lib/logledger";
+import { reconstructFile, computeFileId, type RawChunk, type CodecValue } from "@/lib/logledger";
+import { publishToLogLedger } from "@/lib/logledger/relayer";
 import { LOG_LEDGER_ABI } from "@/lib/web3/abis";
 import { getContracts } from "@/lib/web3/contracts";
 import { serverEnv } from "@/lib/env";
+
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 const SUPPORTED = [84532, 11155111] as const;
 const CHAINS: Record<number, typeof baseSepolia | typeof sepolia> = {
@@ -95,47 +98,38 @@ export interface LoadedShard {
   mime: string;
 }
 
-/**
- * Reconstruct + verify a LOG shard from chain. Reads the committed root from
- * every available RPC and requires agreement (a single lying/pruning provider
- * cannot forge the canonical root), then reconstructs from the first provider
- * whose logs verify against it. Throws if unavailable so the caller can fall
- * back to the STATE shard.
- */
-export async function loadAndVerifyLogShard(params: {
-  ledger: Hex;
-  fileId: Hex;
-  chainId?: number;
-  mime?: string;
-}): Promise<LoadedShard> {
-  const chainId = params.chainId ?? chainIdForLedger(params.ledger);
-  const chain = chainId ? CHAINS[chainId] : undefined;
-  if (!chain || !chainId) throw new Error(`unknown LogLedger chain for ${params.ledger}`);
+/** Max re-emitted versions the resolver will probe when the original is gone. */
+const MAX_REEMIT_VERSIONS = 3;
 
-  const clients = rpcsFor(chainId).map(
-    (rpc) => createPublicClient({ chain, transport: http(rpc) }) as PublicClient,
-  );
-
-  // 1) Read commitments from all providers; require root agreement.
+/** Reconstruct + verify ONE fileId across the given providers (root agreement
+ *  + Merkle verify). Throws if that fileId is unavailable. */
+async function loadOneFileId(
+  clients: PublicClient[],
+  ledger: Hex,
+  fileId: Hex,
+  mime?: string,
+): Promise<LoadedShard> {
+  // Read commitments from all providers; require root agreement (a single
+  // lying/pruning provider cannot forge the canonical root).
   const tuples: FileTuple[] = [];
   for (const pub of clients) {
     try {
-      tuples.push(await readFileTuple(pub, params.ledger, params.fileId));
+      tuples.push(await readFileTuple(pub, ledger, fileId));
     } catch {
       /* skip a provider that fails to respond */
     }
   }
   if (tuples.length === 0) throw new Error("log shard: no RPC responded");
-  const roots = new Set(tuples.map((t) => t[0].toLowerCase()));
-  if (roots.size > 1) throw new Error("log shard: RPC root disagreement");
+  if (new Set(tuples.map((t) => t[0].toLowerCase())).size > 1) {
+    throw new Error("log shard: RPC root disagreement");
+  }
   const committed = tuples[0];
   if (!committed[5]) throw new Error("log shard not sealed");
 
-  // 2) Reconstruct from the first provider whose logs verify against the root.
   let lastErr: unknown;
   for (const pub of clients) {
     try {
-      const rawChunks = await readChunks(pub, params.ledger, params.fileId, committed[3], Number(committed[2]));
+      const rawChunks = await readChunks(pub, ledger, fileId, committed[3], Number(committed[2]));
       const bytes = await reconstructFile({
         readFile: async () => ({
           root: committed[0],
@@ -146,12 +140,110 @@ export async function loadAndVerifyLogShard(params: {
         }),
         getChunks: async () => rawChunks,
       });
-      return { bytes, root: committed[0], codec: Number(committed[4]), size: Number(committed[1]), mime: params.mime || sniffMime(bytes) };
+      return { bytes, root: committed[0], codec: Number(committed[4]), size: Number(committed[1]), mime: mime || sniffMime(bytes) };
     } catch (e) {
       lastErr = e;
     }
   }
   throw lastErr instanceof Error ? lastErr : new Error("log shard unavailable");
+}
+
+/**
+ * Reconstruct + verify a LOG shard from chain. Tries the requested fileId first;
+ * if it's unavailable (logs pruned per EIP-4444) and `contentHash` is known,
+ * falls back to re-emitted versions (same bytes → same root → same verification)
+ * so a re-published copy transparently restores the high-res view. Throws if
+ * nothing is recoverable, so the caller can fall back to the STATE shard.
+ */
+export async function loadAndVerifyLogShard(params: {
+  ledger: Hex;
+  fileId: Hex;
+  chainId?: number;
+  mime?: string;
+  contentHash?: Hex;
+}): Promise<LoadedShard> {
+  const chainId = params.chainId ?? chainIdForLedger(params.ledger);
+  const chain = chainId ? CHAINS[chainId] : undefined;
+  if (!chain || !chainId) throw new Error(`unknown LogLedger chain for ${params.ledger}`);
+
+  const clients = rpcsFor(chainId).map(
+    (rpc) => createPublicClient({ chain, transport: http(rpc) }) as PublicClient,
+  );
+
+  const candidates: Hex[] = [params.fileId];
+  const collection = getContracts(chainId).foreverLibrary;
+  if (params.contentHash && collection) {
+    for (let v = 1; v <= MAX_REEMIT_VERSIONS; v++) {
+      candidates.push(computeFileId(collection, params.contentHash, v));
+    }
+  }
+
+  let lastErr: unknown;
+  for (const fid of candidates) {
+    try {
+      return await loadOneFileId(clients, params.ledger, fid, params.mime);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("log shard unavailable");
+}
+
+/**
+ * Re-emission tool (resilience capstone): if a token's LOG copy has been pruned,
+ * re-publish the SAME bytes under a fresh version. Identical bytes → identical
+ * Merkle root → it verifies against the original commitment, so anyone holding
+ * the bytes (from a surviving IPFS/Arweave/Irys copy) can trustlessly restore
+ * the on-chain high-res copy. Fetches from `sourceUrl`, verifies the content
+ * hash before re-emitting, and confirms the re-emitted root equals the original.
+ */
+export async function reEmitLogShard(params: {
+  chainId: number;
+  contentHash: Hex;
+  sourceUrl: string;
+  version?: number;
+}): Promise<{ ok: boolean; fileId?: Hex; version?: number; root?: Hex; matchesOriginal?: boolean; error?: string }> {
+  const { chainId, contentHash, sourceUrl } = params;
+  const chain = CHAINS[chainId];
+  const collection = getContracts(chainId).foreverLibrary;
+  const ledger = getContracts(chainId).logLedger;
+  if (!chain || !collection || !ledger) return { ok: false, error: `LogLedger not configured for chain ${chainId}` };
+
+  try {
+    // 1) Fetch the authentic bytes from a surviving copy and verify the hash.
+    const res = await fetch(sourceUrl);
+    if (!res.ok) return { ok: false, error: `source fetch ${res.status}` };
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (keccak256(bytes).toLowerCase() !== contentHash.toLowerCase()) {
+      return { ok: false, error: "source bytes do not match contentHash" };
+    }
+
+    // 2) Read the original (version 0) commitment: its codec MUST be reused so
+    //    the re-emitted Merkle root reproduces the original exactly.
+    const pub = createPublicClient({ chain, transport: http(rpcsFor(chainId)[0]) }) as PublicClient;
+    const original = await readFileTuple(pub, ledger, computeFileId(collection, contentHash, 0));
+    const originalCodec = Number(original[4]) as CodecValue;
+    const originalRoot = original[0];
+
+    // 3) Pick a fresh (never-opened) version so new logs are actually emitted.
+    let version = params.version;
+    if (version === undefined) {
+      version = MAX_REEMIT_VERSIONS; // fallback to the last slot
+      for (let v = 1; v <= MAX_REEMIT_VERSIONS; v++) {
+        const t = await readFileTuple(pub, ledger, computeFileId(collection, contentHash, v));
+        if ((t[6] as string).toLowerCase() === ZERO_ADDR) { version = v; break; }
+      }
+    }
+
+    // 4) Re-emit with the original codec. Same bytes + same codec → same root.
+    const pubRes = await publishToLogLedger({ chainId, bytes, contentHash, mime: sniffMime(bytes), version, codec: originalCodec });
+    if (!pubRes.ok) return { ok: false, error: pubRes.error };
+
+    const matchesOriginal = originalRoot.toLowerCase() === (pubRes.root ?? "").toLowerCase();
+    return { ok: true, fileId: pubRes.fileId, version, root: pubRes.root, matchesOriginal };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "re-emit failed" };
+  }
 }
 
 /** Lightweight availability probe for the retention job. Never throws. */

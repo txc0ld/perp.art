@@ -155,7 +155,7 @@ export function useOnchainMint() {
       recorded: false,
       uri: log?.uri,
       // Resolve the high-res LOG copy through the reconstruct+verify endpoint.
-      gateway: log?.uri ? resolveShardUrl(log.uri, { mime: originalMime, chainId }) : undefined,
+      gateway: log?.uri ? resolveShardUrl(log.uri, { mime: originalMime, chainId, contentHash }) : undefined,
       error: log?.ok ? undefined : log?.error,
     };
     // Shard 0 (STATE) is written on-chain by mint itself.

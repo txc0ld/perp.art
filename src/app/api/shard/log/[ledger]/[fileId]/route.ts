@@ -42,6 +42,10 @@ export async function GET(
   const mimeParam = url.searchParams.get("mime") ?? undefined;
   const chainParam = url.searchParams.get("chainId");
   const chainId = chainParam ? Number(chainParam) : undefined;
+  // Optional: lets the resolver fall back to a re-emitted version if the
+  // original logs were pruned (same content hash → same Merkle root).
+  const contentHashParam = url.searchParams.get("contentHash");
+  const contentHash = contentHashParam && BYTES32.test(contentHashParam) ? (contentHashParam as Hex) : undefined;
 
   const blobKey = `log-shard/${fileId}.bin`;
   const immutable = "public, max-age=31536000, immutable";
@@ -63,7 +67,7 @@ export async function GET(
   // Miss: reconstruct + verify against the on-chain root.
   let shard;
   try {
-    shard = await loadAndVerifyLogShard({ ledger: ledger as Hex, fileId: fileId as Hex, chainId, mime: mimeParam });
+    shard = await loadAndVerifyLogShard({ ledger: ledger as Hex, fileId: fileId as Hex, chainId, mime: mimeParam, contentHash });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "log shard unavailable" },

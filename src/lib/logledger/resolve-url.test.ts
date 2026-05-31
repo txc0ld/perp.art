@@ -9,11 +9,12 @@ describe("resolveShardUrl", () => {
     expect(resolveShardUrl(`log://${LEDGER}/${FILE}`)).toBe(`/api/shard/log/${LEDGER}/${FILE}`);
   });
 
-  it("forwards mime + chainId as query params", () => {
-    const url = resolveShardUrl(`log://${LEDGER}/${FILE}`, { mime: "image/png", chainId: 84532 });
+  it("forwards mime + chainId + contentHash as query params", () => {
+    const url = resolveShardUrl(`log://${LEDGER}/${FILE}`, { mime: "image/png", chainId: 84532, contentHash: "0xabc" });
     expect(url).toContain(`/api/shard/log/${LEDGER}/${FILE}?`);
     expect(url).toContain("mime=image%2Fpng");
     expect(url).toContain("chainId=84532");
+    expect(url).toContain("contentHash=0xabc");
   });
 
   it("maps ipfs:// to the gateway", () => {

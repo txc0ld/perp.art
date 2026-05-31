@@ -8,7 +8,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia, sepolia } from "viem/chains";
-import { chunkBytes, merkleRoot, compress, computeFileId, pickCodec } from "@/lib/logledger";
+import { chunkBytes, merkleRoot, compress, computeFileId, pickCodec, type CodecValue } from "@/lib/logledger";
 import { LOG_LEDGER_ABI } from "@/lib/web3/abis";
 import { getContracts } from "@/lib/web3/contracts";
 import { serverEnv } from "@/lib/env";
@@ -52,8 +52,13 @@ export async function publishToLogLedger(params: {
   bytes: Uint8Array;
   contentHash: Hex;
   mime: string;
+  /** fileId version (0 at mint; bumped for a re-emission of identical bytes). */
+  version?: number;
+  /** Force a codec (re-emission reuses the original's codec to reproduce the
+   *  exact same Merkle root); defaults to pickCodec(mime). */
+  codec?: CodecValue;
 }): Promise<LogPublishResult> {
-  const { chainId, bytes, contentHash, mime } = params;
+  const { chainId, bytes, contentHash, mime, version = 0 } = params;
   const env = serverEnv();
   const chain = CHAINS[chainId];
   const { logLedger: ledger, foreverLibrary: collection } = getContracts(chainId);
@@ -72,11 +77,11 @@ export async function publishToLogLedger(params: {
     const wallet = createWalletClient({ account, chain, transport });
     const pub = createPublicClient({ chain, transport });
 
-    const codec = pickCodec(mime);
+    const codec = params.codec ?? pickCodec(mime);
     const compressed = compress(bytes, codec);
     const chunks = chunkBytes(compressed);
     const root = merkleRoot(chunks);
-    const fileId = computeFileId(collection, contentHash, 0);
+    const fileId = computeFileId(collection, contentHash, version);
     const uri = `log://${ledger}/${fileId}`;
 
     // Existing state: [root, size, chunks, deployBlock, codec, finalized, author]
