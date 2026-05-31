@@ -1,16 +1,30 @@
 import type { Metadata } from "next";
 import { getCollections, GENRES } from "@/lib/mock-data";
+import { indexedCollections } from "@/lib/web3/indexer";
 import { Section, MonoLabel } from "@/components/ui";
 import { CollectionsBrowser } from "@/components/collections/CollectionsBrowser";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Collections - Perpetual",
   description: "Bodies of permanence-first art, each anchored to immutable storage and independently verifiable.",
 };
 
-/** Collections index - OpenSea-style grid of collection cards from getCollections(). */
-export default function CollectionsPage() {
-  const collections = getCollections();
+/**
+ * Collections index - OpenSea-style grid of collection cards.
+ * Live on-chain collections (Base Sepolia) are prepended to the mock grid.
+ * Live collection slugs (e.g. "onchain-84532") have no dedicated page, so their
+ * cards link to /explore (the merged catalog) instead of /collections/{slug}.
+ */
+export default async function CollectionsPage() {
+  const liveCollections = await indexedCollections(84532);
+  const liveSlugSet = new Set(liveCollections.map((c) => c.slug));
+  const collections = [...liveCollections, ...getCollections()];
+
+  function hrefFor(slug: string): string | undefined {
+    return liveSlugSet.has(slug) ? "/explore" : undefined;
+  }
 
   return (
     <Section>
@@ -23,7 +37,7 @@ export default function CollectionsPage() {
         </p>
       </div>
 
-      <CollectionsBrowser collections={collections} genres={GENRES} />
+      <CollectionsBrowser collections={collections} genres={GENRES} hrefFor={hrefFor} />
     </Section>
   );
 }

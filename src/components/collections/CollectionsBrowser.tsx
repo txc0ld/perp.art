@@ -8,13 +8,19 @@ import { CollectionCard } from "./CollectionCard";
 /**
  * Client browser for the collections index: a category pill row that filters
  * the server-provided collection list, rendered into a dense responsive grid.
+ *
+ * `hrefFor` optionally overrides the link href per collection slug — used to
+ * send live on-chain collections (no dedicated page) to `/explore` instead of
+ * their slug route (which would 404).
  */
 export function CollectionsBrowser({
   collections,
   genres,
+  hrefFor,
 }: {
   collections: Collection[];
   genres: Genre[];
+  hrefFor?: (slug: string) => string | undefined;
 }) {
   const [genre, setGenre] = React.useState<Genre | "all">("all");
 
@@ -45,7 +51,7 @@ export function CollectionsBrowser({
         <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {results.map((c, i) => (
             <div key={c.slug} className="h-full animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
-              <CollectionCard collection={c} />
+              <CollectionCard collection={c} href={hrefFor?.(c.slug)} />
             </div>
           ))}
         </div>
