@@ -73,6 +73,66 @@ export const FOREVER_LIBRARY_ABI = [
       { name: "blockNumber", type: "uint64", indexed: false },
     ],
   },
+  {
+    type: "function", name: "ownerOf", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function", name: "isLocked", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function", name: "selectedShardIndex", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function", name: "shardCount", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function", name: "shardBackend", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }, { name: "index", type: "uint256" }],
+    outputs: [{ name: "", type: "uint8" }],
+  },
+  {
+    type: "function", name: "shardContentHash", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }, { name: "index", type: "uint256" }],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+  {
+    type: "function", name: "getMintData", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{
+      name: "", type: "tuple",
+      components: [
+        { name: "creator", type: "address" },
+        { name: "timestamp", type: "uint64" },
+        { name: "blockNumber", type: "uint64" },
+        { name: "artistName", type: "string" },
+        { name: "title", type: "string" },
+        { name: "mediaType", type: "string" },
+        { name: "royaltyBps", type: "uint96" },
+        { name: "metadataHash", type: "bytes32" },
+      ],
+    }],
+  },
+  {
+    type: "function", name: "royaltyInfo", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }, { name: "salePrice", type: "uint256" }],
+    outputs: [{ name: "receiver", type: "address" }, { name: "amount", type: "uint256" }],
+  },
+  {
+    type: "event", name: "Transfer",
+    inputs: [
+      { name: "from", type: "address", indexed: true },
+      { name: "to", type: "address", indexed: true },
+      { name: "tokenId", type: "uint256", indexed: true },
+    ],
+  },
 ] as const;
 
 /** LogLedger: cheap on-chain media storage via event logs (Plan 1 contract). */
