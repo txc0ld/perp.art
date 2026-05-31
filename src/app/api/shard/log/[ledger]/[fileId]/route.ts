@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
-import { list, put } from "@vercel/blob";
+import { head, put } from "@vercel/blob";
 import type { Hex } from "viem";
 import { loadAndVerifyLogShard } from "@/lib/logledger/resolve";
+
+/** Deterministic public Blob URL for a cached LOG shard (host derived from the
+ *  store id). Vercel Blob `head`/fetch on a known URL is strongly consistent,
+ *  unlike `list` (eventually consistent), so cache hits are reliable. */
+function cachedBlobUrl(fileId: string): string | undefined {
+  const storeId = process.env.BLOB_STORE_ID;
+  if (!storeId) return undefined;
+  const host = `${storeId.replace(/^store_/, "").toLowerCase()}.public.blob.vercel-storage.com`;
+  return `https://${host}/log-shard/${fileId}.bin`;
+}
 
 /**
  * GET /api/shard/log/[ledger]/[fileId]
@@ -36,17 +46,18 @@ export async function GET(
   const blobKey = `log-shard/${fileId}.bin`;
   const immutable = "public, max-age=31536000, immutable";
 
-  // Cache hit: serve straight from the Blob CDN.
-  try {
-    const { blobs } = await list({ prefix: blobKey, limit: 1 });
-    if (blobs.length > 0) {
-      return NextResponse.redirect(blobs[0].url, {
+  // Cache hit: serve straight from the Blob CDN (strongly-consistent head()).
+  const knownUrl = cachedBlobUrl(fileId);
+  if (knownUrl) {
+    try {
+      await head(knownUrl);
+      return NextResponse.redirect(knownUrl, {
         status: 302,
         headers: { "Cache-Control": immutable, "X-Log-Status": "cached" },
       });
+    } catch {
+      /* not cached yet; fall through to reconstruct */
     }
-  } catch {
-    /* cache check best-effort; fall through to reconstruct */
   }
 
   // Miss: reconstruct + verify against the on-chain root.
