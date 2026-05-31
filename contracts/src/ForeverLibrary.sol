@@ -67,10 +67,9 @@ contract ForeverLibrary is
         ShardBackend backend;
         bytes32 contentHash; // keccak256 of shard content for verification (PRD §9.4).
         string uri;          // resolvable locator (data URI / CID / Arweave tx / Irys id).
-        // For onchain (ethfs) shards, `uri` may be derived from an ethfs
-        // pointer; the raw bytes live in the ethfs FileStore. Deep ethfs
-        // encoding/chunking is out of scope for this scaffold:
-        // ...
+        // For the mandatory onchain shard (Shard 0) `uri` is empty: the raw
+        // low-res bytes live in an SSTORE2 data contract and the resolvable
+        // `data:` URI is rebuilt on demand in `_stateDataUri`.
     }
 
     /// @dev Max bytes for the on-chain STATE proof. Kept under the EIP-170
@@ -191,9 +190,8 @@ contract ForeverLibrary is
 
     /// @notice Mint a new token, writing its immutable provenance record and
     ///         (atomically) its mandatory onchain proof shard (PRD §7.4, §7.2).
-    /// @dev    Reverts unless `proofBackend == ShardBackend.Onchain` so that
-    ///         Shard 0 is always the ethfs onchain proof (PRD §7.3 mandatory
-    ///         onchain proof). Sets ERC-2981 royalty from `royaltyBps`.
+    /// @dev    Shard 0 is always written via SSTORE2 (on-chain bytes); empty or
+    ///         oversized `proofData` reverts. Sets ERC-2981 royalty from `royaltyBps`.
     /// @param to              recipient / creator of the token.
     /// @param artistName      human-readable artist name (provenance).
     /// @param title           work title (provenance).
@@ -203,10 +201,10 @@ contract ForeverLibrary is
     /// @param proofData       raw low-res canonical bytes for the on-chain STATE
     ///        proof shard (Shard 0); stored via SSTORE2, hashed on-chain. Must be
     ///        1..MAX_PROOF_BYTES bytes.
-    /// @return tokenId        the newly minted token id.
     /// @param hostingFeeBps_  0 == artist pre-pays storage (must send >=
     ///        storageFeeWei, token is fee-exempt on resale); >0 (<= MAX) ==
     ///        Perpetual hosts storage and earns this fee on every future sale.
+    /// @return tokenId        the newly minted token id.
     function mint(
         address to,
         string calldata artistName,
@@ -420,7 +418,7 @@ contract ForeverLibrary is
     /// @inheritdoc IForeverLibrary
     function shardURI(uint256 tokenId, uint256 index) external view returns (string memory) {
         if (index >= _shards[tokenId].length) revert ShardIndexOutOfRange();
-        if (index == 0) return _stateDataURI(tokenId);
+        if (index == 0) return _stateDataUri(tokenId);
         return _shards[tokenId][index].uri;
     }
 
@@ -455,7 +453,7 @@ contract ForeverLibrary is
         uint256 idx = _selectedShardIndex[tokenId];
         Shard[] storage shards = _shards[tokenId];
         if (idx >= shards.length) idx = 0;
-        if (idx == 0) return _stateDataURI(tokenId);
+        if (idx == 0) return _stateDataUri(tokenId);
         return shards[idx].uri;
     }
 
@@ -482,7 +480,7 @@ contract ForeverLibrary is
 
     /// @dev Build Shard 0's on-chain data URI from the SSTORE2-stored bytes and
     ///      the token's recorded media type. Zero external dependencies.
-    function _stateDataURI(uint256 tokenId) internal view returns (string memory) {
+    function _stateDataUri(uint256 tokenId) internal view returns (string memory) {
         bytes memory data = SSTORE2.read(_statePointer[tokenId]);
         return string.concat(
             "data:",
