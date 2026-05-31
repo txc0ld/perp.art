@@ -20,7 +20,7 @@ const isServer = typeof window === "undefined";
 // ---------------------------------------------------------------------------
 
 export const publicEnv = {
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://perpetual.art",
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://tryperpetual.art",
   appEnv: (process.env.NEXT_PUBLIC_APP_ENV ?? "development") as
     | "development"
     | "preview"
@@ -98,7 +98,7 @@ export function getEthfsAddress(chain: Chain): string | undefined {
  */
 export function isLiveBackend(): boolean {
   const url = publicEnv.indexerUrl;
-  return Boolean(url) && url !== "https://api.perpetual.art";
+  return Boolean(url) && url !== "https://api.tryperpetual.art";
 }
 
 // ---------------------------------------------------------------------------

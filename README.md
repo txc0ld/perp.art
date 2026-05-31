@@ -1,13 +1,13 @@
 <div align="center">
 
-# perpetual.art
+# tryperpetual.art
 
 ### Art, engineered to outlast everything.
 
 A permanence-first NFT marketplace with OpenSea-grade trading UX, built on a single
 guarantee: **the artwork is provably permanent and survives even if the operator disappears.**
 
-[**Live demo**](https://perpetual-art-tx-build.vercel.app) · [Features](./docs/FEATURES.md) · [Architecture](./docs/ARCHITECTURE.md) · [Indexer spec](./docs/INDEXER_SPEC.md) · [Contracts](./contracts/README.md) · [Go-live checklist](./docs/GO-LIVE.md)
+[**Live demo**](https://tryperpetual.art) · [Features](./docs/FEATURES.md) · [Architecture](./docs/ARCHITECTURE.md) · [Indexer spec](./docs/INDEXER_SPEC.md) · [Contracts](./contracts/README.md) · [Go-live checklist](./docs/GO-LIVE.md)
 
 `Next.js 16` · `React 19` · `Tailwind v4` · `TypeScript`
 
@@ -18,7 +18,7 @@ guarantee: **the artwork is provably permanent and survives even if the operator
 ## The thesis
 
 Every other marketplace's NFTs break when storage fails. IPFS pins lapse, metadata servers
-go offline, hosting companies fold, and the token is left pointing at nothing. perpetual.art
+go offline, hosting companies fold, and the token is left pointing at nothing. tryperpetual.art
 closes that gap: every work keeps parallel, immutable copies across **onchain (ethfs), IPFS,
 Arweave, and Irys**, backstopped by a mandatory onchain proof shard that lasts as long as
 Ethereum itself.
@@ -63,7 +63,7 @@ artifacts (smart-contract interfaces and the indexer specification).
   across an escrow bridge (lock on chain A, release on chain B, rollback on failure), with a flat
   bridge fee shown at the point of trade.
 - A **Permanence Status panel** on every token: per-shard live verification, each row linking to
-  its raw public source, closing on *"This artwork survives even if perpetual.art disappears."*
+  its raw public source, closing on *"This artwork survives even if tryperpetual.art disappears."*
 - A **Permanence Score**: a data-backed A+ grade per token (badge + detail card), plus a portfolio
   **Permanence Report** on the profile.
 - **The Vanish Test**: an interactive proof on each token page that takes the operator layers
@@ -193,7 +193,7 @@ The repository root is the application root.
 vercel --prod
 ```
 
-Live: **https://perpetual-art-tx-build.vercel.app**
+Live: **https://tryperpetual.art**
 
 ---
 

@@ -28,6 +28,7 @@ export function useWallet(): WalletState {
 }
 
 /** Open the connect modal. The optional arg is ignored (the modal lists all wallets). */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function connectWallet(_connector?: string): void {
   appKitModal?.open();
 }

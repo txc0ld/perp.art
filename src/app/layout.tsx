@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   title: "Perpetual - Art, engineered to outlast everything",
   description:
     "A permanence-first NFT marketplace. Every artwork is provably permanent across onchain, IPFS, Arweave, and Irys - it survives even if Perpetual disappears.",
-  metadataBase: new URL("https://perpetual.art"),
+  metadataBase: new URL("https://tryperpetual.art"),
   openGraph: {
     title: "Perpetual - Art, engineered to outlast everything",
     description:
