@@ -68,6 +68,7 @@ export default async function Home({
 
   return (
     <>
+      <h1 className="sr-only">Perpetual — permanence-first NFT marketplace</h1>
       <HeroFeature feature={heroFeature} />
 
       <CategoryPills genres={GENRES} active={activeGenre} />

@@ -26,7 +26,7 @@ export default function ConnectPage() {
         className="pointer-events-none absolute inset-0 -z-10 opacity-[0.04]"
         style={{
           backgroundImage:
-            "linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)",
+            "linear-gradient(to right, var(--color-foreground) 1px, transparent 1px), linear-gradient(to bottom, var(--color-foreground) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
           maskImage: "radial-gradient(70% 60% at 50% 45%, black, transparent)",
           WebkitMaskImage: "radial-gradient(70% 60% at 50% 45%, black, transparent)",

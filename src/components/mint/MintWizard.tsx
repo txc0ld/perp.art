@@ -225,7 +225,7 @@ export function MintWizard({
             {isLast ? (
               <div className="flex flex-col items-end gap-1.5">
                 {onchain.error && (
-                  <span className="max-w-[280px] text-right font-mono text-[11px] leading-tight text-[#fda4af]">
+                  <span className="max-w-[280px] text-right font-mono text-[11px] leading-tight text-error">
                     {onchain.error}
                   </span>
                 )}

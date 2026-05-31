@@ -63,7 +63,7 @@ export function Accordion({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={id}
-        className="flex min-h-[56px] w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-surface-2 sm:px-5"
+        className="flex min-h-[56px] w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 sm:px-5"
       >
         {icon && <span className="flex shrink-0 items-center">{icon}</span>}
         <span className="flex min-w-0 flex-col">

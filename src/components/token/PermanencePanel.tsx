@@ -128,7 +128,7 @@ function PermRow({
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className={cn(base, motion, "hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none")}
+        className={cn(base, motion, "hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60")}
         style={style}
         title="Open the raw public source to verify independently"
         data-index={index}

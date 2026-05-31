@@ -39,10 +39,15 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
   const valid = Number.isFinite(parsed) && parsed > 0;
   const showError = touched && amount.length > 0 && !valid;
 
-  // Focus the amount field on open; return focus to the opener on close.
+  // Focus the dialog on open (screen-reader hand-off), then the amount field.
+  // Return focus to the opener on close.
   React.useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    amountRef.current?.focus();
+    if (amountRef.current) {
+      amountRef.current.focus();
+    } else {
+      dialogRef.current?.focus();
+    }
     return () => opener?.focus?.();
   }, []);
 
@@ -106,7 +111,8 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
         role="dialog"
         aria-modal="true"
         aria-label="Make an offer"
-        className="animate-rise relative flex max-h-[90dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-[8px] border border-border-bright bg-surface shadow-2xl"
+        tabIndex={-1}
+        className="animate-rise relative flex max-h-[90dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-[8px] border border-border-bright bg-surface shadow-2xl outline-none"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
@@ -117,7 +123,7 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
             type="button"
             onClick={onClose}
             disabled={phase === "signing"}
-            className="flex h-9 w-9 items-center justify-center rounded-[8px] text-faint transition-colors hover:text-foreground disabled:opacity-30"
+            className="flex h-9 w-9 items-center justify-center rounded-[8px] text-faint transition-colors hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             aria-label="Close"
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" aria-hidden>
@@ -175,7 +181,7 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
                   className={cn(
                     "flex items-center gap-2 rounded-[8px] border bg-surface-2 px-3.5 transition-colors",
                     "focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/30",
-                    showError ? "border-[#fda4af]/60" : "border-border",
+                    showError ? "border-error/60" : "border-border",
                   )}
                 >
                   <input
@@ -192,12 +198,12 @@ export function OfferModal({ token, onClose }: { token: Token; onClose: () => vo
                     aria-invalid={showError}
                     aria-describedby={showError ? errorId : undefined}
                     placeholder="0.000"
-                    className="w-full bg-transparent py-3 font-mono text-[16px] tabular-nums text-foreground placeholder:text-faint focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full bg-transparent py-3 font-mono text-[16px] tabular-nums text-foreground placeholder:text-faint focus-visible:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <span className="whitespace-nowrap font-mono text-[13px] text-muted">{currency}</span>
                 </div>
                 {showError && (
-                  <p id={errorId} className="font-mono text-[11px] text-[#fda4af]">
+                  <p id={errorId} className="font-mono text-[11px] text-error">
                     Enter an amount greater than 0.
                   </p>
                 )}

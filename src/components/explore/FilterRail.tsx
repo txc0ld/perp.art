@@ -233,7 +233,7 @@ function PriceInput({
         // permit only numeric / decimal input
         if (v === "" || /^\d*\.?\d*$/.test(v)) onChange(v);
       }}
-      className="h-9 w-full min-w-0 rounded-[8px] border border-border bg-surface px-3 font-mono text-sm tabular-nums text-foreground placeholder:text-faint focus:border-accent/50 focus:outline-none"
+      className="h-9 w-full min-w-0 rounded-[8px] border border-border bg-surface px-3 font-mono text-sm tabular-nums text-foreground placeholder:text-faint focus-visible:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       aria-label={`${placeholder} price in ETH`}
     />
   );

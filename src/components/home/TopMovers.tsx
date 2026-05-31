@@ -37,7 +37,7 @@ export function TopMovers({ movers }: { movers: CollectionRanking[] }) {
                   <span
                     className={cn(
                       "shrink-0 whitespace-nowrap font-mono text-[13px] font-semibold tabular-nums",
-                      positive ? "text-verify" : "text-[#fda4af]",
+                      positive ? "text-verify" : "text-error",
                     )}
                   >
                     <span aria-hidden>{positive ? "▲" : "▼"}</span> {positive ? "+" : "-"}{Math.abs(row.changePct).toFixed(1)}%

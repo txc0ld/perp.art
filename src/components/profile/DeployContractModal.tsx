@@ -196,12 +196,12 @@ export function DeployContractModal({
                   aria-describedby={nameError ? "deploy-name-error" : undefined}
                   className={cn(
                     "h-11 w-full rounded-[8px] border bg-background px-3.5 text-sm text-foreground transition-colors placeholder:text-faint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
-                    nameError ? "border-[#fda4af]/50" : "border-border focus-visible:border-border-bright",
+                    nameError ? "border-error/50" : "border-border focus-visible:border-border-bright",
                   )}
                   placeholder="e.g. Sovereign Editions"
                 />
                 {nameError && (
-                  <p id="deploy-name-error" className="text-[12px] text-[#fda4af]">
+                  <p id="deploy-name-error" className="text-[12px] text-error">
                     A contract name is required.
                   </p>
                 )}

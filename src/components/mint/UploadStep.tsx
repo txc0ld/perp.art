@@ -49,7 +49,7 @@ function Field({
 const inputCls =
   "w-full rounded-[8px] border border-border bg-surface-2 px-3.5 py-2.5 text-base text-foreground sm:text-sm " +
   "placeholder:text-faint transition-colors duration-200 " +
-  "focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/30";
+  "focus-visible:border-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30";
 
 export function UploadStep({
   form,
@@ -177,7 +177,7 @@ export function UploadStep({
         </button>
 
         {fileError && (
-          <p className="font-mono text-[11px] leading-tight text-[#fda4af]">{fileError}</p>
+          <p className="font-mono text-[11px] leading-tight text-error">{fileError}</p>
         )}
 
         {form.fileSelected && form.file && (
@@ -195,7 +195,7 @@ export function UploadStep({
         <Field label="Artist name" htmlFor="mint-artist" required>
           <input
             id="mint-artist"
-            className={cn(inputCls, artistError && "border-[#fda4af]/60")}
+            className={cn(inputCls, artistError && "border-error/60")}
             value={form.artistName}
             onChange={(e) => set({ artistName: e.target.value })}
             onBlur={() => setTouched((t) => ({ ...t, artist: true }))}
@@ -207,7 +207,7 @@ export function UploadStep({
             autoComplete="off"
           />
           {artistError && (
-            <p id="mint-artist-err" className="font-mono text-[11px] text-[#fda4af]">
+            <p id="mint-artist-err" className="font-mono text-[11px] text-error">
               Artist name is required.
             </p>
           )}
@@ -216,7 +216,7 @@ export function UploadStep({
         <Field label="Title" htmlFor="mint-title" hint="drives the preview" required>
           <input
             id="mint-title"
-            className={cn(inputCls, titleError && "border-[#fda4af]/60")}
+            className={cn(inputCls, titleError && "border-error/60")}
             value={form.title}
             onChange={(e) => set({ title: e.target.value })}
             onBlur={() => setTouched((t) => ({ ...t, title: true }))}
@@ -228,7 +228,7 @@ export function UploadStep({
             autoComplete="off"
           />
           {titleError && (
-            <p id="mint-title-err" className="font-mono text-[11px] text-[#fda4af]">
+            <p id="mint-title-err" className="font-mono text-[11px] text-error">
               Title is required.
             </p>
           )}
@@ -324,7 +324,7 @@ export function UploadStep({
                       type="button"
                       onClick={() => removeTrait(i)}
                       aria-label={`Remove trait ${i + 1}`}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-border text-faint transition-colors hover:border-[#fda4af]/50 hover:text-[#fda4af] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-border text-faint transition-colors hover:border-error/50 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                     >
                       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden>
                         <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

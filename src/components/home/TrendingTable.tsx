@@ -35,7 +35,7 @@ function VerifiedMark({ className }: { className?: string }) {
 function ChangeCell({ pct }: { pct: number }) {
   const positive = pct >= 0;
   return (
-    <span className={cn("inline-flex items-center justify-end gap-0.5 whitespace-nowrap font-mono text-[13px] tabular-nums", positive ? "text-verify" : "text-[#fda4af]")}>
+    <span className={cn("inline-flex items-center justify-end gap-0.5 whitespace-nowrap font-mono text-[13px] tabular-nums", positive ? "text-verify" : "text-error")}>
       <span aria-hidden className="text-[9px] leading-none">{positive ? "▲" : "▼"}</span>
       {positive ? "+" : "-"}{Math.abs(pct).toFixed(1)}%
     </span>

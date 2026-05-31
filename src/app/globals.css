@@ -28,6 +28,9 @@
      conventional "verified check" blue. Distinct from the pink permanence accent. */
   --color-verified: #3b9bff;
 
+  /* Error / destructive - rose. Used for validation errors and negative states. */
+  --color-error: #fda4af;
+
   /* Fonts */
   --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;

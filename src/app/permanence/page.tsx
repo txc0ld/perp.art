@@ -65,7 +65,7 @@ export default function PermanencePage() {
               transform: "rotateX(62deg)",
               transformOrigin: "center bottom",
               backgroundImage:
-                "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
+                "linear-gradient(to right, var(--color-foreground) 1px, transparent 1px), linear-gradient(to bottom, var(--color-foreground) 1px, transparent 1px)",
               backgroundSize: "88px 88px",
               maskImage:
                 "radial-gradient(120% 90% at 50% 100%, #000 20%, transparent 75%)",

@@ -121,7 +121,12 @@ export function SwapModal({
   // Focus management + Esc + focus trap + scroll lock (mirrors BuyModal).
   React.useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    dialogRef.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    const autofocus = dialogRef.current?.querySelector<HTMLElement>("[data-autofocus]");
+    if (autofocus) {
+      autofocus.focus();
+    } else {
+      dialogRef.current?.focus();
+    }
     return () => opener?.focus?.();
   }, [phase, mode]);
 
@@ -191,7 +196,8 @@ export function SwapModal({
         role="dialog"
         aria-modal="true"
         aria-label="Propose a swap"
-        className="animate-rise relative flex max-h-[92dvh] w-full max-w-[520px] flex-col overflow-hidden rounded-t-[12px] border border-border-bright bg-surface shadow-2xl sm:max-h-[90dvh] sm:rounded-[10px]"
+        tabIndex={-1}
+        className="animate-rise relative flex max-h-[92dvh] w-full max-w-[520px] flex-col overflow-hidden rounded-t-[12px] border border-border-bright bg-surface shadow-2xl sm:max-h-[90dvh] sm:rounded-[10px] outline-none"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
@@ -202,7 +208,7 @@ export function SwapModal({
             type="button"
             onClick={onClose}
             disabled={phase === "proposing"}
-            className="flex h-11 w-11 items-center justify-center rounded-[8px] text-faint transition-colors hover:text-foreground disabled:opacity-30"
+            className="flex h-11 w-11 items-center justify-center rounded-[8px] text-faint transition-colors hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             aria-label="Close"
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none">

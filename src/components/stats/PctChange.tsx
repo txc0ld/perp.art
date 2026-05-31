@@ -10,7 +10,7 @@ export function PctChange({ value, className }: { value: number; className?: str
     <span
       className={cn(
         "inline-flex items-center justify-end gap-1 font-mono text-[13px] tabular-nums",
-        positive ? "text-verify" : "text-[#fda4af]",
+        positive ? "text-verify" : "text-error",
         className,
       )}
     >

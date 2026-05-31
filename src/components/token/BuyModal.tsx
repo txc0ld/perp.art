@@ -42,12 +42,16 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
   const chainMeta = getChainMeta(token.chain);
   const currency = chainMeta.currency;
 
-  // Focus the primary action on open; return focus to the opener on close.
+  // Focus the dialog container on open (moves focus in for screen readers),
+  // then shift to the primary action if available. Return focus on close.
   React.useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    dialogRef.current
-      ?.querySelector<HTMLButtonElement>("[data-confirm]")
-      ?.focus();
+    const confirmBtn = dialogRef.current?.querySelector<HTMLButtonElement>("[data-confirm]");
+    if (confirmBtn) {
+      confirmBtn.focus();
+    } else {
+      dialogRef.current?.focus();
+    }
     return () => opener?.focus?.();
   }, []);
 
@@ -105,7 +109,8 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
         role="dialog"
         aria-modal="true"
         aria-label="Confirm purchase"
-        className="animate-rise relative flex max-h-[90dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-[8px] border border-border-bright bg-surface shadow-2xl"
+        tabIndex={-1}
+        className="animate-rise relative flex max-h-[90dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-[8px] border border-border-bright bg-surface shadow-2xl outline-none"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
@@ -116,7 +121,7 @@ export function BuyModal({ token, onClose }: { token: Token; onClose: () => void
             type="button"
             onClick={onClose}
             disabled={phase === "confirming"}
-            className="flex h-11 w-11 items-center justify-center rounded-[8px] text-faint transition-colors hover:text-foreground disabled:opacity-30"
+            className="flex h-11 w-11 items-center justify-center rounded-[8px] text-faint transition-colors hover:text-foreground disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             aria-label="Close"
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none">

@@ -48,7 +48,7 @@ export function HeroFeature({ feature }: { feature: CollectionRanking }) {
                 {artist?.verified ? <VerifiedMark /> : null}
                 {c.sovereign ? <Badge tone="accent">Sovereign</Badge> : null}
               </div>
-              <h1 className="display-sm mt-3 font-brand text-foreground">{c.name}</h1>
+              <h2 className="display-sm mt-3 font-brand text-foreground">{c.name}</h2>
               <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">{c.description}</p>
             </div>
 

@@ -195,7 +195,7 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="SEARCH WORKS, ARTISTS, TRAITS"
-        className="h-11 w-full rounded-[8px] border border-border bg-surface pl-9 pr-3 font-mono text-xs uppercase tracking-wider text-foreground placeholder:text-faint focus:border-accent/50 focus:outline-none sm:h-10"
+        className="h-11 w-full rounded-[8px] border border-border bg-surface pl-9 pr-3 font-mono text-xs uppercase tracking-wider text-foreground placeholder:text-faint focus-visible:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 sm:h-10"
       />
     </div>
   );

@@ -24,7 +24,7 @@ export function BrandMark({
       aria-hidden
     >
       <circle cx="50" cy="50" r="32" stroke="currentColor" strokeWidth={strokeWidth} />
-      <circle cx="50" cy="50" r="5" fill="#fe93ed" />
+      <circle cx="50" cy="50" r="5" fill="var(--color-accent)" />
     </svg>
   );
 }

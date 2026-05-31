@@ -42,7 +42,7 @@ export function HeaderSearch({
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search artists, collections, works"
           aria-label="Search artists, collections, and works"
-          className="w-full bg-transparent text-sm text-foreground placeholder:text-faint focus:outline-none [&::-webkit-search-cancel-button]:appearance-none"
+          className="w-full bg-transparent text-sm text-foreground placeholder:text-faint focus-visible:outline-none [&::-webkit-search-cancel-button]:appearance-none"
         />
         <kbd className="hidden shrink-0 rounded-[5px] border border-border px-1.5 py-0.5 font-mono text-[10px] text-faint sm:block">
           /

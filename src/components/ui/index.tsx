@@ -158,7 +158,7 @@ export function VerifiedBadge({
           d="M12 2.6l2.3 1.7 2.85-.2 1 2.68 2.45 1.47-.74 2.76.74 2.76-2.45 1.47-1 2.68-2.85-.2L12 21.4l-2.3-1.7-2.85.2-1-2.68-2.45-1.47.74-2.76-.74-2.76 2.45-1.47 1-2.68 2.85.2L12 2.6z"
           fill="currentColor"
         />
-        <path d="M8.5 12.2l2.3 2.3 4.7-4.9" stroke="#050505" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <path d="M8.5 12.2l2.3 2.3 4.7-4.9" stroke="var(--color-background)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       </svg>
     </span>
   );

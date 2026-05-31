@@ -14,9 +14,12 @@ import { cn } from "@/lib/utils";
 
 export function ArtworkViewer({ token }: { token: Token }) {
   const [zoomed, setZoomed] = React.useState(false);
+  const lightboxRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     if (!zoomed) return;
+    // Move focus into the lightbox dialog for screen readers.
+    lightboxRef.current?.focus();
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setZoomed(false);
     }
@@ -61,6 +64,7 @@ export function ArtworkViewer({ token }: { token: Token }) {
 
           {/* Fullscreen / zoom affordance */}
           <button
+            type="button"
             onClick={() => setZoomed(true)}
             aria-label="View fullscreen"
             className={cn(
@@ -89,7 +93,9 @@ export function ArtworkViewer({ token }: { token: Token }) {
       {/* Lightbox */}
       {zoomed && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 p-4 sm:p-10 animate-fade"
+          ref={lightboxRef}
+          tabIndex={-1}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 p-4 sm:p-10 animate-fade outline-none"
           role="dialog"
           aria-modal="true"
           aria-label={`${token.title} fullscreen`}
@@ -107,9 +113,10 @@ export function ArtworkViewer({ token }: { token: Token }) {
             />
           </div>
           <button
+            type="button"
             onClick={() => setZoomed(false)}
             aria-label="Close fullscreen"
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-[8px] border border-border/60 bg-surface/70 text-muted backdrop-blur-md transition-colors hover:text-foreground"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-[8px] border border-border/60 bg-surface/70 text-muted backdrop-blur-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
