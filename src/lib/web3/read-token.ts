@@ -90,26 +90,27 @@ export function mapMintToToken(raw: RawTokenReads): Token {
     offers: [],
     chain: CHAIN_BY_ID[raw.chainId] ?? "base",
     listable: permanence.onchainProofConfigured && permanence.contentHashMatches,
+    source: "onchain",
   };
 }
 
 const TRANSFER_EVENT = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)");
-const LOG_WINDOW = BigInt(2000);
+export const LOG_WINDOW = BigInt(2000);
 // ~240k blocks of lookback (≈5–6 days on Base Sepolia). Without an indexer we
 // scan recent history bounded below by the contract's deploy block — covering
 // every token while the deploy is recent. Older activity needs the full indexer.
-const MAX_WINDOWS = 120;
+export const MAX_WINDOWS = 120;
 
 // ForeverLibrary deploy blocks — the lower bound for log scans (no Transfer can
 // predate the contract). Keep in sync with the deployed addresses.
-const FL_DEPLOY_BLOCK: Record<number, bigint> = {
+export const FL_DEPLOY_BLOCK: Record<number, bigint> = {
   84532: BigInt(42222546),
   11155111: BigInt(10959823),
 };
 
 /** Where to start a Transfer-log scan: the deploy block, or a recent lookback
  *  window if the contract has been live longer than the cap can cover. */
-function scanStartBlock(chainId: number, latest: bigint): bigint {
+export function scanStartBlock(chainId: number, latest: bigint): bigint {
   const floor = FL_DEPLOY_BLOCK[chainId] ?? BigInt(0);
   const lookback = latest - BigInt(MAX_WINDOWS) * LOG_WINDOW;
   return lookback > floor ? lookback : floor;

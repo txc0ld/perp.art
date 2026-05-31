@@ -206,6 +206,8 @@ export interface Token {
   chain: Chain;
   /** Listing-eligibility per PRD §9.6 (derived from permanence). */
   listable: boolean;
+  /** Provenance of this record in the UI: live on-chain vs the mock demo layer. */
+  source?: "onchain" | "mock";
 }
 
 // ---------------------------------------------------------------------------
