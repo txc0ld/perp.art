@@ -32,8 +32,7 @@ contract ForeverLibraryTest is Test {
             "image/svg+xml",
             750, // 7.5%
             keccak256("metadata"),
-            "ethfs://proof",
-            keccak256("proof-bytes"),
+            bytes("proof-bytes"),
             0 // artist-paid (fee-exempt)
         );
 
@@ -41,17 +40,32 @@ contract ForeverLibraryTest is Test {
         assertTrue(fl.shard0Configured(id), "shard0 must be configured at mint");
         assertEq(fl.shardCount(id), 1);
         assertEq(uint8(fl.shardBackend(id, 0)), uint8(IForeverLibrary.ShardBackend.Onchain));
-        assertEq(fl.shardContentHash(id, 0), keccak256("proof-bytes"));
+        // Content hash is computed on-chain from the bytes (trustless).
+        assertEq(fl.shardContentHash(id, 0), keccak256(bytes("proof-bytes")));
+
+        // Shard 0 resolves to an on-chain data URI built from the SSTORE2 bytes.
+        string memory uri = fl.shardURI(id, 0);
+        assertEq(_startsWith(uri, "data:image/svg+xml;base64,"), true, "shard0 is an on-chain data URI");
 
         IForeverLibrary.MintData memory d = fl.getMintData(id);
         assertEq(d.creator, address(this));
         assertEq(d.title, "Strata No. 1");
         assertEq(d.royaltyBps, 750);
 
-        // ERC-2981 royalty is set to the creator at the minted bps.
         (address receiver, uint256 amount) = fl.royaltyInfo(id, 1 ether);
         assertEq(receiver, address(this));
         assertEq(amount, (1 ether * 750) / 10_000);
+    }
+
+    /// @dev True if `str` begins with `prefix`.
+    function _startsWith(string memory str, string memory prefix) internal pure returns (bool) {
+        bytes memory s = bytes(str);
+        bytes memory p = bytes(prefix);
+        if (s.length < p.length) return false;
+        for (uint256 i = 0; i < p.length; i++) {
+            if (s[i] != p[i]) return false;
+        }
+        return true;
     }
 
     /// Redundant shards can be appended within the edit window.
@@ -99,8 +113,7 @@ contract ForeverLibraryTest is Test {
     function test_HostedMintRecordsFee() public {
         uint256 id = fl.mint(
             address(this), "Artist", "Hosted", "image/png", 500,
-            keccak256("m"), "ethfs://p", keccak256("p"),
-            150 // Perpetual hosts @ 1.5%
+            keccak256("m"), bytes("proof"), 150
         );
         assertEq(fl.hostingFeeBps(id), 150);
     }
@@ -110,8 +123,7 @@ contract ForeverLibraryTest is Test {
         vm.expectRevert(ForeverLibrary.HostingFeeTooHigh.selector);
         fl.mint(
             address(this), "Artist", "X", "image/png", 500,
-            keccak256("m"), "ethfs://p", keccak256("p"),
-            151
+            keccak256("m"), bytes("proof"), 151
         );
     }
 
@@ -124,12 +136,12 @@ contract ForeverLibraryTest is Test {
         vm.expectRevert(ForeverLibrary.InsufficientStorageFee.selector);
         fl.mint(
             address(this), "Artist", "Y", "image/png", 500,
-            keccak256("m"), "ethfs://p", keccak256("p"), 0
+            keccak256("m"), bytes("proof"), 0
         );
         // exact amount succeeds and is fee-exempt
         uint256 id = fl.mint{value: 0.001 ether}(
             address(this), "Artist", "Y", "image/png", 500,
-            keccak256("m"), "ethfs://p", keccak256("p"), 0
+            keccak256("m"), bytes("proof"), 0
         );
         assertEq(fl.hostingFeeBps(id), 0);
     }
@@ -139,8 +151,34 @@ contract ForeverLibraryTest is Test {
         vm.expectRevert(ForeverLibrary.UnexpectedPayment.selector);
         fl.mint{value: 1 wei}(
             address(this), "Artist", "Z", "image/png", 500,
-            keccak256("m"), "ethfs://p", keccak256("p"), 150
+            keccak256("m"), bytes("proof"), 150
         );
+    }
+
+    /// Proof bytes above the SSTORE2 cap are rejected.
+    function test_ProofTooLargeReverts() public {
+        bytes memory big = new bytes(24_001);
+        vm.expectRevert(ForeverLibrary.ProofTooLarge.selector);
+        fl.mint(address(this), "A", "Big", "image/png", 500, keccak256("m"), big, 0);
+    }
+
+    /// Empty proof bytes are rejected (Shard 0 must carry real bytes).
+    function test_EmptyProofReverts() public {
+        vm.expectRevert(ForeverLibrary.EmptyProof.selector);
+        fl.mint(address(this), "A", "Empty", "image/png", 500, keccak256("m"), bytes(""), 0);
+    }
+
+    /// A high-res Log shard attaches as an ordinary appended shard.
+    function test_AppendLogShard() public {
+        uint256 id = _mint();
+        fl.configureShard(
+            id, 1, IForeverLibrary.ShardBackend.Log,
+            "log://0x0000000000000000000000000000000000000abc/0xfeed",
+            keccak256("merkle-root")
+        );
+        assertEq(fl.shardCount(id), 2);
+        assertEq(uint8(fl.shardBackend(id, 1)), uint8(IForeverLibrary.ShardBackend.Log));
+        assertEq(fl.shardURI(id, 1), "log://0x0000000000000000000000000000000000000abc/0xfeed");
     }
 
     function _mint() internal returns (uint256) {
@@ -151,8 +189,7 @@ contract ForeverLibraryTest is Test {
             "image/png",
             500,
             keccak256("m"),
-            "ethfs://p",
-            keccak256("p"),
+            bytes("proof-bytes"),
             0
         );
     }
