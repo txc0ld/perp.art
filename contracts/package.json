@@ -1,0 +1,16 @@
+{
+  "name": "contracts",
+  "version": "1.0.0",
+  "description": "> **⚠️ UNAUDITED SCAFFOLD - DO NOT DEPLOY WITH VALUE BEFORE AUDIT.** > Every `.sol` file here is a reference scaffold expressing the contract > architecture from the PRD. It has **not** been audited and **must not** hold > mainnet value until a full security audit is complete (PRD §12). Deep > encoding details (ethfs persistence, full EIP-712 array hashing, conduit > transfers) are intentionally stubbed with `// ...` and marked as such.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1"
+  }
+}

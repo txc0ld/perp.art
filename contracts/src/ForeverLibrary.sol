@@ -17,7 +17,6 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import {IForeverLibrary} from "./interfaces/IForeverLibrary.sol";
 
@@ -30,11 +29,11 @@ import {IForeverLibrary} from "./interfaces/IForeverLibrary.sol";
 /// @dev    Sovereign artists may deploy their own instance of this contract
 ///         (PRD §7.5); the marketplace federates over instances identically.
 contract ForeverLibrary is
-    IForeverLibrary,
     ERC721,
     ERC2981,
     Ownable,
-    ReentrancyGuard
+    ReentrancyGuard,
+    IForeverLibrary
 {
     /*//////////////////////////////////////////////////////////////////////
                                     ERRORS
@@ -378,11 +377,12 @@ contract ForeverLibrary is
                                     ERC-165
     //////////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IERC165
+    /// @notice ERC-165 interface detection across ERC-721 + ERC-2981 + the
+    ///         Forever Library surface.
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, ERC2981, IERC165)
+        override(ERC721, ERC2981)
         returns (bool)
     {
         return

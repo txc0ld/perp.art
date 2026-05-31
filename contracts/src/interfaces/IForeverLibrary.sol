@@ -10,9 +10,6 @@ pragma solidity ^0.8.24;
     indexer/frontend integration, and audit preparation - NOT production.
 //////////////////////////////////////////////////////////////////////////*/
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
-
 /// @title IForeverLibrary
 /// @notice Interface for the Forever Library token contract - the Asset &
 ///         Provenance layer (PRD §6, §7). A Forever Library token is an
@@ -28,7 +25,10 @@ import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 ///         INVARIANT (PRD §18): every behavior here must hold with zero
 ///         cooperation from the marketplace operator. All state is onchain
 ///         and independently readable.
-interface IForeverLibrary is IERC721, IERC2981 {
+/// @dev Implementers are also ERC-721 + ERC-2981 (royalties); this interface
+///      declares only the Perpetual-specific sharding/provenance surface so it
+///      composes cleanly alongside the OpenZeppelin base contracts.
+interface IForeverLibrary {
     /*//////////////////////////////////////////////////////////////////////
                                     TYPES
     //////////////////////////////////////////////////////////////////////*/

@@ -1,0 +1,11 @@
+# Foundry
+out/
+cache/
+broadcast/
+
+# Dependencies (restore with: npm install && git clone forge-std into lib/)
+node_modules/
+lib/
+
+# Local env
+.env

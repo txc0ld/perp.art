@@ -1,0 +1,26 @@
+[profile.default]
+src = "src"
+out = "out"
+test = "test"
+script = "script"
+libs = ["lib", "node_modules"]
+solc_version = "0.8.24"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+remappings = [
+    "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
+    "forge-std/=lib/forge-std/src/",
+]
+
+# RPC endpoints for deploys/tests (values come from the environment).
+# Example: NEXT_PUBLIC_RPC_ETHEREUM, RPC_SEPOLIA from the app's .env.local.
+[rpc_endpoints]
+ethereum = "${NEXT_PUBLIC_RPC_ETHEREUM}"
+base = "${NEXT_PUBLIC_RPC_BASE}"
+sepolia = "${RPC_SEPOLIA}"
+base_sepolia = "${RPC_BASE_SEPOLIA}"
+
+[etherscan]
+ethereum = { key = "${ETHERSCAN_API_KEY}" }
+base = { key = "${BASESCAN_API_KEY}" }

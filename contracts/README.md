@@ -20,8 +20,8 @@ operator-independent; the top two are conventional and optimized for speed.
 
 | Layer | On-chain? | Lives here? | PRD |
 |---|---|---|---|
-| **Asset & Provenance** | ✅ On-chain | ✅ `ForeverLibrary.sol` | §7 |
-| **Settlement** | ✅ On-chain | ✅ `PerpetualSettlement.sol` | §8 |
+| **Asset & Provenance** | ✅ On-chain | ✅ `src/ForeverLibrary.sol` | §7 |
+| **Settlement** | ✅ On-chain | ✅ `src/PerpetualSettlement.sol` | §8 |
 | Orderbook & Indexer | ❌ Centralized | ❌ (off-chain services) | §9 |
 | Frontend / Client | ❌ Centralized | ❌ (web app) | §10 |
 
@@ -37,10 +37,10 @@ operator. Everything in this directory is designed to uphold that invariant.
 
 | File | What it is | PRD |
 |---|---|---|
-| `interfaces/IForeverLibrary.sol` | Interface for the Forever Library token: ERC-721 + ERC-2981 with the URI-sharding surface the frontend/indexer depend on (mandatory on-chain proof gate, selected shard, lock state, shard accessors, mint/provenance record, events, `ShardBackend` enum). | §7 |
-| `interfaces/IPerpetualSettlement.sol` | Seaport-compatible settlement interface: signed-order structs, `fulfillOrder`, `cancel`, `getOrderStatus`, counter/nonce replay protection, and the documented ERC-2981 royalty-enforcement guarantee. Covers fixed-price orders **and NFT-for-NFT + criteria barter** (Seaport-native offer/consideration with criteria items). | §8, §12 |
-| `ForeverLibrary.sol` | Reference implementation sketch of `IForeverLibrary`. Immutable provenance on mint, per-token shard config with content-hash recording, **mandatory Shard 0 (ethfs) on-chain proof**, edit windows → immutability, lock, ERC-2981 `royaltyInfo`. Reentrancy-guarded. | §7 |
-| `PerpetualSettlement.sol` | Reference implementation sketch of `IPerpetualSettlement`. EIP-712 order hashing, signature verification, nonce/counter cancellation, configurable protocol fee (2.0-2.5%, default 2.25% = 225 bps), and **mandatory ERC-2981 royalty payout enforced in `fulfillOrder`** (reverts if not honored). Supports fixed-price sales and **barter** orders: NFT-for-NFT with optional ETH on either side, and **criteria** items (any token from a collection, optionally with a trait), both expressed natively in the Seaport order model. Non-custodial, reentrancy-guarded. | §8, §12 |
+| `src/interfaces/IForeverLibrary.sol` | Interface for the Forever Library token: ERC-721 + ERC-2981 with the URI-sharding surface the frontend/indexer depend on (mandatory on-chain proof gate, selected shard, lock state, shard accessors, mint/provenance record, events, `ShardBackend` enum). | §7 |
+| `src/interfaces/IPerpetualSettlement.sol` | Seaport-compatible settlement interface: signed-order structs, `fulfillOrder`, `cancel`, `getOrderStatus`, counter/nonce replay protection, and the documented ERC-2981 royalty-enforcement guarantee. Covers fixed-price orders **and NFT-for-NFT + criteria barter** (Seaport-native offer/consideration with criteria items). | §8, §12 |
+| `src/ForeverLibrary.sol` | Reference implementation sketch of `IForeverLibrary`. Immutable provenance on mint, per-token shard config with content-hash recording, **mandatory Shard 0 (ethfs) on-chain proof**, edit windows → immutability, lock, ERC-2981 `royaltyInfo`. Reentrancy-guarded. | §7 |
+| `src/PerpetualSettlement.sol` | Reference implementation sketch of `IPerpetualSettlement`. EIP-712 order hashing, signature verification, nonce/counter cancellation, configurable protocol fee (2.0-2.5%, default 2.25% = 225 bps), and **mandatory ERC-2981 royalty payout enforced in `fulfillOrder`** (reverts if not honored). Supports fixed-price sales and **barter** orders: NFT-for-NFT with optional ETH on either side, and **criteria** items (any token from a collection, optionally with a trait), both expressed natively in the Seaport order model. Non-custodial, reentrancy-guarded. | §8, §12 |
 | `LISTING_ELIGIBILITY.md` | Spec of the PRD §9.6 listing-eligibility gate and how the centralized orderbook enforces it off-chain before accepting a signed listing. | §9.6 |
 | `README.md` | This file. | §6, §18 |
 
@@ -89,12 +89,12 @@ Per-chain deployed addresses (Forever Library, settlement, ethfs, bridge) are co
 ## How this maps to the PRD
 
 - **PRD §7 - Asset & Provenance / Forever Library:** `IForeverLibrary.sol` +
-  `ForeverLibrary.sol`. URI sharding (§7.2), required behaviors incl. mandatory
+  `src/ForeverLibrary.sol`. URI sharding (§7.2), required behaviors incl. mandatory
   on-chain proof, selected shard, locking, edit windows, content hashing
   (§7.3), provenance record (§7.4), sovereign deployment (§7.5, any artist may
   deploy their own instance).
 - **PRD §8 - Settlement:** `IPerpetualSettlement.sol` +
-  `PerpetualSettlement.sol`. Seaport-compatible signed orders (§8.1), royalty
+  `src/PerpetualSettlement.sol`. Seaport-compatible signed orders (§8.1), royalty
   enforcement (§8.2), protocol fee 2.0-2.5% (§8.4).
 - **PRD §9.6 - Listing eligibility:** `LISTING_ELIGIBILITY.md`, plus the
   on-chain `shard0Configured` gate read by the orderbook.
@@ -107,9 +107,32 @@ Per-chain deployed addresses (Forever Library, settlement, ethfs, bridge) are co
 
 ---
 
-## Assumptions & toolchain notes
+## Development (Foundry)
 
-- Imports use `@openzeppelin/contracts/...` paths and assume OpenZeppelin would
-  be installed. No toolchain is included; these files are **not** compiled here.
-- `SPDX-License-Identifier: MIT` and `pragma solidity ^0.8.24;` throughout.
-- This scaffold is for review and audit preparation only.
+This is a Foundry project. Sources live in `src/`, tests in `test/`, deploy
+scripts in `script/`. OpenZeppelin v5 is used via npm + a remapping;
+`forge-std` lives in `lib/` (both gitignored - restore with the setup below).
+
+```bash
+# one-time setup
+npm install                                            # OpenZeppelin v5
+git clone --depth 1 https://github.com/foundry-rs/forge-std lib/forge-std
+
+# build + test
+forge build
+forge test -vv
+
+# deploy to a testnet (uses [rpc_endpoints] in foundry.toml; values from env)
+#   set the RPC + a deployer account first, then:
+forge script script/DeployForeverLibrary.s.sol --rpc-url base_sepolia --account deployer --broadcast --verify
+```
+
+Status: **`ForeverLibrary` compiles and passes its test suite** (mint writes the
+mandatory on-chain proof, shard config, edit-window + lock immutability, creator
+gating, ERC-2981 royalty). `PerpetualSettlement` compiles as a reference but its
+EIP-712 fill/royalty logic and the cross-chain bridge are **draft** and need
+completion + audit before any value flows. `SPDX-License-Identifier: MIT`,
+`pragma solidity ^0.8.24;`, `evm_version = cancun` throughout.
+
+> Still **UNAUDITED**. Compiling and testing is not a substitute for a security
+> audit (PRD §12). Do not deploy with value before audit.
