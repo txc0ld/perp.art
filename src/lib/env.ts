@@ -124,6 +124,9 @@ export interface ServerEnv {
   deployerPrivateKey?: string;
   etherscanApiKey?: string;
   basescanApiKey?: string;
+  logLedgerRelayerPk?: string;
+  rpcBaseSepolia?: string;
+  rpcSepolia?: string;
 }
 
 let cached: Readonly<ServerEnv> | null = null;
@@ -155,6 +158,9 @@ export function serverEnv(): Readonly<ServerEnv> {
     deployerPrivateKey: process.env.DEPLOYER_PRIVATE_KEY,
     etherscanApiKey: process.env.ETHERSCAN_API_KEY,
     basescanApiKey: process.env.BASESCAN_API_KEY,
+    logLedgerRelayerPk: process.env.LOGLEDGER_RELAYER_PK,
+    rpcBaseSepolia: process.env.RPC_BASE_SEPOLIA,
+    rpcSepolia: process.env.RPC_SEPOLIA,
   });
   return cached;
 }

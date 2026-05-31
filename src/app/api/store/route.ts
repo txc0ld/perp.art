@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { keccak256 } from "viem";
 import { del } from "@vercel/blob";
 import { serverEnv, publicEnv } from "@/lib/env";
+import { publishToLogLedger } from "@/lib/logledger/relayer";
 
 /**
  * POST /api/store  (application/json)
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
     mediaType?: string;
     fileName?: string;
     traits?: { key?: string; value?: string }[];
+    chainId?: number;
   };
   try {
     body = await request.json();
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
 
-  const { blobUrl, name = "Untitled", description = "", genre, mediaType, fileName = "artwork", traits = [] } = body;
+  const { blobUrl, name = "Untitled", description = "", genre, mediaType, fileName = "artwork", traits = [], chainId } = body;
   if (!blobUrl || typeof blobUrl !== "string" || !/^https:\/\/[^/]+\.public\.blob\.vercel-storage\.com\//.test(blobUrl)) {
     return NextResponse.json({ error: "missing or invalid blobUrl" }, { status: 400 });
   }
@@ -83,17 +85,21 @@ export async function POST(request: Request) {
     contentHash,
   };
 
-  const [ipfs, arweave, irys] = await Promise.all([
+  // Pin to the off-chain shards and publish the high-res LOG copy in parallel.
+  // The LOG relayer (open/upload/seal) is skipped (ok:false) when the chain has
+  // no LogLedger configured or the relayer key is absent.
+  const [ipfs, arweave, irys, logLedger] = await Promise.all([
     pinIpfs(fileBlob, fileName, metadata, env.pinataJwt),
     uploadArweave(bytes, mime, env.arweaveWalletJwk),
     uploadIrys(bytes, mime, env.irysPrivateKey),
+    publishToLogLedger({ chainId: Number(chainId), bytes, contentHash, mime }),
   ]);
 
   // Best-effort cleanup: the bytes now live in permanent storage; drop the
   // temporary Blob copy so it doesn't accrue storage cost.
   del(blobUrl).catch(() => {});
 
-  return NextResponse.json({ contentHash, mediaType: mime, ipfs, arweave, irys });
+  return NextResponse.json({ contentHash, mediaType: mime, ipfs, arweave, irys, logLedger });
 }
 
 async function pinIpfs(file: Blob, fileName: string, metadata: object, jwt?: string): Promise<ShardResult> {

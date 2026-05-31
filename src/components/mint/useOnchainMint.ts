@@ -3,32 +3,49 @@
 import * as React from "react";
 import { useAccount, useChainId } from "wagmi";
 import { writeContract, waitForTransactionReceipt } from "@wagmi/core";
-import { keccak256, stringToBytes, decodeEventLog } from "viem";
+import { keccak256, stringToBytes, bytesToHex, decodeEventLog } from "viem";
 import { upload } from "@vercel/blob/client";
 import { wagmiConfig } from "@/lib/web3/config";
 import { getContracts } from "@/lib/web3/contracts";
-import { FOREVER_LIBRARY_ABI } from "@/lib/web3/abis";
+import { FOREVER_LIBRARY_ABI, SHARD_BACKEND } from "@/lib/web3/abis";
+import { generateStateProof } from "@/lib/proof/state-proof";
 import { cleanTraits, type MintForm } from "./state";
-
-// Forever Library ShardBackend enum.
-const BACKEND_ENUM: Record<string, number> = { onchain: 0, ipfs: 1, arweave: 2, irys: 3, cdn: 4 };
 
 export type ShardPhase = "idle" | "storing" | "minting" | "recording" | "done" | "error";
 
 export interface ShardRecord {
-  backend: "onchain" | "ipfs" | "arweave" | "irys";
-  stored: boolean;     // bytes uploaded to this backend
-  recorded: boolean;   // recorded on-chain as a shard
+  backend: "onchain" | "log" | "ipfs" | "arweave" | "irys";
+  stored: boolean; // bytes persisted to this backend
+  recorded: boolean; // recorded on-chain as a shard
   uri?: string;
   gateway?: string;
   error?: string;
 }
 
+interface OffchainShardResult {
+  ok: boolean;
+  uri?: string;
+  gateway?: string;
+  error?: string;
+}
+
+interface LogLedgerResult {
+  ok: boolean;
+  ledger?: `0x${string}`;
+  fileId?: `0x${string}`;
+  root?: `0x${string}`;
+  sealed?: boolean;
+  uri?: string;
+  error?: string;
+}
+
 interface StoreResponse {
   contentHash: `0x${string}`;
-  ipfs: { ok: boolean; uri?: string; gateway?: string; error?: string };
-  arweave: { ok: boolean; uri?: string; gateway?: string; error?: string };
-  irys: { ok: boolean; uri?: string; gateway?: string; error?: string };
+  mediaType: string;
+  ipfs: OffchainShardResult;
+  arweave: OffchainShardResult;
+  irys: OffchainShardResult;
+  logLedger: LogLedgerResult;
 }
 
 export function useOnchainMint() {
@@ -65,20 +82,19 @@ export function useOnchainMint() {
     }
     setError(undefined);
 
-    const mediaType = form.fileMime || form.file.type || "application/octet-stream";
+    const originalMime = form.fileMime || form.file.type || "application/octet-stream";
     const royaltyBps = Math.round(Math.min(Math.max(form.royaltyPct, 0), 100) * 100);
 
-    // 1) Store the artist's actual file bytes across the off-chain shards.
+    // 1) Store the artist's actual file across the off-chain shards AND publish
+    //    the high-res LOG copy (server relayer open/upload/seal).
     setPhase("storing");
     setUploadPct(0);
     let store: StoreResponse;
     try {
-      // Upload the file DIRECTLY to Vercel Blob from the browser (bypasses the
-      // ~4.5MB serverless body cap), then have the server pin it from there.
       const blob = await upload(form.fileName || "artwork", form.file, {
         access: "public",
         handleUploadUrl: "/api/upload",
-        contentType: mediaType,
+        contentType: originalMime,
         multipart: form.file.size > 8_000_000,
         onUploadProgress: (p) => setUploadPct(Math.round(p.percentage)),
       });
@@ -90,9 +106,10 @@ export function useOnchainMint() {
           name: form.title,
           description: form.description,
           genre: form.genre,
-          mediaType,
+          mediaType: originalMime,
           fileName: form.fileName || "artwork",
           traits: cleanTraits(form),
+          chainId,
         }),
       });
       if (!res.ok) throw new Error(`storage failed (${res.status})`);
@@ -104,27 +121,62 @@ export function useOnchainMint() {
     }
 
     const contentHash = store.contentHash;
+
+    // 2) Generate the on-chain STATE proof (Shard 0) bytes: a small image the
+    //    contract serves as a data: URI. Image→downscale, video→poster, else→
+    //    SVG cover-card. Always <= MAX_PROOF_BYTES.
+    let proofData: `0x${string}`;
+    let proofMime: string;
+    try {
+      const proof = await generateStateProof(form.file, {
+        title: form.title,
+        artist: form.artistName,
+        contentHash,
+      });
+      proofData = bytesToHex(proof.bytes);
+      proofMime = proof.mime;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "could not build the on-chain proof");
+      setPhase("error");
+      return;
+    }
+
+    // Off-chain shard display records.
     const offchain: ShardRecord[] = [
       { backend: "ipfs", stored: store.ipfs.ok, recorded: false, uri: store.ipfs.uri, gateway: store.ipfs.gateway, error: store.ipfs.error },
       { backend: "arweave", stored: store.arweave.ok, recorded: false, uri: store.arweave.uri, gateway: store.arweave.gateway, error: store.arweave.error },
       { backend: "irys", stored: store.irys.ok, recorded: false, uri: store.irys.uri, gateway: store.irys.gateway, error: store.irys.error },
     ];
-
-    // Shard 0 - the onchain proof: a compact data-URI anchoring the content
-    // hash + a pointer to the full bytes (kept small to bound gas).
-    const proof = {
-      name: form.title,
-      artist: form.artistName,
-      image: store.ipfs.uri || store.arweave.uri || store.irys.uri || "",
-      hash: contentHash,
+    const log = store.logLedger;
+    const logShard: ShardRecord = {
+      backend: "log",
+      stored: Boolean(log?.sealed),
+      recorded: false,
+      uri: log?.uri,
+      error: log?.ok ? undefined : log?.error,
     };
-    const proofURI = `data:application/json,${encodeURIComponent(JSON.stringify(proof))}`;
-    const metadataHash = keccak256(stringToBytes(JSON.stringify({ ...proof, genre: form.genre, mediaType })));
+    // Shard 0 (STATE) is written on-chain by mint itself.
+    const stateShard: ShardRecord = { backend: "onchain", stored: true, recorded: true };
+    setShards([stateShard, logShard, ...offchain]);
 
-    const onchainShard: ShardRecord = { backend: "onchain", stored: true, recorded: true, uri: proofURI };
-    setShards([onchainShard, ...offchain]);
+    // metadataHash anchors the canonical off-chain metadata for verification.
+    const metadataHash = keccak256(
+      stringToBytes(
+        JSON.stringify({
+          name: form.title,
+          artist: form.artistName,
+          image: store.ipfs.uri || store.arweave.uri || store.irys.uri || "",
+          hash: contentHash,
+          genre: form.genre,
+          mediaType: originalMime,
+        }),
+      ),
+    );
 
-    // 2) Mint - writes provenance + the mandatory onchain proof (Shard 0).
+    // 3) Mint — writes provenance + the SSTORE2 STATE proof (Shard 0). The
+    //    mint mediaType is the PROOF's mime so Shard 0 resolves as a data: URI;
+    //    the artwork's true media type lives in the off-chain metadata + LOG.
+    //    hostingFeeBps 0 == artist-paid/fee-exempt (storageFeeWei is 0).
     setPhase("minting");
     let mintHash: `0x${string}`;
     let newTokenId: bigint | undefined;
@@ -133,13 +185,14 @@ export function useOnchainMint() {
         address: fl,
         abi: FOREVER_LIBRARY_ABI,
         functionName: "mint",
-        args: [address, form.artistName, form.title, mediaType, BigInt(royaltyBps), metadataHash, proofURI, contentHash],
+        args: [address, form.artistName, form.title, proofMime, BigInt(royaltyBps), metadataHash, proofData, 0],
+        value: BigInt(0),
       });
       setMintTxHash(mintHash);
       const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: mintHash });
-      for (const log of receipt.logs) {
+      for (const logItem of receipt.logs) {
         try {
-          const d = decodeEventLog({ abi: FOREVER_LIBRARY_ABI, data: log.data, topics: log.topics });
+          const d = decodeEventLog({ abi: FOREVER_LIBRARY_ABI, data: logItem.data, topics: logItem.topics });
           if (d.eventName === "TokenMinted") {
             newTokenId = (d.args as { tokenId: bigint }).tokenId;
             break;
@@ -155,30 +208,49 @@ export function useOnchainMint() {
       return;
     }
 
-    // 3) Record each successfully-stored off-chain shard on-chain (append).
+    // 4) Record the redundant shards on-chain (append). LOG first (the high-res
+    //    primary), then the off-chain copies. Shard 0 (STATE) already exists.
     setPhase("recording");
-    let nextIndex = 1; // Shard 0 is the onchain proof
     if (newTokenId !== undefined) {
-      for (const shard of offchain) {
-        if (!shard.stored || !shard.uri) continue;
+      let nextIndex = 1;
+      const appended = [stateShard, logShard, ...offchain];
+
+      const recordShard = async (
+        shard: ShardRecord,
+        backendId: number,
+        uri: string,
+        shardContentHash: `0x${string}`,
+      ) => {
         try {
           const h = await writeContract(wagmiConfig, {
             address: fl,
             abi: FOREVER_LIBRARY_ABI,
             functionName: "configureShard",
-            args: [newTokenId, BigInt(nextIndex), BACKEND_ENUM[shard.backend], shard.uri, contentHash],
+            args: [newTokenId!, BigInt(nextIndex), backendId, uri, shardContentHash],
+            // Explicit gas skips estimation, which can spuriously revert
+            // (TokenDoesNotExist) if the wallet RPC hasn't yet indexed the mint.
+            gas: BigInt(450_000),
           });
           await waitForTransactionReceipt(wagmiConfig, { hash: h });
           shard.recorded = true;
           nextIndex++;
-          setShards([onchainShard, ...offchain]);
         } catch {
           shard.error = "not recorded onchain";
         }
+        setShards([...appended]);
+      };
+
+      if (log?.sealed && log.uri && log.root) {
+        await recordShard(logShard, SHARD_BACKEND.log, log.uri, log.root);
       }
+      for (const shard of offchain) {
+        if (!shard.stored || !shard.uri) continue;
+        const backendId = SHARD_BACKEND[shard.backend];
+        await recordShard(shard, backendId, shard.uri, contentHash);
+      }
+      setShards([...appended]);
     }
 
-    setShards([onchainShard, ...offchain]);
     setPhase("done");
   }
 

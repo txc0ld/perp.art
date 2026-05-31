@@ -7,6 +7,7 @@
 export interface ChainContracts {
   foreverLibrary?: `0x${string}`;
   settlement?: `0x${string}`;
+  logLedger?: `0x${string}`;
 }
 
 function addr(v?: string): `0x${string}` | undefined {
@@ -23,11 +24,13 @@ const REGISTRY: Record<number, ChainContracts> = {
   84532: {
     foreverLibrary: addr(process.env.NEXT_PUBLIC_FOREVER_LIBRARY_BASE_SEPOLIA),
     settlement: addr(process.env.NEXT_PUBLIC_SETTLEMENT_BASE_SEPOLIA),
+    logLedger: addr(process.env.NEXT_PUBLIC_LOG_LEDGER_BASE_SEPOLIA),
   },
   // Ethereum Sepolia (11155111)
   11155111: {
     foreverLibrary: addr(process.env.NEXT_PUBLIC_FOREVER_LIBRARY_SEPOLIA),
     settlement: addr(process.env.NEXT_PUBLIC_SETTLEMENT_SEPOLIA),
+    logLedger: addr(process.env.NEXT_PUBLIC_LOG_LEDGER_SEPOLIA),
   },
 };
 

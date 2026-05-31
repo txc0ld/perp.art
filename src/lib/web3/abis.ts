@@ -4,7 +4,7 @@ export const FOREVER_LIBRARY_ABI = [
   {
     type: "function",
     name: "mint",
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
     inputs: [
       { name: "to", type: "address" },
       { name: "artistName", type: "string" },
@@ -12,8 +12,8 @@ export const FOREVER_LIBRARY_ABI = [
       { name: "mediaType", type: "string" },
       { name: "royaltyBps", type: "uint96" },
       { name: "metadataHash", type: "bytes32" },
-      { name: "proofURI", type: "string" },
-      { name: "proofContentHash", type: "bytes32" },
+      { name: "proofData", type: "bytes" },
+      { name: "hostingFeeBps_", type: "uint16" },
     ],
     outputs: [{ name: "tokenId", type: "uint256" }],
   },
@@ -38,6 +38,30 @@ export const FOREVER_LIBRARY_ABI = [
     outputs: [{ name: "", type: "bool" }],
   },
   {
+    type: "function",
+    name: "hostingFeeBps",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint16" }],
+  },
+  {
+    type: "function",
+    name: "tokenURI",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "string" }],
+  },
+  {
+    type: "function",
+    name: "shardURI",
+    stateMutability: "view",
+    inputs: [
+      { name: "tokenId", type: "uint256" },
+      { name: "index", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "string" }],
+  },
+  {
     type: "event",
     name: "TokenMinted",
     inputs: [
@@ -50,3 +74,98 @@ export const FOREVER_LIBRARY_ABI = [
     ],
   },
 ] as const;
+
+/** LogLedger: cheap on-chain media storage via event logs (Plan 1 contract). */
+export const LOG_LEDGER_ABI = [
+  {
+    type: "function",
+    name: "open",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "fileId", type: "bytes32" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "upload",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "fileId", type: "bytes32" },
+      { name: "chunkIndex", type: "uint32" },
+      { name: "data", type: "bytes" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "seal",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "fileId", type: "bytes32" },
+      { name: "root", type: "bytes32" },
+      { name: "size", type: "uint256" },
+      { name: "chunks", type: "uint32" },
+      { name: "codec", type: "uint8" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "files",
+    stateMutability: "view",
+    inputs: [{ name: "fileId", type: "bytes32" }],
+    outputs: [
+      { name: "root", type: "bytes32" },
+      { name: "size", type: "uint256" },
+      { name: "chunks", type: "uint32" },
+      { name: "deployBlock", type: "uint32" },
+      { name: "codec", type: "uint8" },
+      { name: "finalized", type: "bool" },
+      { name: "author", type: "address" },
+    ],
+  },
+  {
+    type: "function",
+    name: "isSealed",
+    stateMutability: "view",
+    inputs: [{ name: "fileId", type: "bytes32" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "event",
+    name: "FileOpened",
+    inputs: [
+      { name: "fileId", type: "bytes32", indexed: true },
+      { name: "author", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "FileChunk",
+    inputs: [
+      { name: "fileId", type: "bytes32", indexed: true },
+      { name: "chunkIndex", type: "uint32", indexed: true },
+      { name: "data", type: "bytes", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "FileSealed",
+    inputs: [
+      { name: "fileId", type: "bytes32", indexed: true },
+      { name: "root", type: "bytes32", indexed: false },
+      { name: "size", type: "uint256", indexed: false },
+      { name: "chunks", type: "uint32", indexed: false },
+      { name: "codec", type: "uint8", indexed: false },
+    ],
+  },
+] as const;
+
+/** ForeverLibrary ShardBackend enum (must match the Solidity ordering). */
+export const SHARD_BACKEND = {
+  onchain: 0,
+  ipfs: 1,
+  arweave: 2,
+  irys: 3,
+  cdn: 4,
+  log: 5,
+} as const;
