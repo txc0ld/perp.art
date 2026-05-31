@@ -30,11 +30,13 @@ plus **IPFS, Arweave, and Irys** — backstopped by the STATE shard that lasts a
 
 The contracts (ForeverLibrary with SSTORE2 + LogLedger + PerpetualSettlement) are **deployed to
 Base Sepolia and Ethereum Sepolia**. The mint pipeline — real uploads, real on-chain storage,
-relayer, and resolver — is **live on tryperpetual.art**. Token browsing and the catalog experience
-still run on the mock data layer pending a live on-chain indexer. The system is verified
-end-to-end on testnet; it is **unaudited** and **not yet on mainnet**. This repository also
-contains the full production-grade frontend, published architecture artifacts, and the indexer
-specification.
+relayer, and resolver — is **live on tryperpetual.art**. Minted tokens have real live pages at
+`/token/onchain/[chainId]/[tokenId]`; a connected wallet's owned works are listed on the profile;
+explore and collections surface real on-chain tokens merged with the demo gallery; and
+fixed-price ETH trading (EIP-712 signed listings, on-chain fulfillment via PerpetualSettlement)
+is live. The system is verified end-to-end on testnet; it is **unaudited** and **not yet on
+mainnet**. This repository also contains the full production-grade frontend, published
+architecture artifacts, and the indexer specification.
 
 ---
 
@@ -101,7 +103,7 @@ specification.
 | UI | React 19, Tailwind CSS v4 |
 | Language | TypeScript (strict) |
 | Type faces | Inter, JetBrains Mono, Plus Jakarta Sans |
-| Data | Deterministic in-memory layer (`src/lib/mock-data.ts`) for catalog/browse; mint + storage are live on testnet |
+| Data | Mint, on-chain read layer, lite indexer, and fixed-price trading are live on testnet; mock gallery (`src/lib/mock-data.ts`) coexists as demo content |
 | Contracts | ForeverLibrary (ERC-721 + ERC-2981 + SSTORE2 STATE shard + Log enum), LogLedger (event-log high-res shard), PerpetualSettlement (Seaport-compatible, NFT-for-NFT + criteria barter + royalty enforcement) — deployed to Base Sepolia + Ethereum Sepolia, unaudited |
 | Networks | 9 chains: Ethereum, Base, Polygon, Arbitrum, Optimism, Zora (EVM) + Solana, Tezos, Flow |
 
@@ -210,12 +212,23 @@ verified end-to-end: real artist uploads (direct-to-Vercel-Blob, up to ~100 MB),
 pinning, relayer-published LOG shard, on-chain SSTORE2 STATE shard written at mint, and a
 Merkle-verifying LOG resolver at `/api/shard/log/[ledger]/[fileId]`.
 
-**Catalog and browsing are still mock-backed.** The token-browsing and collection-detail pages run
-on the deterministic in-memory layer (`src/lib/mock-data.ts`) pending a live on-chain indexer.
-No component rewrites are needed to switch: the API shapes are already the integration seams.
+**On-chain read layer is live.** Minted tokens have real live pages at
+`/token/onchain/[chainId]/[tokenId]` (live shards, high-res LOG rendered via the resolver,
+provenance, permanence panel). A connected wallet's owned works are listed on the profile
+(`/api/onchain/owned`).
 
-The system is **unaudited** and **not on mainnet**. Wiring real wallets (wagmi/viem) and a live
-indexer requires no component changes, since the interfaces are already in place.
+**Lite indexer is live.** `/explore` and `/collections` surface real on-chain tokens (scanned
+from `TokenMinted` events, cached) merged with the mock demo gallery; live tiles are tagged
+"on-chain". Text-search still covers the mock index only — a known lite-indexer limitation.
+
+**Fixed-price trading is live.** ETH listings are signed via EIP-712 and stored in a Blob
+orderbook; fulfillment routes through the deployed `PerpetualSettlement` with royalties and
+the hosting fee enforced on-chain. List/Buy UI lives on the live token page (`/api/orders`).
+Offers, auctions, NFT-for-NFT barter, and cross-chain swaps remain design targets.
+
+The system is **unaudited** and **not on mainnet**. Wiring real wallets (wagmi/viem) and a
+full production indexer (DB-backed) requires no component changes, since the interfaces are
+already in place.
 
 ---
 

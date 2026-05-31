@@ -200,10 +200,12 @@ GET /v1/featured                                            -> FeaturedEntry[] (
 
 The `chain` filter on `/v1/tokens` accepts any of the nine supported networks. The `/v1/swaps`
 endpoint returns barter orders (§2.6); a swap with `crossChain: true` settles atomically across
-the escrow bridge, and `criteria=true` filters to open criteria-based requests. In this build,
-`getOpenSwaps`, `getCriteriaSwaps`, `getSwapsForToken`, `getSwapsForUser`, and `getSwap` in
-`src/lib/mock-data.ts` implement these shapes in-memory.
+the escrow bridge, and `criteria=true` filters to open criteria-based requests. Fixed-price ETH
+orders are live via `/api/orders` on testnet. Swap/criteria endpoints are served by the demo
+layer (`getOpenSwaps`, `getCriteriaSwaps`, `getSwapsForToken`, `getSwapsForUser`, `getSwap`
+in `src/lib/mock-data.ts`) — a full production orderbook for swaps is a follow-up stage.
 
-In this build, `src/lib/mock-data.ts` implements exactly these shapes in-memory so the
-frontend is fully functional offline; swapping it for a live indexer that emits this schema
-requires no frontend changes.
+A lite indexer (Blob-cached `TokenMinted` scan) is live on testnet and powers explore/collections
+for real on-chain tokens; `src/lib/mock-data.ts` continues to implement these shapes for the
+demo gallery. Swapping to a full DB-backed indexer that emits this schema requires no frontend
+changes.

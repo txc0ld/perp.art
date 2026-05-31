@@ -28,9 +28,11 @@ https://perpetual-art-tx-build.vercel.app
 - **The decoupling:** because the STATE shard carries permanence on its own, IPFS/CDN costs are
   performance optimizations, not permanence obligations. Permanence is decoupled from operator
   solvency.
-- **Live on testnet:** the mint pipeline (real uploads, real on-chain storage, relayer, resolver)
-  is verified end-to-end on Base Sepolia + Ethereum Sepolia. Token browsing still uses the mock
-  data layer pending a live indexer.
+- **Live on testnet (Base Sepolia + Ethereum Sepolia):** the mint pipeline, on-chain read layer
+  (`/token/onchain/[chainId]/[tokenId]`), lite indexer (explore/collections surface real
+  on-chain tokens merged with the demo gallery), and fixed-price ETH trading
+  (EIP-712 listings → PerpetualSettlement on-chain fulfillment) are all live. The mock gallery
+  coexists as demo content; catalog text-search still covers the mock index only.
 
 ## Multi-chain (one-stop shop)
 
@@ -93,7 +95,8 @@ https://perpetual-art-tx-build.vercel.app
 
 ## Configuration
 
-- Minting and storage are live on testnet; catalog/browse runs on the in-memory layer for local
-  development with no configuration required. To wire live infrastructure, every variable (per-chain
-  RPCs, WalletConnect, contracts, the bridge, the indexer + database, storage providers, the
-  verification service, ENS) is documented in [`.env.example`](../.env.example).
+- Minting, on-chain read layer, lite indexer, and fixed-price trading are live on testnet. The
+  mock gallery runs alongside for local development with no configuration required. To wire live
+  infrastructure, every variable (per-chain RPCs, WalletConnect, contracts, the bridge, the
+  indexer + database, storage providers, the verification service, ENS) is documented in
+  [`.env.example`](../.env.example).

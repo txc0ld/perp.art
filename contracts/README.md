@@ -142,7 +142,8 @@ Status (15 passing tests):
   out of the sale** (royalty -> receiver, fee -> recipient, remainder -> seller),
   so royalties cannot be bypassed (PRD §8.2).
 
-Follow-ups before mainnet value: ERC-20 payment tokens, NFT-for-NFT + criteria
+Fixed-price ETH listings and on-chain fulfillment (royalties + hosting fee) are **live on
+testnet**. Follow-ups before mainnet value: ERC-20 payment tokens, NFT-for-NFT + criteria
 **barter** and **offers** (the Seaport-compatible surface in
 `src/interfaces/IPerpetualSettlement.sol`), the **cross-chain escrow bridge**,
 and a **security audit**. `SPDX-License-Identifier: MIT`,

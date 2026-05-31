@@ -14,7 +14,7 @@ repository, and records which parts are real code vs. reference scaffold.
 |---|---|---|---|
 | **Asset & Provenance** | Artwork, metadata, ownership, provenance, URI sharding | Fully permanent (Forever Library, the 6 EVM chains) | `contracts/` interfaces + reference impl (scaffold) |
 | **Settlement** | Trades, royalty enforcement, NFT-for-NFT + criteria barter, cross-chain escrow | On-chain (the EVM chains) + escrow bridge for cross-chain swaps | `contracts/PerpetualSettlement.sol` (scaffold) |
-| **Orderbook & Indexer** | Listings, offers, swaps, discovery, search, permanence verification, across 9 chains | Centralized, **rebuildable from public data** | `docs/INDEXER_SPEC.md` + `src/lib/mock-data.ts` (typed in-memory implementation) |
+| **Orderbook & Indexer** | Listings, offers, swaps, discovery, search, permanence verification, across 9 chains | Centralized, **rebuildable from public data** | `docs/INDEXER_SPEC.md` + lite live implementation (`/api/indexer/tokens`, `/api/orders`) + `src/lib/mock-data.ts` (demo gallery) |
 | **Frontend** | Web app | Centralized hosting | `src/app/**`, `src/components/**` (production Next.js app) |
 
 ### Multi-chain (one-stop shop)
@@ -154,15 +154,24 @@ end-to-end on the live site (tryperpetual.art):
   — they never trust the backend.
 - **Contracts deployed to Base Sepolia + Ethereum Sepolia.** Verified end-to-end on testnet.
   Still **unaudited**; **no mainnet value**.
-- **Catalog/browse still mock-backed.** Token browsing and collection pages run on
-  `src/lib/mock-data.ts` pending a live on-chain indexer. The API shapes (INDEXER_SPEC.md) are
-  the integration seams; no component rewrites needed to go live.
+- **On-chain read layer is live.** Minted tokens have real pages at
+  `/token/onchain/[chainId]/[tokenId]` (real shards, LOG resolver, provenance, permanence
+  panel). A connected wallet's owned works are listed on the profile (`/api/onchain/owned`).
+- **Lite indexer is live.** `/explore` and `/collections` surface real on-chain tokens
+  (scanned from `TokenMinted` events, cached) merged with the mock demo gallery. Live tiles
+  are tagged "on-chain". Catalog text-search still covers the mock index only — a known
+  lite-indexer limitation; a DB-backed indexer is the remaining stage.
+- **Fixed-price trading is live.** EIP-712 signed ETH listings stored in a Blob orderbook;
+  on-chain fulfillment via `PerpetualSettlement` (royalties + hosting fee enforced). Offers,
+  auctions, NFT-for-NFT barter, and cross-chain swaps remain design targets.
 - **Wallet is mocked** (`src/lib/wallet.ts`). Swap for wagmi/viem; the UI contract is in place.
 - **Community curation** (PRD §11) is surfaced as the featured surface; full Sybil-resistant voting is
   a Phase 2 fast-follow.
 
-These boundaries reflect the PRD's intended phasing (PRD §15): the **core minting + storage pipeline**
-is live and verified end-to-end on testnet; trading, indexer, and catalog go-live are the next layers.
+These boundaries reflect the PRD's intended phasing (PRD §15): the **core minting + storage
+pipeline**, **on-chain read layer**, **lite indexer**, and **fixed-price trading** are all live
+on testnet. A full DB-backed indexer, real wallet integration (wagmi/viem), security audit, and
+mainnet deployment are the remaining stages.
 
 ---
 

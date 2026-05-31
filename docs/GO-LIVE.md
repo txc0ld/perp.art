@@ -1,8 +1,8 @@
 # Perpetual - Go-Live Checklist
 
-The complete set of objectives to take Perpetual from the current state — mint pipeline and
-on-chain storage live on testnet, catalog/browse still on the mock layer — to a fully live
-marketplace with real trading, wallets, indexer, and mainnet contracts.
+The complete set of objectives to take Perpetual from the current state — mint pipeline,
+on-chain read layer, lite indexer, and fixed-price ETH trading all live on testnet — to a
+fully live marketplace with real wallet integration, a DB-backed indexer, and mainnet contracts.
 
 **What's already live (testnet):** ForeverLibrary (SSTORE2 STATE shard + Log enum), LogLedger,
 and PerpetualSettlement are deployed to Base Sepolia + Ethereum Sepolia. The mint pipeline
@@ -10,11 +10,17 @@ and PerpetualSettlement are deployed to Base Sepolia + Ethereum Sepolia. The min
 SSTORE2 STATE shard) is verified end-to-end. A Merkle-verifying LOG resolver
 (`/api/shard/log/[ledger]/[fileId]`) reconstructs and serves the LOG shard from chain events.
 
+**Also live (testnet):** the on-chain read layer (`/token/onchain/[chainId]/[tokenId]` — real
+shards, LOG resolver, provenance, permanence panel; profile owned-list via `/api/onchain/owned`),
+a lite indexer (explore/collections surface real `TokenMinted` tokens merged with the demo
+gallery; `/api/indexer/tokens`), and fixed-price ETH trading (EIP-712 signed listings stored in
+Blob orderbook, on-chain fulfillment via PerpetualSettlement; `/api/orders`).
+
 **What's still needed:** the remaining hard blockers are the security audit (required before
-mainnet value), the orderbook/indexer (to replace the mock catalog), and wallet integration.
-The frontend (14) is largely a matter of swapping `src/lib/mock-data.ts` and `src/lib/wallet.ts`
-for live services: the hooks, types, and API shapes were built as the integration seams, so
-almost no component rewrites are needed.
+mainnet value), a DB-backed indexer to replace the lite Blob cache, and real wallet integration.
+The frontend (14) is largely a matter of swapping `src/lib/wallet.ts` and the lite API routes
+for fully live services: the hooks, types, and API shapes were built as the integration seams,
+so almost no component rewrites are needed.
 
 ---
 
@@ -44,10 +50,10 @@ almost no component rewrites are needed.
 
 ## 4. Smart contracts - Settlement
 - [ ] Decide fork Seaport vs canonical Seaport integration (forking increases audit burden, PRD 17.4).
-- [ ] `contracts/PerpetualSettlement.sol`: EIP-712 hashing, signature verification, nonce/counter cancellation, fixed-price + offers.
+- [x] `contracts/PerpetualSettlement.sol`: EIP-712 hashing, signature verification, nonce/counter cancellation, **fixed-price ETH listings live on testnet** — deployed and fulfilling orders.
 - [ ] NFT-for-NFT + criteria barter orders (Seaport-native) for the swap feature.
-- [ ] Mandatory ERC-2981 royalty enforcement at settlement (reject trades that evade royalties).
-- [ ] Protocol fee collection; non-custodial peer-to-peer transfers; reentrancy/replay protection.
+- [x] Mandatory ERC-2981 royalty enforcement at settlement (reject trades that evade royalties) — live on testnet.
+- [x] Protocol fee collection; non-custodial peer-to-peer transfers; reentrancy/replay protection — live on testnet.
 
 ## 5. Smart contracts - Cross-chain bridge
 - [ ] Escrow-bridge contracts per chain (lock on A, release on B, rollback on failure).
@@ -76,16 +82,19 @@ almost no component rewrites are needed.
 - [ ] Non-EVM wallet adapters (if trading those chains).
 
 ## 9. Indexer (replace read accessors in `src/lib/mock-data.ts`)
-- [ ] Per-chain event ingestion (mint, shard config, transfers, settlement, swaps) into Postgres.
+- [x] **Lite indexer live on testnet**: `TokenMinted` event scan → Blob cache → `/api/indexer/tokens`; explore and collections surface real on-chain tokens merged with the demo gallery; live tiles tagged "on-chain". Catalog text-search still covers the mock index only.
+- [ ] Per-chain event ingestion (mint, shard config, transfers, settlement, swaps) into Postgres (full DB-backed indexer — replaces lite Blob cache).
 - [ ] Implement the published schema + REST endpoints from `docs/INDEXER_SPEC.md` (`/v1/tokens`, `/v1/collections`, `/v1/orders`, `/v1/swaps`, `/v1/search`, `/v1/featured`, rankings/stats).
 - [ ] Reorg/finality handling, backfill from contract genesis, idempotent re-indexing.
 - [ ] Rankings/trending aggregation (volume, floor, percent-change windows), owners/holders, sales history.
+- [ ] Real full-text + trait search backend (Postgres FTS / Typesense / Algolia — replaces mock-only text search).
 - [ ] Rebuildability: publish the spec and make it runnable by third parties (the architectural invariant).
 - [ ] Caching (Redis), pagination, rate limits, API keys.
 
 ## 10. Orderbook service
-- [ ] Store + serve signed Seaport orders (listings, offers, token swaps, criteria swaps).
-- [ ] Signature + balance/approval validation; expiry; nonce/counter cancellation sync.
+- [x] **Fixed-price ETH listings live on testnet**: EIP-712 signed orders stored in Blob orderbook; on-chain fulfillment via PerpetualSettlement; List/Buy UI on live token pages (`/api/orders`).
+- [ ] Offers, NFT-for-NFT token swaps, criteria swaps — remaining order types.
+- [ ] Signature + balance/approval validation; expiry; nonce/counter cancellation sync (full production hardening).
 - [ ] Listing-eligibility gate (shard0 configured + content-hash match + recognized Forever Library contract).
 - [ ] Collection/trait offer matching; criteria-swap matching.
 - [ ] Order GC/cleanup; fill detection from on-chain events.
@@ -187,7 +196,8 @@ almost no component rewrites are needed.
 
 ## Leanest path to "live with real data"
 
-**Mint + storage are already live on testnet.** The remaining path to a trading-complete v1:
-**6 (audit + mainnet deploy) -> 8 (wallet/signing) -> 9-10 (indexer + orderbook) ->
+**Mint + storage, on-chain read layer, lite indexer, and fixed-price ETH trading are already
+live on testnet.** The remaining path to a mainnet v1:
+**6 (audit + mainnet deploy) -> 8 (wallet/signing) -> 9 (DB-backed indexer) ->
 12 (live verification service)** on Ethereum + Base, same-chain trading only. Multi-chain
-breadth, cross-chain swaps, and non-EVM ecosystems are then additive.
+breadth, cross-chain swaps, offers/auctions/barter, and non-EVM ecosystems are then additive.

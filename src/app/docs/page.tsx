@@ -612,13 +612,14 @@ export default function DocsPage() {
                 <Badge tone="verify">Royalties enforced</Badge>
               </div>
 
-              <Callout label="Taking it live">
-                The app runs today on a deterministic in-memory data layer, so no
-                configuration is required to develop locally. To wire live
-                infrastructure, the per-chain RPCs, WalletConnect, deployed
-                contracts, the bridge, the indexer and database, storage
-                providers, and ENS, every variable is documented in{" "}
-                <Term>.env.example</Term>.
+              <Callout label="Local development">
+                Minting, the on-chain read layer, the lite indexer, and
+                fixed-price trading are live on testnet. Locally, the demo
+                gallery (deterministic in-memory data) runs with no
+                configuration required. To wire the full live stack — per-chain
+                RPCs, WalletConnect, deployed contracts, the bridge, the indexer
+                and database, storage providers, and ENS — every variable is
+                documented in <Term>.env.example</Term>.
               </Callout>
             </DocSection>
           </div>
