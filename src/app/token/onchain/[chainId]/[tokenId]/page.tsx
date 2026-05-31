@@ -4,9 +4,11 @@ import { readOnchainToken } from "@/lib/web3/read-token";
 import { PermanencePanel } from "@/components/token/PermanencePanel";
 import { CertificateOfPermanence } from "@/components/token/CertificateOfPermanence";
 import { ProvenanceTimeline } from "@/components/token/ProvenanceTimeline";
+import { TradePanel } from "@/components/token/TradePanel";
 import { MediaPreview } from "@/components/mint/MediaPreview";
 import { Section } from "@/components/ui";
 import { shortAddress } from "@/lib/utils";
+import { getContracts } from "@/lib/web3/contracts";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,9 @@ export default async function OnchainTokenPage(
   const { chainId, tokenId } = await params;
   const token = await load(chainId, tokenId);
   if (!token) notFound();
+
+  const chainIdNum = Number(chainId);
+  const { foreverLibrary: fl } = getContracts(chainIdNum);
 
   // STATE shard (index 0) is the on-chain data URI; use it as the display image.
   // LOG shard (backend "log") is the high-res copy — prefer it when present.
@@ -82,6 +87,14 @@ export default async function OnchainTokenPage(
               by {token.artistHandle} · owner {shortAddress(token.owner)}
             </p>
           </header>
+          {fl && (
+            <TradePanel
+              chainId={chainIdNum}
+              tokenId={token.tokenId}
+              nft={fl}
+              owner={token.owner as `0x${string}`}
+            />
+          )}
           <PermanencePanel token={token} />
           <CertificateOfPermanence token={token} />
         </div>
