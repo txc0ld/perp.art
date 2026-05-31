@@ -9,7 +9,7 @@ import { explorerTx } from "@/lib/web3/contracts";
 import type { ShardRecord } from "./useOnchainMint";
 
 const REAL_SHARD_LABEL: Record<string, string> = {
-  onchain: "Onchain STATE proof (SSTORE2)",
+  onchain: "Onchain STATE (SSTORE2)",
   log: "Onchain LOG (high-res)",
   ipfs: "IPFS",
   arweave: "Arweave",
