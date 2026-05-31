@@ -8,6 +8,7 @@ import { upload } from "@vercel/blob/client";
 import { wagmiConfig } from "@/lib/web3/config";
 import { getContracts } from "@/lib/web3/contracts";
 import { FOREVER_LIBRARY_ABI, SHARD_BACKEND } from "@/lib/web3/abis";
+import { resolveShardUrl } from "@/lib/logledger/resolve-url";
 import { generateStateProof } from "@/lib/proof/state-proof";
 import { cleanTraits, type MintForm } from "./state";
 
@@ -153,6 +154,8 @@ export function useOnchainMint() {
       stored: Boolean(log?.sealed),
       recorded: false,
       uri: log?.uri,
+      // Resolve the high-res LOG copy through the reconstruct+verify endpoint.
+      gateway: log?.uri ? resolveShardUrl(log.uri, { mime: originalMime, chainId }) : undefined,
       error: log?.ok ? undefined : log?.error,
     };
     // Shard 0 (STATE) is written on-chain by mint itself.
