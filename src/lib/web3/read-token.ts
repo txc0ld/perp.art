@@ -84,7 +84,25 @@ import { parseAbiItem, type PublicClient } from "viem";
 
 const TRANSFER_EVENT = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)");
 const LOG_WINDOW = BigInt(2000);
-const MAX_WINDOWS = 50;
+// ~240k blocks of lookback (≈5–6 days on Base Sepolia). Without an indexer we
+// scan recent history bounded below by the contract's deploy block — covering
+// every token while the deploy is recent. Older activity needs the full indexer.
+const MAX_WINDOWS = 120;
+
+// ForeverLibrary deploy blocks — the lower bound for log scans (no Transfer can
+// predate the contract). Keep in sync with the deployed addresses.
+const FL_DEPLOY_BLOCK: Record<number, bigint> = {
+  84532: BigInt(42222546),
+  11155111: BigInt(10959823),
+};
+
+/** Where to start a Transfer-log scan: the deploy block, or a recent lookback
+ *  window if the contract has been live longer than the cap can cover. */
+function scanStartBlock(chainId: number, latest: bigint): bigint {
+  const floor = FL_DEPLOY_BLOCK[chainId] ?? BigInt(0);
+  const lookback = latest - BigInt(MAX_WINDOWS) * LOG_WINDOW;
+  return lookback > floor ? lookback : floor;
+}
 
 async function readShards(pub: PublicClient, fl: Hex, tokenId: bigint): Promise<RawShard[]> {
   const count = Number(await pub.readContract({ address: fl, abi: FOREVER_LIBRARY_ABI, functionName: "shardCount", args: [tokenId] }));
@@ -107,7 +125,7 @@ export async function readOnchainProvenance(chainId: number, tokenId: bigint): P
   if (!pub || !fl) return [];
   const latest = await pub.getBlockNumber();
   const events: ProvenanceEvent[] = [];
-  let from = BigInt(0);
+  let from = scanStartBlock(chainId, latest);
   // Transfer logs are sparse; scan in windows up to latest (cap for safety).
   for (let w = 0; w < MAX_WINDOWS && from <= latest; w++) {
     const to = from + LOG_WINDOW - BigInt(1) > latest ? latest : from + LOG_WINDOW - BigInt(1);
@@ -153,7 +171,7 @@ export async function readOwnedTokenIds(chainId: number, owner: string): Promise
   if (!pub || !fl) return [];
   const latest = await pub.getBlockNumber();
   const seen = new Set<string>();
-  let from = BigInt(0);
+  let from = scanStartBlock(chainId, latest);
   for (let w = 0; w < MAX_WINDOWS && from <= latest; w++) {
     const to = from + LOG_WINDOW - BigInt(1) > latest ? latest : from + LOG_WINDOW - BigInt(1);
     const logs = await pub.getLogs({ address: fl as Hex, event: TRANSFER_EVENT, args: { to: owner as Hex }, fromBlock: from, toBlock: to });
