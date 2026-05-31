@@ -24,13 +24,20 @@ export const maxDuration = 60;
 type ShardResult = { backend: string; ok: boolean; uri?: string; gateway?: string; error?: string };
 
 export async function POST(request: Request) {
-  let body: { svg?: string; name?: string; description?: string; genre?: string; mediaType?: string };
+  let body: {
+    svg?: string;
+    name?: string;
+    description?: string;
+    genre?: string;
+    mediaType?: string;
+    traits?: { key?: string; value?: string }[];
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
-  const { svg, name = "Untitled", description = "", genre, mediaType = "image/svg+xml" } = body;
+  const { svg, name = "Untitled", description = "", genre, mediaType = "image/svg+xml", traits = [] } = body;
   if (!svg || typeof svg !== "string" || svg.length > 2_000_000) {
     return NextResponse.json({ error: "missing or oversized svg" }, { status: 400 });
   }
@@ -39,10 +46,19 @@ export async function POST(request: Request) {
   const contentHash = keccak256(bytes);
   const env = serverEnv();
 
+  // OpenSea-style attributes: genre first, then any user-supplied traits.
+  const attributes = [
+    ...(genre ? [{ trait_type: "Genre", value: genre }] : []),
+    ...(Array.isArray(traits) ? traits : [])
+      .filter((t) => t && typeof t.key === "string" && typeof t.value === "string" && t.key.trim() && t.value.trim())
+      .slice(0, 50)
+      .map((t) => ({ trait_type: t.key!.trim().slice(0, 64), value: t.value!.trim().slice(0, 120) })),
+  ];
+
   const metadata = {
     name: name.slice(0, 120),
     description,
-    attributes: genre ? [{ trait_type: "Genre", value: genre }] : [],
+    attributes,
     mediaType,
     contentHash,
   };

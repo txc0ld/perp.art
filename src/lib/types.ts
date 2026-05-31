@@ -121,7 +121,22 @@ export interface Offer {
 // Token + Collection + Artist
 // ---------------------------------------------------------------------------
 
-export type Genre = "Generative" | "Glitch" | "Photography" | "Pixel" | "AI" | "3D" | "Abstract";
+export type Genre =
+  | "Generative"
+  | "AI"
+  | "PFP"
+  | "Photography"
+  | "Illustration"
+  | "3D"
+  | "Pixel"
+  | "Voxel"
+  | "Glitch"
+  | "Vector"
+  | "Motion"
+  | "Fractal"
+  | "Collage"
+  | "Audio"
+  | "Abstract";
 
 export type MediaType = "image" | "video" | "interactive";
 

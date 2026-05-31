@@ -1,5 +1,11 @@
 import type { Genre, MediaType, ShardBackend, ShardOption } from "@/lib/types";
 
+/** A single editable trait/attribute pair on the mint form. */
+export interface TraitInput {
+  key: string;
+  value: string;
+}
+
 /** The single wizard form-state object, driven from MintWizard. */
 export interface MintForm {
   // Step 1 - artwork + metadata
@@ -10,6 +16,7 @@ export interface MintForm {
   mediaType: MediaType;
   genre: Genre;
   description: string;
+  traits: TraitInput[];
 
   // Step 2 - royalty
   royaltyPct: number; // 0..15
@@ -44,10 +51,27 @@ export function initialForm(shardOptions: ShardOption[], genres: Genre[]): MintF
     mediaType: "image",
     genre: genres[0] ?? "Generative",
     description: "",
+    traits: [],
     royaltyPct: 7.5,
     enabledShards,
     lockShards: true,
   };
+}
+
+/** Trait rows with both a key and value filled in, trimmed and de-duped by key. */
+export function cleanTraits(form: MintForm): TraitInput[] {
+  const seen = new Set<string>();
+  const out: TraitInput[] = [];
+  for (const t of form.traits) {
+    const key = t.key.trim();
+    const value = t.value.trim();
+    if (!key || !value) continue;
+    const k = key.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({ key, value });
+  }
+  return out;
 }
 
 /** Stable preview seed derived from title + artist (PRD: deterministic art). */

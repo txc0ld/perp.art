@@ -8,7 +8,7 @@ import { wagmiConfig } from "@/lib/web3/config";
 import { getContracts } from "@/lib/web3/contracts";
 import { FOREVER_LIBRARY_ABI } from "@/lib/web3/abis";
 import { artSvgString } from "@/components/art/art-svg";
-import { previewSeed, type MintForm } from "./state";
+import { previewSeed, cleanTraits, type MintForm } from "./state";
 
 const MIME: Record<string, string> = {
   image: "image/svg+xml",
@@ -81,6 +81,7 @@ export function useOnchainMint() {
           description: form.description,
           genre: form.genre,
           mediaType,
+          traits: cleanTraits(form),
         }),
       });
       if (!res.ok) throw new Error(`storage failed (${res.status})`);

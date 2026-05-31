@@ -6,7 +6,7 @@ import { cn, formatEth } from "@/lib/utils";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { MonoLabel, Badge, Divider } from "@/components/ui";
 import type { MintForm } from "./state";
-import { previewSeed, totalCostEth } from "./state";
+import { previewSeed, totalCostEth, cleanTraits } from "./state";
 
 function Row({
   label,
@@ -42,6 +42,7 @@ export function ReviewStep({
   const seed = previewSeed(form);
   const total = totalCostEth(form, shardOptions);
   const selected = shardOptions.filter((o) => form.enabledShards[o.backend]);
+  const traits = cleanTraits(form);
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
@@ -78,6 +79,26 @@ export function ReviewStep({
             </Row>
           </div>
         </div>
+
+        {traits.length > 0 && (
+          <>
+            <Divider />
+            <div>
+              <MonoLabel>Attributes</MonoLabel>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {traits.map((t) => (
+                  <span
+                    key={t.key}
+                    className="inline-flex items-baseline gap-1.5 rounded-[8px] border border-border bg-surface-2/50 px-2.5 py-1.5"
+                  >
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-faint">{t.key}</span>
+                    <span className="text-[13px] text-foreground">{t.value}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         <Divider />
 

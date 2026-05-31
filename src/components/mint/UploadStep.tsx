@@ -65,6 +65,12 @@ export function UploadStep({
   const artistError = touched.artist && form.artistName.trim().length === 0;
   const titleError = touched.title && form.title.trim().length === 0;
 
+  const addTrait = () => set({ traits: [...form.traits, { key: "", value: "" }] });
+  const updateTrait = (i: number, patch: Partial<{ key: string; value: string }>) =>
+    set({ traits: form.traits.map((t, idx) => (idx === i ? { ...t, ...patch } : t)) });
+  const removeTrait = (i: number) =>
+    set({ traits: form.traits.filter((_, idx) => idx !== i) });
+
   const simulateSelect = () => {
     const names = [
       "untitled-01.png",
@@ -191,7 +197,7 @@ export function UploadStep({
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Media type">
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="flex w-full rounded-[8px] border border-border p-1">
               {MEDIA_TYPES.map((m) => {
                 const active = form.mediaType === m.value;
                 return (
@@ -201,11 +207,11 @@ export function UploadStep({
                     aria-pressed={active}
                     onClick={() => set({ mediaType: m.value })}
                     className={cn(
-                      "min-h-[44px] rounded-[8px] border px-2 py-2 font-mono text-[11px] transition-colors duration-200",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      "min-h-[40px] flex-1 rounded-[6px] px-2 py-2 font-mono text-[11px] leading-none transition-colors duration-200",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
                       active
-                        ? "border-border-bright bg-surface-2 text-foreground"
-                        : "border-border text-muted hover:border-border-bright hover:text-foreground",
+                        ? "bg-surface-2 text-foreground"
+                        : "text-muted hover:text-foreground",
                     )}
                   >
                     {m.label}
@@ -250,6 +256,56 @@ export function UploadStep({
             placeholder="What is this work, and what is it meant to outlast?"
             maxLength={1000}
           />
+        </Field>
+
+        <Field label="Attributes" hint="optional · filterable traits">
+          <div className="space-y-2">
+            {form.traits.length > 0 && (
+              <ul className="space-y-2">
+                {form.traits.map((t, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <input
+                      className={cn(inputCls, "flex-1")}
+                      value={t.key}
+                      onChange={(e) => updateTrait(i, { key: e.target.value })}
+                      placeholder="Trait (e.g. Background)"
+                      aria-label={`Trait ${i + 1} name`}
+                      autoComplete="off"
+                    />
+                    <span className="font-mono text-faint" aria-hidden>·</span>
+                    <input
+                      className={cn(inputCls, "flex-1")}
+                      value={t.value}
+                      onChange={(e) => updateTrait(i, { value: e.target.value })}
+                      placeholder="Value (e.g. Nebula)"
+                      aria-label={`Trait ${i + 1} value`}
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeTrait(i)}
+                      aria-label={`Remove trait ${i + 1}`}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-border text-faint transition-colors hover:border-[#fda4af]/50 hover:text-[#fda4af] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                    >
+                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden>
+                        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button
+              type="button"
+              onClick={addTrait}
+              className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-[6px] px-1 py-1"
+            >
+              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden>
+                <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              {form.traits.length === 0 ? "Add an attribute" : "Add another"}
+            </button>
+          </div>
         </Field>
       </div>
     </div>

@@ -321,7 +321,10 @@ const WORLD = buildWorld();
 // Public accessors (mirror an eventual indexer/orderbook API)
 // ---------------------------------------------------------------------------
 
-export const GENRES: Genre[] = ["Generative", "Glitch", "Photography", "Pixel", "AI", "Abstract"];
+export const GENRES: Genre[] = [
+  "Generative", "AI", "PFP", "Photography", "Illustration", "3D", "Pixel",
+  "Voxel", "Glitch", "Vector", "Motion", "Fractal", "Collage", "Audio", "Abstract",
+];
 
 export function getAllTokens(): Token[] {
   return WORLD.tokens;

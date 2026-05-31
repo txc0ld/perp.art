@@ -4,7 +4,7 @@
  * client filter shell and its child controls.
  */
 import type { Token, Genre, Chain } from "@/lib/types";
-import { getChains, CHAIN_ORDER } from "@/lib/mock-data";
+import { getChains, CHAIN_ORDER, GENRES } from "@/lib/mock-data";
 
 export type StorageKind = "arweave" | "irys" | "onchain-only";
 export type StatusKind = "listed" | "unlisted";
@@ -192,8 +192,7 @@ export function filtersFromSearchParams(sp: Record<string, string | string[] | u
   const many = (v: string | string[] | undefined): string[] =>
     v === undefined ? [] : Array.isArray(v) ? v.flatMap((x) => x.split(",")) : v.split(",");
 
-  const validGenres: Genre[] = ["Generative", "Glitch", "Photography", "Pixel", "AI", "3D", "Abstract"];
-  const genres = many(sp.genre).filter((g): g is Genre => validGenres.includes(g as Genre));
+  const genres = many(sp.genre).filter((g): g is Genre => (GENRES as string[]).includes(g));
   const chains = many(sp.chain).filter((c): c is Chain => (CHAIN_ORDER as string[]).includes(c));
   const storage = many(sp.storage).filter((s): s is StorageKind =>
     s === "arweave" || s === "irys" || s === "onchain-only",
