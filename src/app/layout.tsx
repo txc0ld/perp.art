@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/chrome/SiteHeader";
 import { SiteFooter } from "@/components/chrome/SiteFooter";
+import { Web3Provider } from "@/components/web3/Web3Provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -48,9 +49,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <a href="#main" className="skip-link">Skip to content</a>
-        <SiteHeader />
-        <main id="main" className="flex-1">{children}</main>
-        <SiteFooter />
+        <Web3Provider>
+          <SiteHeader />
+          <main id="main" className="flex-1">{children}</main>
+          <SiteFooter />
+        </Web3Provider>
       </body>
     </html>
   );

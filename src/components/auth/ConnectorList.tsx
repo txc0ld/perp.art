@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { connectWallet } from "@/lib/wallet";
+import { connectWallet, useWallet } from "@/lib/wallet";
 
 interface Connector {
   name: string;
@@ -63,39 +63,30 @@ const CONNECTORS: Connector[] = [
  */
 export function ConnectorList() {
   const router = useRouter();
-  const [pending, setPending] = useState<string | null>(null);
+  const { connected } = useWallet();
 
-  function handleConnect(name: string) {
-    setPending(name);
-    connectWallet(name);
-    // Brief settle so the signing-intent feels deliberate, then route to profile.
-    setTimeout(() => router.push("/profile"), 320);
-  }
+  // Once a wallet actually connects (via the AppKit modal), continue to the profile.
+  useEffect(() => {
+    if (connected) router.push("/profile");
+  }, [connected, router]);
 
   return (
-    <ul className="flex flex-col gap-2.5" aria-label="Wallet connectors" aria-busy={pending !== null}>
-      <li aria-live="polite" className="sr-only">
-        {pending ? `Connecting to ${pending}…` : ""}
-      </li>
+    <ul className="flex flex-col gap-2.5" aria-label="Wallet connectors">
       {CONNECTORS.map((conn, i) => {
-        const isPending = pending === conn.name;
         const recommended = i === 0;
         return (
           <li key={conn.name}>
             <button
               type="button"
-              disabled={pending !== null}
-              aria-busy={isPending}
               aria-label={
                 recommended ? `Connect with ${conn.name} (recommended)` : `Connect with ${conn.name}`
               }
-              onClick={() => handleConnect(conn.name)}
+              onClick={() => connectWallet(conn.name)}
               className={
-                "group flex min-h-[44px] w-full items-center gap-3.5 rounded-[8px] border bg-surface px-4 py-3.5 text-left transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none " +
+                "group flex min-h-[44px] w-full items-center gap-3.5 rounded-[8px] border bg-surface px-4 py-3.5 text-left transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 " +
                 (recommended
                   ? "border-border-bright hover:border-accent/50"
-                  : "border-border hover:border-border-bright") +
-                (pending && !isPending ? " opacity-40" : "")
+                  : "border-border hover:border-border-bright")
               }
             >
               <span
@@ -116,26 +107,20 @@ export function ConnectorList() {
                 </span>
               </span>
 
-              {recommended && !isPending && (
+              {recommended && (
                 <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-accent">
                   Recommended
                 </span>
               )}
 
-              {isPending ? (
-                <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-accent">
-                  Connecting…
-                </span>
-              ) : (
-                <svg
-                  viewBox="0 0 16 16"
-                  className="h-3.5 w-3.5 shrink-0 text-faint transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-foreground"
-                  fill="none"
-                  aria-hidden
-                >
-                  <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
+              <svg
+                viewBox="0 0 16 16"
+                className="h-3.5 w-3.5 shrink-0 text-faint transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-foreground"
+                fill="none"
+                aria-hidden
+              >
+                <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           </li>
         );

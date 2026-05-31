@@ -1,12 +1,16 @@
 "use client";
 
 /**
- * Mock wallet session - a tiny external store (no dependency) shared across the app
- * via useSyncExternalStore. Models connect/disconnect; persists to localStorage.
- * Swap for wagmi/viem when wiring real wallets (PRD §10.2 wallet connect).
+ * Wallet session - now backed by real wagmi + Reown AppKit, but the surface is
+ * unchanged from the previous mock so every component keeps working:
+ *   useWallet() -> { connected, address, connector }
+ *   connectWallet() -> opens the AppKit modal (all connectors)
+ *   disconnectWallet() -> disconnects via wagmi core
  */
-import { useSyncExternalStore } from "react";
-import { CURRENT_USER } from "./mock-data";
+import { useAccount } from "wagmi";
+import { disconnect } from "@wagmi/core";
+import { wagmiConfig } from "@/lib/web3/config";
+import { appKitModal } from "@/components/web3/Web3Provider";
 
 export interface WalletState {
   connected: boolean;
@@ -14,54 +18,20 @@ export interface WalletState {
   connector: string | null;
 }
 
-const KEY = "perpetual.wallet";
-let state: WalletState = { connected: false, address: null, connector: null };
-
-const listeners = new Set<() => void>();
-
-function emit() {
-  for (const l of listeners) l();
-}
-
-function load() {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (raw) state = JSON.parse(raw);
-  } catch {
-    /* ignore */
-  }
-}
-load();
-
-function persist() {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(state));
-}
-
-export function connectWallet(connector = "MetaMask") {
-  state = { connected: true, address: CURRENT_USER.address, connector };
-  persist();
-  emit();
-}
-
-export function disconnectWallet() {
-  state = { connected: false, address: null, connector: null };
-  persist();
-  emit();
-}
-
-function subscribe(cb: () => void) {
-  listeners.add(cb);
-  return () => listeners.delete(cb);
-}
-
-function getSnapshot(): WalletState {
-  return state;
-}
-
-const SERVER_SNAPSHOT: WalletState = { connected: false, address: null, connector: null };
-
 export function useWallet(): WalletState {
-  return useSyncExternalStore(subscribe, getSnapshot, () => SERVER_SNAPSHOT);
+  const { address, isConnected, connector } = useAccount();
+  return {
+    connected: isConnected,
+    address: address ?? null,
+    connector: connector?.name ?? null,
+  };
+}
+
+/** Open the connect modal. The optional arg is ignored (the modal lists all wallets). */
+export function connectWallet(_connector?: string): void {
+  appKitModal?.open();
+}
+
+export function disconnectWallet(): void {
+  void disconnect(wagmiConfig);
 }
