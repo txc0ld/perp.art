@@ -133,6 +133,16 @@ export const FOREVER_LIBRARY_ABI = [
       { name: "tokenId", type: "uint256", indexed: true },
     ],
   },
+  {
+    type: "function", name: "isApprovedForAll", stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }, { name: "operator", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function", name: "setApprovalForAll", stateMutability: "nonpayable",
+    inputs: [{ name: "operator", type: "address" }, { name: "approved", type: "bool" }],
+    outputs: [],
+  },
 ] as const;
 
 /** LogLedger: cheap on-chain media storage via event logs (Plan 1 contract). */
@@ -216,6 +226,91 @@ export const LOG_LEDGER_ABI = [
       { name: "size", type: "uint256", indexed: false },
       { name: "chunks", type: "uint32", indexed: false },
       { name: "codec", type: "uint8", indexed: false },
+    ],
+  },
+] as const;
+
+/**
+ * PerpetualSettlement: EIP-712 fixed-price order book.
+ * Order tuple field order MUST match the contract exactly:
+ *   seller, nft, tokenId, paymentToken, price, startTime, endTime, counter, salt
+ */
+export const SETTLEMENT_ABI = [
+  {
+    type: "function",
+    name: "fulfillOrder",
+    stateMutability: "payable",
+    inputs: [
+      {
+        name: "order",
+        type: "tuple",
+        components: [
+          { name: "seller", type: "address" },
+          { name: "nft", type: "address" },
+          { name: "tokenId", type: "uint256" },
+          { name: "paymentToken", type: "address" },
+          { name: "price", type: "uint256" },
+          { name: "startTime", type: "uint256" },
+          { name: "endTime", type: "uint256" },
+          { name: "counter", type: "uint256" },
+          { name: "salt", type: "uint256" },
+        ],
+      },
+      { name: "signature", type: "bytes" },
+    ],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+  {
+    type: "function",
+    name: "hashOrder",
+    stateMutability: "view",
+    inputs: [
+      {
+        name: "order",
+        type: "tuple",
+        components: [
+          { name: "seller", type: "address" },
+          { name: "nft", type: "address" },
+          { name: "tokenId", type: "uint256" },
+          { name: "paymentToken", type: "address" },
+          { name: "price", type: "uint256" },
+          { name: "startTime", type: "uint256" },
+          { name: "endTime", type: "uint256" },
+          { name: "counter", type: "uint256" },
+          { name: "salt", type: "uint256" },
+        ],
+      },
+    ],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+  {
+    type: "function",
+    name: "getCounter",
+    stateMutability: "view",
+    inputs: [{ name: "seller", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "protocolFeeBps",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint96" }],
+  },
+  {
+    type: "event",
+    name: "OrderFulfilled",
+    inputs: [
+      { name: "orderHash", type: "bytes32", indexed: true },
+      { name: "seller", type: "address", indexed: true },
+      { name: "buyer", type: "address", indexed: true },
+      { name: "nft", type: "address", indexed: false },
+      { name: "tokenId", type: "uint256", indexed: false },
+      { name: "price", type: "uint256", indexed: false },
+      { name: "royaltyAmount", type: "uint256", indexed: false },
+      { name: "royaltyReceiver", type: "address", indexed: false },
+      { name: "protocolFee", type: "uint256", indexed: false },
+      { name: "hostingFee", type: "uint256", indexed: false },
     ],
   },
 ] as const;
