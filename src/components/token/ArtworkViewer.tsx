@@ -116,7 +116,7 @@ export function ArtworkViewer({ token }: { token: Token }) {
             type="button"
             onClick={() => setZoomed(false)}
             aria-label="Close fullscreen"
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-[8px] border border-border/60 bg-surface/70 text-muted backdrop-blur-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-[8px] border border-border/60 bg-surface/70 text-muted backdrop-blur-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />

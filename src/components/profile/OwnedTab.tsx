@@ -24,9 +24,8 @@ function OnchainWorks() {
     setLoading(true);
     fetch(`/api/onchain/owned?chainId=${chainId}&owner=${address}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : { items: [] }))
-      .then((d) => setItems(d.items ?? []))
-      .catch((err) => { if (err.name !== "AbortError") setItems([]); })
-      .finally(() => setLoading(false));
+      .then((d) => { setItems(d.items ?? []); setLoading(false); })
+      .catch((err) => { if (err.name !== "AbortError") { setItems([]); setLoading(false); } });
     return () => controller.abort();
   }, [address, chainId]);
 

@@ -249,7 +249,7 @@ export function SwapModal({
                       disabled={phase === "proposing" || unavailable}
                       onClick={() => setMode(m.id)}
                       className={cn(
-                        "h-9 flex-1 rounded-[6px] px-3 font-mono text-[11px] uppercase tracking-wider transition-colors disabled:opacity-30",
+                        "h-11 flex-1 rounded-[6px] px-3 font-mono text-[11px] uppercase tracking-wider transition-colors disabled:opacity-30",
                         active ? "bg-surface-2 text-foreground" : "text-faint hover:text-muted",
                       )}
                     >
@@ -353,7 +353,7 @@ export function SwapModal({
                         onClick={() => setTopUpSide(s)}
                         aria-pressed={topUpSide === s}
                         className={cn(
-                          "h-8 rounded-[6px] px-3 font-mono text-[11px] uppercase tracking-wider transition-colors",
+                          "h-10 rounded-[6px] px-3 font-mono text-[11px] uppercase tracking-wider transition-colors",
                           topUpSide === s ? "bg-surface-2 text-foreground" : "text-faint hover:text-muted",
                         )}
                       >

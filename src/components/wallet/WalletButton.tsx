@@ -75,7 +75,7 @@ export function WalletButton() {
                 setOpen(false);
                 router.push("/profile");
               }}
-              className="block w-full rounded-[6px] px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:bg-surface-2 focus-visible:text-foreground focus-visible:outline-none"
+              className="block w-full rounded-[6px] px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:bg-surface-2 focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             >
               Profile
             </button>
@@ -87,7 +87,7 @@ export function WalletButton() {
                 setOpen(false);
                 triggerRef.current?.focus();
               }}
-              className="block w-full rounded-[6px] px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:bg-surface-2 focus-visible:text-foreground focus-visible:outline-none"
+              className="block w-full rounded-[6px] px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:bg-surface-2 focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             >
               Disconnect
             </button>

@@ -29,6 +29,7 @@ export default async function ExplorePage({
 
   return (
     <div className="py-8 sm:py-10">
+      <h1 className="sr-only">Explore</h1>
       <ExploreClient tokens={tokens} initialFilters={initialFilters} />
     </div>
   );

@@ -116,17 +116,20 @@ export function ActivityTab({ tokens }: { tokens: Token[] }) {
       />
 
       <div className="overflow-x-auto rounded-[10px] border border-border">
-        <table className="w-full min-w-[640px] border-collapse text-left">
+        <table className="w-full min-w-[480px] border-collapse text-left">
           <caption className="sr-only">
             Recent activity across your works: event type, item, counterparty, price, transaction, and time.
           </caption>
           <thead>
             <tr className="border-b border-border bg-surface-2/40">
-              {["Event", "Item", "Counterparty", "Price", "Tx", "Time"].map((h) => (
+              {(["Event", "Item", "Counterparty", "Price", "Tx", "Time"] as const).map((h) => (
                 <th
                   key={h}
                   scope="col"
-                  className="px-3 py-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-faint"
+                  className={
+                    "px-3 py-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-faint" +
+                    (h === "Counterparty" || h === "Tx" ? " hidden sm:table-cell" : "")
+                  }
                 >
                   {h}
                 </th>
@@ -159,7 +162,7 @@ export function ActivityTab({ tokens }: { tokens: Token[] }) {
                     {r.tokenTitle}
                   </Link>
                 </td>
-                <td className="px-3 py-3.5 text-xs text-muted">
+                <td className="hidden sm:table-cell px-3 py-3.5 text-xs text-muted">
                   {r.counterparty ? (
                     <Identity address={r.counterparty} className="max-w-[160px]" />
                   ) : (
@@ -169,7 +172,7 @@ export function ActivityTab({ tokens }: { tokens: Token[] }) {
                 <td className="whitespace-nowrap px-3 py-3.5 font-mono text-xs tabular-nums text-foreground">
                   {r.priceEth != null ? `${formatEth(r.priceEth)} ${getChainMeta(r.chain).currency}` : "-"}
                 </td>
-                <td className="px-3 py-3.5 font-mono text-xs tabular-nums text-muted">
+                <td className="hidden sm:table-cell px-3 py-3.5 font-mono text-xs tabular-nums text-muted">
                   {r.txHash ? (
                     <a
                       href={explorerTx(r.chain, r.txHash)}
