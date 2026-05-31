@@ -1,11 +1,64 @@
 "use client";
 
+import * as React from "react";
 import { useMemo, useState } from "react";
 import type { Token } from "@/lib/types";
 import { ArtTile } from "@/components/art/ArtTile";
 import { ButtonLink, SectionHeader } from "@/components/ui";
 import { formatEth } from "@/lib/utils";
 import { SortSelect } from "./SortSelect";
+import { useAccount, useChainId } from "wagmi";
+import Link from "next/link";
+
+type OwnedItem = { id: string; tokenId: number; title: string; chainId: number; image: string | null };
+
+function OnchainWorks() {
+  const { address } = useAccount();
+  const chainId = useChainId();
+  const [items, setItems] = React.useState<OwnedItem[] | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!address) { setItems(null); return; }
+    setLoading(true);
+    fetch(`/api/onchain/owned?chainId=${chainId}&owner=${address}`)
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => setItems(d.items ?? []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  }, [address, chainId]);
+
+  if (!address) return null;
+  return (
+    <div className="mb-8">
+      <h3 className="font-mono text-[11px] uppercase tracking-wider text-faint">Your on-chain works</h3>
+      {loading && <p className="mt-2 text-[13px] text-muted">Reading the chain…</p>}
+      {items && items.length === 0 && !loading && (
+        <p className="mt-2 text-[13px] text-muted">No on-chain works found for this wallet on this network yet.</p>
+      )}
+      {items && items.length > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {items.map((it) => (
+            <Link
+              key={it.id}
+              href={`/token/onchain/${it.chainId}/${it.tokenId}`}
+              className="group overflow-hidden rounded-[8px] border border-border bg-surface-2 transition-colors hover:border-border-bright"
+            >
+              {it.image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={it.image} alt={it.title} className="aspect-square w-full object-contain" />
+              )}
+              <div className="p-2.5">
+                <p className="truncate font-mono text-[12px] text-foreground">{it.title}</p>
+                <p className="font-mono text-[10px] text-faint">#{it.tokenId}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type SortKey = "recent" | "price-desc" | "price-asc" | "title";
 
@@ -44,11 +97,14 @@ export function CollectedTab({ tokens, preview }: { tokens: Token[]; preview?: b
 
   if (tokens.length === 0) {
     return (
-      <EmptyState
-        title="Nothing collected yet"
-        body="Works you acquire appear here, each one anchored onchain and independently verifiable, the day you own it and in twenty years."
-        cta={{ href: "/explore", label: "Explore the catalog" }}
-      />
+      <div>
+        <OnchainWorks />
+        <EmptyState
+          title="Nothing collected yet"
+          body="Works you acquire appear here, each one anchored onchain and independently verifiable, the day you own it and in twenty years."
+          cta={{ href: "/explore", label: "Explore the catalog" }}
+        />
+      </div>
     );
   }
 
@@ -56,6 +112,7 @@ export function CollectedTab({ tokens, preview }: { tokens: Token[]; preview?: b
 
   return (
     <div>
+      <OnchainWorks />
       <SectionHeader
         eyebrow="Collected"
         title={
