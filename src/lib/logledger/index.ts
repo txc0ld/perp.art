@@ -7,3 +7,5 @@ export {
   type RawChunk,
   type ReconstructDeps,
 } from "./reconstruct";
+export { computeFileId } from "./fileId";
+export { pickCodec } from "./pick-codec";
