@@ -3,7 +3,7 @@
 import * as React from "react";
 import type { ShardOption } from "@/lib/types";
 import { cn, hashSeed, shortHash } from "@/lib/utils";
-import { GenerativeArt } from "@/components/art/GenerativeArt";
+import { MediaPreview } from "./MediaPreview";
 import { Button, ButtonLink, MonoLabel, Badge, Divider, StatusGlyph } from "@/components/ui";
 import { explorerTx } from "@/lib/web3/contracts";
 import type { ShardRecord } from "./useOnchainMint";
@@ -106,7 +106,13 @@ export function MintSuccess({
             phase === "done" ? "border-accent/40" : "border-border-bright",
           )}
         >
-          <GenerativeArt seed={seed} genre={form.genre} className="aspect-square w-full" />
+          <MediaPreview
+            url={form.fileUrl}
+            mime={form.fileMime}
+            seed={seed}
+            genre={form.genre}
+            className="aspect-square w-full object-contain bg-surface-2"
+          />
         </div>
         <div className="flex items-center justify-between">
           <span className="truncate text-sm text-foreground">{form.title || "Untitled"}</span>

@@ -1,48 +1,64 @@
 import { NextResponse } from "next/server";
-import { keccak256, toBytes } from "viem";
+import { keccak256 } from "viem";
 import { serverEnv, publicEnv } from "@/lib/env";
 
 /**
- * POST /api/store
- * Stores the artwork bytes across the permanent off-chain shards and returns
- * each result + the content hash (keccak256 of the bytes, anchored on-chain).
+ * POST /api/store  (multipart/form-data)
+ * Stores the artist's actual uploaded artwork bytes across the permanent
+ * off-chain shards and returns each result + the content hash (keccak256 of the
+ * bytes, anchored on-chain).
  *
  *   - IPFS    (Pinata)              -> needs PINATA_JWT
  *   - Arweave (arweave SDK)         -> needs ARWEAVE_WALLET_JWK (funded)
- *   - Irys    (@irys/upload)        -> needs IRYS_PRIVATE_KEY (funded)
+ *   - Irys    (@irys/upload)        -> needs IRYS_PRIVATE_KEY (free < 100 KiB)
  *
  * A backend without a configured/funded key returns { ok:false } and is simply
  * skipped; the others still store. The onchain proof shard (Shard 0) is built
  * client-side from this content hash.
  *
- * Body: { svg, name, description?, genre?, mediaType? }
+ * Form fields: file (Blob, required), name, description?, genre?, mediaType?,
+ *              traits? (JSON array of {key,value})
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+// Keep under Vercel's ~4.5 MB serverless request-body cap.
+const MAX_BYTES = 4_400_000;
+
 type ShardResult = { backend: string; ok: boolean; uri?: string; gateway?: string; error?: string };
 
 export async function POST(request: Request) {
-  let body: {
-    svg?: string;
-    name?: string;
-    description?: string;
-    genre?: string;
-    mediaType?: string;
-    traits?: { key?: string; value?: string }[];
-  };
+  let form: FormData;
   try {
-    body = await request.json();
+    form = await request.formData();
   } catch {
-    return NextResponse.json({ error: "invalid body" }, { status: 400 });
-  }
-  const { svg, name = "Untitled", description = "", genre, mediaType = "image/svg+xml", traits = [] } = body;
-  if (!svg || typeof svg !== "string" || svg.length > 2_000_000) {
-    return NextResponse.json({ error: "missing or oversized svg" }, { status: 400 });
+    return NextResponse.json({ error: "expected multipart/form-data" }, { status: 400 });
   }
 
-  const bytes = toBytes(svg);
+  const file = form.get("file");
+  if (!(file instanceof Blob)) {
+    return NextResponse.json({ error: "missing file" }, { status: 400 });
+  }
+  if (file.size === 0 || file.size > MAX_BYTES) {
+    return NextResponse.json({ error: "missing or oversized file" }, { status: 413 });
+  }
+
+  const name = String(form.get("name") ?? "Untitled");
+  const description = String(form.get("description") ?? "");
+  const genre = form.get("genre") ? String(form.get("genre")) : undefined;
+  const fileName = ("name" in file && typeof (file as File).name === "string" ? (file as File).name : "artwork") || "artwork";
+  const mime = file.type || String(form.get("mediaType") ?? "application/octet-stream");
+
+  let traits: { key?: string; value?: string }[] = [];
+  try {
+    const raw = form.get("traits");
+    if (raw) traits = JSON.parse(String(raw));
+  } catch {
+    traits = [];
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
   const contentHash = keccak256(bytes);
   const env = serverEnv();
 
@@ -59,24 +75,29 @@ export async function POST(request: Request) {
     name: name.slice(0, 120),
     description,
     attributes,
-    mediaType,
+    mediaType: mime,
     contentHash,
   };
 
   const [ipfs, arweave, irys] = await Promise.all([
-    pinIpfs(svg, metadata, env.pinataJwt),
-    uploadArweave(svg, env.arweaveWalletJwk),
-    uploadIrys(svg, env.irysPrivateKey),
+    pinIpfs(file, fileName, metadata, env.pinataJwt),
+    uploadArweave(bytes, mime, env.arweaveWalletJwk),
+    uploadIrys(bytes, mime, env.irysPrivateKey),
   ]);
 
-  return NextResponse.json({ contentHash, ipfs, arweave, irys });
+  return NextResponse.json({ contentHash, mediaType: mime, ipfs, arweave, irys });
 }
 
-async function pinIpfs(svg: string, metadata: object, jwt?: string): Promise<ShardResult> {
+async function pinIpfs(
+  file: Blob,
+  fileName: string,
+  metadata: object,
+  jwt?: string,
+): Promise<ShardResult> {
   if (!jwt) return { backend: "ipfs", ok: false, error: "PINATA_JWT not set" };
   try {
     const fd = new FormData();
-    fd.append("file", new Blob([svg], { type: "image/svg+xml" }), "artwork.svg");
+    fd.append("file", file, fileName);
     const res = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
       method: "POST",
       headers: { Authorization: `Bearer ${jwt}` },
@@ -84,7 +105,7 @@ async function pinIpfs(svg: string, metadata: object, jwt?: string): Promise<Sha
     });
     if (!res.ok) return { backend: "ipfs", ok: false, error: `pin failed ${res.status}` };
     const cid = ((await res.json()) as { IpfsHash: string }).IpfsHash;
-    // Pin metadata referencing the image so tokenURI consumers resolve cleanly.
+    // Pin a metadata JSON referencing the image so tokenURI consumers resolve cleanly.
     await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
       method: "POST",
       headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
@@ -97,14 +118,14 @@ async function pinIpfs(svg: string, metadata: object, jwt?: string): Promise<Sha
   }
 }
 
-async function uploadArweave(svg: string, jwk?: string): Promise<ShardResult> {
+async function uploadArweave(bytes: Uint8Array, mime: string, jwk?: string): Promise<ShardResult> {
   if (!jwk) return { backend: "arweave", ok: false, error: "ARWEAVE_WALLET_JWK not set" };
   try {
     const Arweave = (await import("arweave")).default;
     const ar = Arweave.init({ host: "arweave.net", port: 443, protocol: "https" });
     const key = JSON.parse(jwk);
-    const tx = await ar.createTransaction({ data: svg }, key);
-    tx.addTag("Content-Type", "image/svg+xml");
+    const tx = await ar.createTransaction({ data: bytes }, key);
+    tx.addTag("Content-Type", mime);
     await ar.transactions.sign(tx, key);
     const res = await ar.transactions.post(tx);
     if (res.status >= 300) return { backend: "arweave", ok: false, error: `post ${res.status}` };
@@ -114,14 +135,14 @@ async function uploadArweave(svg: string, jwk?: string): Promise<ShardResult> {
   }
 }
 
-async function uploadIrys(svg: string, privateKey?: string): Promise<ShardResult> {
+async function uploadIrys(bytes: Uint8Array, mime: string, privateKey?: string): Promise<ShardResult> {
   if (!privateKey) return { backend: "irys", ok: false, error: "IRYS_PRIVATE_KEY not set" };
   try {
     const { Uploader } = await import("@irys/upload");
     const { Ethereum } = await import("@irys/upload-ethereum");
     const irys = await Uploader(Ethereum).withWallet(privateKey);
-    const receipt = await irys.upload(svg, {
-      tags: [{ name: "Content-Type", value: "image/svg+xml" }],
+    const receipt = await irys.upload(Buffer.from(bytes), {
+      tags: [{ name: "Content-Type", value: mime }],
     });
     return {
       backend: "irys",

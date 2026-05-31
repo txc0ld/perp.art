@@ -7,14 +7,7 @@ import { keccak256, stringToBytes, decodeEventLog } from "viem";
 import { wagmiConfig } from "@/lib/web3/config";
 import { getContracts } from "@/lib/web3/contracts";
 import { FOREVER_LIBRARY_ABI } from "@/lib/web3/abis";
-import { artSvgString } from "@/components/art/art-svg";
-import { previewSeed, cleanTraits, type MintForm } from "./state";
-
-const MIME: Record<string, string> = {
-  image: "image/svg+xml",
-  video: "video/mp4",
-  interactive: "text/html",
-};
+import { cleanTraits, type MintForm } from "./state";
 
 // Forever Library ShardBackend enum.
 const BACKEND_ENUM: Record<string, number> = { onchain: 0, ipfs: 1, arweave: 2, irys: 3, cdn: 4 };
@@ -62,28 +55,28 @@ export function useOnchainMint() {
       setPhase("error");
       return;
     }
+    if (!form.file) {
+      setError("Add your artwork file before minting.");
+      setPhase("error");
+      return;
+    }
     setError(undefined);
 
-    const mediaType = MIME[form.mediaType] ?? "image/svg+xml";
+    const mediaType = form.fileMime || form.file.type || "application/octet-stream";
     const royaltyBps = Math.round(Math.min(Math.max(form.royaltyPct, 0), 100) * 100);
-    const svg = artSvgString(previewSeed(form), form.genre, 800);
 
-    // 1) Store the artwork bytes across the off-chain shards.
+    // 1) Store the artist's actual file bytes across the off-chain shards.
     setPhase("storing");
     let store: StoreResponse;
     try {
-      const res = await fetch("/api/store", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          svg,
-          name: form.title,
-          description: form.description,
-          genre: form.genre,
-          mediaType,
-          traits: cleanTraits(form),
-        }),
-      });
+      const fd = new FormData();
+      fd.append("file", form.file, form.fileName || "artwork");
+      fd.append("name", form.title);
+      fd.append("description", form.description);
+      fd.append("genre", form.genre);
+      fd.append("mediaType", mediaType);
+      fd.append("traits", JSON.stringify(cleanTraits(form)));
+      const res = await fetch("/api/store", { method: "POST", body: fd });
       if (!res.ok) throw new Error(`storage failed (${res.status})`);
       store = (await res.json()) as StoreResponse;
     } catch (e) {

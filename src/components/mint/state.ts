@@ -11,6 +11,12 @@ export interface MintForm {
   // Step 1 - artwork + metadata
   fileSelected: boolean;
   fileName: string;
+  /** The real uploaded artwork. Client-only; sent to /api/store as multipart. */
+  file?: File;
+  /** Object URL for previewing the uploaded file in-browser. */
+  fileUrl?: string;
+  /** The uploaded file's MIME type, e.g. "image/png", "video/mp4". */
+  fileMime?: string;
   artistName: string;
   title: string;
   mediaType: MediaType;
@@ -56,6 +62,22 @@ export function initialForm(shardOptions: ShardOption[], genres: Genre[]): MintF
     enabledShards,
     lockShards: true,
   };
+}
+
+/**
+ * Max upload size. Vercel serverless request bodies cap at ~4.5 MB, so we keep
+ * uploads under that; larger media (long video) would need a direct-to-storage
+ * presigned flow, which we don't have yet.
+ */
+export const MAX_UPLOAD_BYTES = 4_400_000;
+
+/** Accepted upload MIME types -> the contract's coarse MediaType bucket. */
+export const ACCEPTED_UPLOAD = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml,video/mp4,video/webm,text/html,.html";
+
+export function mediaTypeFromMime(mime: string): MediaType {
+  if (mime.startsWith("video/")) return "video";
+  if (mime === "text/html") return "interactive";
+  return "image";
 }
 
 /** Trait rows with both a key and value filled in, trimmed and de-duped by key. */

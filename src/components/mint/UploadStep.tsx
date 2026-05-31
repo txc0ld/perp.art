@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import type { Genre, MediaType } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { GenerativeArt } from "@/components/art/GenerativeArt";
+import { cn, formatBytes } from "@/lib/utils";
+import { MediaPreview } from "./MediaPreview";
 import { MonoLabel, Badge } from "@/components/ui";
 import type { MintForm } from "./state";
-import { previewSeed } from "./state";
+import { previewSeed, mediaTypeFromMime, MAX_UPLOAD_BYTES, ACCEPTED_UPLOAD } from "./state";
 
 const MEDIA_TYPES: { value: MediaType; label: string }[] = [
   { value: "image", label: "Image" },
@@ -71,16 +71,36 @@ export function UploadStep({
   const removeTrait = (i: number) =>
     set({ traits: form.traits.filter((_, idx) => idx !== i) });
 
-  const simulateSelect = () => {
-    const names = [
-      "untitled-01.png",
-      "exposure-final.tiff",
-      "render_4k.webp",
-      "field-study.png",
-    ];
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [fileError, setFileError] = React.useState<string>();
+  const [dragging, setDragging] = React.useState(false);
+
+  const onFile = (file: File | undefined | null) => {
+    if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setFileError(`That file is ${formatBytes(file.size)} — the limit is ${formatBytes(MAX_UPLOAD_BYTES)} for now.`);
+      return;
+    }
+    const okType =
+      file.type.startsWith("image/") ||
+      file.type.startsWith("video/") ||
+      file.type === "text/html" ||
+      /\.html?$/i.test(file.name);
+    if (!okType) {
+      setFileError("Unsupported file type. Use an image, MP4/WebM video, or HTML.");
+      return;
+    }
+    setFileError(undefined);
+    // Revoke the previous preview URL to avoid leaking object URLs.
+    if (form.fileUrl) URL.revokeObjectURL(form.fileUrl);
+    const mime = file.type || (/\.html?$/i.test(file.name) ? "text/html" : "image/png");
     set({
       fileSelected: true,
-      fileName: names[Math.floor(Math.random() * names.length)],
+      fileName: file.name,
+      file,
+      fileUrl: URL.createObjectURL(file),
+      fileMime: mime,
+      mediaType: mediaTypeFromMime(mime),
     });
   };
 
@@ -88,28 +108,43 @@ export function UploadStep({
     <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
       {/* Upload affordance + live preview */}
       <div className="space-y-4">
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ACCEPTED_UPLOAD}
+          className="sr-only"
+          onChange={(e) => onFile(e.target.files?.[0])}
+        />
         <button
           type="button"
-          onClick={simulateSelect}
-          onDragOver={(e) => e.preventDefault()}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
           onDrop={(e) => {
             e.preventDefault();
-            simulateSelect();
+            setDragging(false);
+            onFile(e.dataTransfer.files?.[0]);
           }}
           className={cn(
             "group relative flex aspect-square w-full flex-col items-center justify-center overflow-hidden rounded-[8px] border text-center transition-all duration-300",
             form.fileSelected
               ? "border-border-bright"
               : "border-dashed border-border hover:border-border-bright hover:bg-surface-2/40",
+            dragging && "border-accent/60 bg-accent/5",
           )}
           aria-label={form.fileSelected ? "Replace artwork" : "Select artwork to upload"}
         >
           {form.fileSelected ? (
             <>
-              <GenerativeArt
+              <MediaPreview
+                url={form.fileUrl}
+                mime={form.fileMime}
                 seed={seed}
                 genre={form.genre}
-                className="absolute inset-0 h-full w-full"
+                className="absolute inset-0 h-full w-full object-contain bg-surface-2"
               />
               <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-background/90 to-transparent px-3 pb-3 pt-8">
                 <span className="font-mono text-[11px] text-foreground/90 truncate">
@@ -135,17 +170,21 @@ export function UploadStep({
               </div>
               <p className="text-sm text-foreground">Drop your work, or tap to choose a file</p>
               <p className="mt-1.5 font-mono text-[11px] text-faint">
-                PNG · TIFF · WEBP · MP4 · HTML
+                PNG · JPG · GIF · WEBP · SVG · MP4 · HTML · up to {formatBytes(MAX_UPLOAD_BYTES)}
               </p>
             </div>
           )}
         </button>
 
-        {form.fileSelected && (
+        {fileError && (
+          <p className="font-mono text-[11px] leading-tight text-[#fda4af]">{fileError}</p>
+        )}
+
+        {form.fileSelected && form.file && (
           <div className="flex items-center justify-between">
-            <Badge tone="muted">Preview · seed-locked</Badge>
+            <Badge tone="muted">{form.mediaType}</Badge>
             <span className="font-mono text-[10px] text-faint">
-              {form.genre.toLowerCase()} render
+              {formatBytes(form.file.size)} · will be pinned
             </span>
           </div>
         )}
