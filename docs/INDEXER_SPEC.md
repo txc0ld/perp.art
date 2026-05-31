@@ -9,7 +9,7 @@
 >
 > **No proprietary data is required to reconstruct the index.** Everything below is derived
 > from (a) on-chain events/state across the nine supported networks, and (b) public
-> content-storage networks (ethfs, IPFS, Arweave, Irys).
+> content-storage networks (SSTORE2 state in ForeverLibrary, LogLedger event logs, IPFS, Arweave, Irys).
 >
 > **Supported networks (the `chain` field spans all nine).** Permanence-native EVM chains where
 > Forever Library deploys: `ethereum`, `base`, `polygon`, `arbitrum`, `optimism`, `zora`.
@@ -23,9 +23,11 @@
 | Source | What is read | Used for |
 |---|---|---|
 | Forever Library contracts (native + registered sovereign) | `TokenMinted`, `ShardConfigured`, `ShardsLocked`, `Transfer` events; `getMintData`, shard accessors, `tokenURI`, `royaltyInfo` | Token catalog, provenance, royalties, shard map |
+| LogLedger contract | `ChunkWritten` / `FileSeal` events; `merkleRoot`, `fileSize` state | LOG shard reconstruction + Merkle verification |
 | Settlement contract (`PerpetualSettlement`) | `OrderFulfilled`, `OrderCancelled`, `CounterIncremented` events | Sales history, listing/offer invalidation |
 | Orderbook (operator DB, signature store) | Signed Seaport orders (off-chain, but each is independently valid on-chain) | Active listings & offers |
-| ethfs / IPFS / Arweave / Irys gateways | Raw shard content | Permanence verification, media resolution |
+| SSTORE2 contract bytecode (ForeverLibrary STATE shard) | Raw image bytes read from deployed SSTORE2 pointer address | STATE shard resolution, permanence verification |
+| IPFS / Arweave / Irys gateways | Raw shard content | Permanence verification, media resolution |
 
 > The orderbook is the only operator-held data, and it holds **only signed messages that are
 > already valid on-chain**. A sophisticated user can fill any order directly against the
@@ -74,12 +76,12 @@
 {
   "tokenId": "<contract>-<tokenId>",
   "index": 0,
-  "backend": "onchain | ipfs | arweave | irys | cdn",
-  "locator": "ethfs:0x… | bafy… | <arweave-tx> | <irys-tx> | https://…",
+  "backend": "onchain | log | ipfs | arweave | irys | cdn",
+  "locator": "sstore2:0x… | log:<ledger>/<fileId> | bafy… | <arweave-tx> | <irys-tx> | https://…",
   "contentHash": "0x…",           // hash recorded on-chain at config time
   "status": "verified | resolving | failed | not-configured",
   "bytes": 24576,
-  "mandatory": true,              // index 0 (onchain proof) is mandatory (PRD §7.3)
+  "mandatory": true,              // index 0 (STATE/SSTORE2 shard) is mandatory (PRD §7.3); index 1 (LOG) is the high-res primary
   "lastChecked": "2026-05-30T…Z"
 }
 ```
@@ -143,8 +145,11 @@ A read-only, independently reproducible loop. For every (token, shard):
 4. Set `status`:
    - `verified` - resolves AND hash matches.
    - `failed` - does not resolve or hash mismatch. **This is not an outage.** As long as
-     shard 0 (onchain proof) is `verified`, the token remains 100% permanent - the lapsed
-     shard is a performance copy, not a permanence obligation (PRD §13.3).
+     shard 0 (STATE/SSTORE2) is `verified`, the token remains 100% permanent — the lapsed
+     shard is a performance copy, not a permanence obligation (PRD §13.3). Note: the LOG
+     shard is retention-monitored; historical event logs may be pruned by nodes per EIP-4444,
+     so `failed` on the LOG shard is expected over the long term and the STATE shard is the
+     guaranteed backstop.
    - `resolving` - check in flight.
 5. Aggregate to per-token **permanence integrity**. The primary marketplace health metric is
    *100% of listed tokens have a verified onchain proof shard with matching hash* (PRD §16).

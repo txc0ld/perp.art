@@ -19,17 +19,22 @@ guarantee: **the artwork is provably permanent and survives even if the operator
 
 Every other marketplace's NFTs break when storage fails. IPFS pins lapse, metadata servers
 go offline, hosting companies fold, and the token is left pointing at nothing. tryperpetual.art
-closes that gap: every work keeps parallel, immutable copies across **onchain (ethfs), IPFS,
-Arweave, and Irys**, backstopped by a mandatory onchain proof shard that lasts as long as
-Ethereum itself.
+closes that gap: every work keeps five parallel, independently-verifiable copies — a mandatory
+**STATE shard** (low-res image stored on-chain via SSTORE2 in ForeverLibrary, consensus-guaranteed),
+a **LOG shard** (full-res media in event logs via LogLedger, Merkle-verifiable, cost-efficient),
+plus **IPFS, Arweave, and Irys** — backstopped by the STATE shard that lasts as long as Ethereum itself.
 
 > The operator can vanish entirely and every token remains owned, resolving to its artwork,
 > with full provenance. Anyone can re-index the public contracts and storage networks and
 > rebuild the marketplace. That invariant is the product.
 
-This repository is a complete, production-grade **frontend** implementing the full product,
-backed by a typed data layer that faithfully models the domain, plus published architecture
-artifacts (smart-contract interfaces and the indexer specification).
+The contracts (ForeverLibrary with SSTORE2 + LogLedger + PerpetualSettlement) are **deployed to
+Base Sepolia and Ethereum Sepolia**. The mint pipeline — real uploads, real on-chain storage,
+relayer, and resolver — is **live on tryperpetual.art**. Token browsing and the catalog experience
+still run on the mock data layer pending a live on-chain indexer. The system is verified
+end-to-end on testnet; it is **unaudited** and **not yet on mainnet**. This repository also
+contains the full production-grade frontend, published architecture artifacts, and the indexer
+specification.
 
 ---
 
@@ -42,7 +47,7 @@ artifacts (smart-contract interfaces and the indexer specification).
 - A dedicated **Rankings** page with time-window, chain, and category filters
 - Token item pages with a sticky buy box, accordion detail sections, and offers / activity
 - Profile with Collected / Created / Activity / Sovereign-contract management
-- A guided **mint** flow with shard configuration, royalty, and optional locking
+- A guided **mint** flow with shard configuration, royalty, and optional locking (live on testnet — real uploads, real on-chain SSTORE2 + LogLedger storage)
 
 **One-stop, multi-chain**
 - **Nine networks** indexed and traded as one marketplace: **Ethereum, Base, Polygon, Arbitrum,
@@ -96,8 +101,8 @@ artifacts (smart-contract interfaces and the indexer specification).
 | UI | React 19, Tailwind CSS v4 |
 | Language | TypeScript (strict) |
 | Type faces | Inter, JetBrains Mono, Plus Jakarta Sans |
-| Data | Deterministic in-memory layer (`src/lib/mock-data.ts`) implementing the indexer spec |
-| Contracts | Forever Library (ERC-721 + ERC-2981 + URI sharding), Seaport-compatible settlement with NFT-for-NFT + criteria barter, and a cross-chain escrow bridge (reference scaffold) |
+| Data | Deterministic in-memory layer (`src/lib/mock-data.ts`) for catalog/browse; mint + storage are live on testnet |
+| Contracts | ForeverLibrary (ERC-721 + ERC-2981 + SSTORE2 STATE shard + Log enum), LogLedger (event-log high-res shard), PerpetualSettlement (Seaport-compatible, NFT-for-NFT + criteria barter + royalty enforcement) — deployed to Base Sepolia + Ethereum Sepolia, unaudited |
 | Networks | 9 chains: Ethereum, Base, Polygon, Arbitrum, Optimism, Zora (EVM) + Solana, Tezos, Flow |
 
 No external image assets, no UI dependencies beyond the framework. All artwork is generated.
@@ -199,11 +204,18 @@ Live: **https://tryperpetual.art**
 
 ## Status
 
-A complete frontend and domain model proving the core trading + permanence loop end to end.
-Contracts are a reference scaffold and are **not** audited or deployed; the wallet, orderbook,
-and indexer are represented by the typed in-memory layer and the published spec. Wiring real
-wallets (wagmi/viem) and a live indexer requires no component changes, since the interfaces
-are already in place.
+**Minting and storage are live** on testnet (Base Sepolia + Ethereum Sepolia). ForeverLibrary
+(SSTORE2 STATE shard + Log enum), LogLedger, and PerpetualSettlement are deployed and
+verified end-to-end: real artist uploads (direct-to-Vercel-Blob, up to ~100 MB), IPFS/Arweave/Irys
+pinning, relayer-published LOG shard, on-chain SSTORE2 STATE shard written at mint, and a
+Merkle-verifying LOG resolver at `/api/shard/log/[ledger]/[fileId]`.
+
+**Catalog and browsing are still mock-backed.** The token-browsing and collection-detail pages run
+on the deterministic in-memory layer (`src/lib/mock-data.ts`) pending a live on-chain indexer.
+No component rewrites are needed to switch: the API shapes are already the integration seams.
+
+The system is **unaudited** and **not on mainnet**. Wiring real wallets (wagmi/viem) and a live
+indexer requires no component changes, since the interfaces are already in place.
 
 ---
 

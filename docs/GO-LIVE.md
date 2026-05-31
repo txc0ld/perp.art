@@ -1,15 +1,20 @@
 # Perpetual - Go-Live Checklist
 
-The complete set of objectives to take Perpetual from the current production-grade
-frontend (running on the deterministic mock layer) to a fully live marketplace with
-real contracts, wallets, data, storage, and trading.
+The complete set of objectives to take Perpetual from the current state — mint pipeline and
+on-chain storage live on testnet, catalog/browse still on the mock layer — to a fully live
+marketplace with real trading, wallets, indexer, and mainnet contracts.
 
-Grouped by domain; within each, items are roughly in dependency order. The hard
-blockers and bulk of cost/time are the smart contracts + audit (3-6), the
-orderbook/storage/verification services (10-12), and the cross-chain bridge (5).
-The frontend (14) is largely a matter of swapping `src/lib/mock-data.ts` and
-`src/lib/wallet.ts` for live services: the hooks, types, and API shapes were built
-as the integration seams, so almost no component rewrites are needed.
+**What's already live (testnet):** ForeverLibrary (SSTORE2 STATE shard + Log enum), LogLedger,
+and PerpetualSettlement are deployed to Base Sepolia + Ethereum Sepolia. The mint pipeline
+(direct-to-Vercel-Blob uploads → IPFS/Arweave/Irys pinning → relayer LOG shard → on-chain
+SSTORE2 STATE shard) is verified end-to-end. A Merkle-verifying LOG resolver
+(`/api/shard/log/[ledger]/[fileId]`) reconstructs and serves the LOG shard from chain events.
+
+**What's still needed:** the remaining hard blockers are the security audit (required before
+mainnet value), the orderbook/indexer (to replace the mock catalog), and wallet integration.
+The frontend (14) is largely a matter of swapping `src/lib/mock-data.ts` and `src/lib/wallet.ts`
+for live services: the hooks, types, and API shapes were built as the integration seams, so
+almost no component rewrites are needed.
 
 ---
 
@@ -30,11 +35,12 @@ as the integration seams, so almost no component rewrites are needed.
 - [ ] Error tracking (Sentry), analytics, email (Resend), uptime monitoring accounts.
 
 ## 3. Smart contracts - Asset & Provenance (Forever Library)
-- [ ] Finish `contracts/ForeverLibrary.sol`: ERC-721 + ERC-2981, URI sharding, `shard0Configured`, `selectedShardIndex`, `isLocked`, `getMintData`, edit windows then immutability, lock, reentrancy guards.
-- [ ] Integrate ethfs (Ethereum File System) for the mandatory onchain proof shard; chunking/encoding/cost handling.
-- [ ] On-mint immutable provenance + content-hash anchoring + `TokenMinted`/`ShardConfigured`/`ShardsLocked` events.
+- [x] `contracts/ForeverLibrary.sol`: ERC-721 + ERC-2981, URI sharding, `shard0Configured`, `selectedShardIndex`, `isLocked`, `getMintData`, edit windows then immutability, lock, reentrancy guards — **deployed to Base Sepolia + Ethereum Sepolia**.
+- [x] **SSTORE2 STATE shard** (Shard 0): low-res canonical image (image downscale / video poster / SVG cover-card, ≤24 KB) stored as contract bytecode via SSTORE2. Content hash computed on-chain. Mandatory at mint.
+- [x] **LogLedger contract**: full-res media in event logs (~8 gas/byte); Merkle root + size in state; relayer pipeline open → upload → seal — **deployed and live**.
+- [x] On-mint immutable provenance + content-hash anchoring + `TokenMinted`/`ShardConfigured`/`ShardsLocked` events.
 - [ ] Sovereign-contract registry so artist-deployed Forever Library instances can be registered/recognized and indexed (PRD 7.5, 17.5).
-- [ ] Gas-cost validation for full vs low-res onchain proof (PRD 17.2).
+- [x] Gas-cost validation for full vs low-res onchain proof: STATE shard uses ≤24 KB image downscale / video poster / SVG cover-card (PRD 17.2).
 
 ## 4. Smart contracts - Settlement
 - [ ] Decide fork Seaport vs canonical Seaport integration (forking increases audit burden, PRD 17.4).
@@ -49,9 +55,9 @@ as the integration seams, so almost no component rewrites are needed.
 - [ ] Atomicity/timeout/refund guarantees + adversarial testing.
 
 ## 6. Smart contracts - testing, audit, deployment
-- [ ] Full Foundry/Hardhat unit + fuzz + invariant suite.
-- [ ] Testnet deploys (Sepolia, Base Sepolia, etc.) + end-to-end dry runs.
-- [ ] Independent security audit(s) of settlement, bridge, and any Forever Library modifications (mandatory before mainnet value, PRD 12).
+- [x] Foundry unit suite (15 passing tests across ForeverLibrary + PerpetualSettlement).
+- [x] Testnet deploys (Base Sepolia, Ethereum Sepolia) + end-to-end verification on live site.
+- [ ] Independent security audit(s) of settlement, bridge, and ForeverLibrary (mandatory before mainnet value, PRD 12). **UNAUDITED — do not hold mainnet value.**
 - [ ] Bug-bounty program; formal verification of royalty/permanence invariants if feasible.
 - [ ] Mainnet deploys per chain; verify source on explorers; record addresses in env.
 - [ ] Upgradeability/admin-key strategy (multisig, timelocks) + ownership transfer plan.
@@ -84,11 +90,14 @@ as the integration seams, so almost no component rewrites are needed.
 - [ ] Collection/trait offer matching; criteria-swap matching.
 - [ ] Order GC/cleanup; fill detection from on-chain events.
 
-## 11. Storage layer + mint pipeline (the four shards)
-- [ ] Mint pipeline: upload -> encode/chunk -> write ethfs onchain proof, pin IPFS, upload Arweave, upload Irys, optional CDN shard.
-- [ ] Compute + anchor content hashes on-chain; surface real estimated costs in the mint UI.
-- [ ] IPFS pinning operations + budget (backstopped by onchain proof, PRD 13.3).
-- [ ] Large-file handling, video/interactive media, thumbnails/transcoding, content scanning.
+## 11. Storage layer + mint pipeline (five shards)
+- [x] **Mint pipeline live on testnet**: direct-to-Vercel-Blob upload (up to ~100 MB, past the old ~4.5 MB serverless cap) → IPFS/Arweave/Irys pinning in parallel → relayer publishes LOG shard to LogLedger (open → upload → seal) → client generates ≤24 KB STATE proof image → mint writes SSTORE2 STATE shard + shard descriptors on-chain.
+- [x] Compute + anchor content hashes on-chain; Merkle root stored in LogLedger state.
+- [x] LOG resolver (`/api/shard/log/[ledger]/[fileId]`): paginated getLogs, multi-RPC Merkle root agreement, cache to Blob, serve via CDN. Clients verify root from chain state.
+- [x] IPFS pinning (Pinata) + Arweave + Irys (backstopped by STATE shard, PRD 13.3).
+- [ ] Real estimated costs surfaced in the mint UI.
+- [ ] Large-file handling for video/interactive media: video poster as STATE image, full video in LOG/off-chain.
+- [ ] Content scanning for prohibited content at upload time.
 - [ ] Replace generative-SVG placeholders with real media rendering from resolved URIs (keep generative as fallback).
 
 ## 12. Permanence verification service (PRD 9.4)
@@ -177,7 +186,8 @@ as the integration seams, so almost no component rewrites are needed.
 ---
 
 ## Leanest path to "live with real data"
-If you want a minimal but fully real v1: **3-4 (contracts + audit) -> 8 (wallet/signing) ->
-9-10 (indexer + orderbook) -> 11-12 (storage + verification)** on one or two EVM chains
-(Ethereum + Base), same-chain trading only. Multi-chain breadth, cross-chain swaps, and
-non-EVM ecosystems are then additive.
+
+**Mint + storage are already live on testnet.** The remaining path to a trading-complete v1:
+**6 (audit + mainnet deploy) -> 8 (wallet/signing) -> 9-10 (indexer + orderbook) ->
+12 (live verification service)** on Ethereum + Base, same-chain trading only. Multi-chain
+breadth, cross-chain swaps, and non-EVM ecosystems are then additive.

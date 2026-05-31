@@ -2,7 +2,7 @@
 
 Thanks for testing **Perpetual**! You'll upload a piece of art and commit it to permanence. This runs on a **test network (Base Sepolia)** — it uses *fake* ETH, so **nothing costs real money**. The whole thing takes ~5–10 minutes.
 
-The goal: confirm your artwork really gets stored in **four independent places** and recorded on-chain.
+The goal: confirm your artwork really gets stored across **five independent shards** — an on-chain SSTORE2 STATE proof, an on-chain high-res LOG copy, plus IPFS, Arweave, and Irys — and recorded on-chain.
 
 ---
 
@@ -48,12 +48,13 @@ You need a tiny bit of test ETH for gas (the mint + storage records are a few sm
    - **Next few:** records each storage location (IPFS / Arweave / Irys) on-chain.
 3. Wait for the success screen — "Committed to permanence."
 
-## Step 6 — Verify the 4 shards (the important part!)
+## Step 6 — Verify the 5 shards (the important part!)
 On the success screen you'll see **Permanence shards**. Please check each one:
 
 | Shard | What it means | How to verify |
 |---|---|---|
-| **Onchain proof** | Provenance + hash written into the token | Click the **Transaction** link → opens BaseScan |
+| **Onchain STATE (SSTORE2)** | A low-res copy + hash written into the token's contract state — the permanent backstop | Click the **Transaction** link → opens BaseScan |
+| **Onchain LOG (high-res)** | Your full-res file stored in on-chain event logs | Click **view** → reconstructs from chain and shows your artwork |
 | **IPFS** | Your file on IPFS | Click **view** → your artwork should load |
 | **Arweave** | Your file stored permanently on Arweave | Click **view** → your artwork (may take 1–2 min to appear while it propagates) |
 | **Irys** | Your file via Irys | Click **view** → your artwork should load |
@@ -64,7 +65,7 @@ On the success screen you'll see **Permanence shards**. Please check each one:
 
 ## What to report back
 Please tell us:
-- ✅ Did all four shards succeed? (screenshot of the success screen is great)
+- ✅ Did all five shards succeed? (screenshot of the success screen is great)
 - 🖼️ Did each "view" link actually show **your** artwork?
 - 🐢 Anything slow, confusing, or broken?
 - ❌ Any error messages? (copy the exact text)

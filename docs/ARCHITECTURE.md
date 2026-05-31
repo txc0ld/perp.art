@@ -117,28 +117,52 @@ These all read from the same public verification path; none weakens an onchain g
   the title, artist, token id, content hash, shard list, mint date, and grade
   (`src/components/token/CertificateOfPermanence.tsx`).
 
-### On-chain layer (reference scaffold - unaudited)
-`contracts/` contains well-documented Solidity interfaces and reference-implementation sketches for
-the Forever Library token (ERC-721 + ERC-2981 + URI sharding) and the Seaport-compatible settlement
-contract with **mandatory ERC-2981 royalty enforcement** (PRD §8.2) and **mandatory onchain proof**
-(PRD §7.3). These are not deployed; they express the on-chain contract surface the frontend and
-indexer depend on. **Do not deploy with value before a security audit** (PRD §12).
+### On-chain layer (deployed to testnet - unaudited)
+
+`contracts/` contains the Solidity interfaces and reference implementations for the full on-chain
+surface. The core contracts are **deployed to Base Sepolia and Ethereum Sepolia** and verified
+end-to-end on the live site (tryperpetual.art):
+
+- **ForeverLibrary** — ERC-721 + ERC-2981 + URI sharding. The mandatory **STATE shard (Shard 0)**
+  stores a low-res canonical image directly in contract bytecode via **SSTORE2**, written atomically
+  at mint and immutable thereafter. Content hash is computed on-chain. A token cannot exist without
+  its STATE shard, and `shard0Configured(tokenId)` gates listing eligibility (PRD §7.3, §9.6). The
+  `ShardBackend` enum includes a `Log` variant for the LogLedger shard.
+- **LogLedger** — a standalone contract that stores full-resolution media in Ethereum **event logs**
+  (~8 gas/byte). Only a Merkle root + file size live in contract state. The LOG shard is
+  cost-efficient and root-verifiable by anyone; availability is retention-monitored under EIP-4444
+  (nodes may prune historical logs). Backstopped by the STATE shard.
+- **PerpetualSettlement** — Seaport-compatible settlement with **mandatory ERC-2981 royalty
+  enforcement** (PRD §8.2) and NFT-for-NFT + criteria barter. Supports a hosting-fee model:
+  artists pre-pay a flat storage fee (fee-exempt on resale), or Perpetual hosts and earns ≤1.5%
+  per sale, enforced on-chain.
+
+**Do not deploy with value before a security audit** (PRD §12). Still unaudited; no mainnet value.
 
 ---
 
-## Deliberate scope boundaries (PRD §3.2 non-goals, and this build)
+## Current state and scope boundaries
 
-- **Not deployed to a live chain.** Real deployment needs keys, gas, and an audit - out of scope for
-  an autonomous build. The contract surface is specified and scaffolded.
-- **Wallet is mocked** (`src/lib/wallet.ts`, a tiny external store). Swap for wagmi/viem to wire real
-  wallets; the UI contract is already in place.
-- **Orderbook/indexer are represented** by the typed in-memory layer + the published spec rather than
-  a running backend service.
+- **Mint pipeline is live** on testnet. Real artist uploads go direct-to-Vercel-Blob (past the old
+  ~4.5 MB serverless cap, up to ~100 MB). The server pins to IPFS/Arweave/Irys and a relayer
+  publishes the full-res LOG shard to LogLedger (open → upload → seal). The client generates the
+  on-chain STATE proof image (image downscale / video poster / SVG cover-card, ≤24 KB) and the mint
+  transaction writes provenance + the SSTORE2 STATE shard. LOG + off-chain shard locators are
+  recorded on-chain as shard descriptors. A resolver at `/api/shard/log/[ledger]/[fileId]`
+  reconstructs + Merkle-verifies the LOG from chain logs (paginated getLogs, multi-RPC root
+  agreement), caches to Blob, and serves via CDN. Clients verify the Merkle root from chain state
+  — they never trust the backend.
+- **Contracts deployed to Base Sepolia + Ethereum Sepolia.** Verified end-to-end on testnet.
+  Still **unaudited**; **no mainnet value**.
+- **Catalog/browse still mock-backed.** Token browsing and collection pages run on
+  `src/lib/mock-data.ts` pending a live on-chain indexer. The API shapes (INDEXER_SPEC.md) are
+  the integration seams; no component rewrites needed to go live.
+- **Wallet is mocked** (`src/lib/wallet.ts`). Swap for wagmi/viem; the UI contract is in place.
 - **Community curation** (PRD §11) is surfaced as the featured surface; full Sybil-resistant voting is
   a Phase 2 fast-follow.
 
-These boundaries are exactly the PRD's intended phasing (PRD §15): the **core trading + permanence
-loop and its UX** is what this build proves end-to-end.
+These boundaries reflect the PRD's intended phasing (PRD §15): the **core minting + storage pipeline**
+is live and verified end-to-end on testnet; trading, indexer, and catalog go-live are the next layers.
 
 ---
 

@@ -1,11 +1,11 @@
 # Perpetual - On-Chain Layer (Reference Scaffold)
 
-> **⚠️ UNAUDITED SCAFFOLD - DO NOT DEPLOY WITH VALUE BEFORE AUDIT.**
-> Every `.sol` file here is a reference scaffold expressing the contract
-> architecture from the PRD. It has **not** been audited and **must not** hold
-> mainnet value until a full security audit is complete (PRD §12). Deep
-> encoding details (ethfs persistence, full EIP-712 array hashing, conduit
-> transfers) are intentionally stubbed with `// ...` and marked as such.
+> **⚠️ UNAUDITED - DO NOT HOLD MAINNET VALUE BEFORE AUDIT.**
+> The contracts here are deployed to Base Sepolia and Ethereum Sepolia and verified
+> end-to-end on testnet, but they have **not** been audited and **must not** hold
+> mainnet value until a full security audit is complete (PRD §12). Some encoding
+> details (full EIP-712 array hashing, conduit transfers) are intentionally stubbed
+> with `// ...` and marked as such.
 
 **Brand:** Perpetual. A permanence-first NFT
 marketplace built on a single non-negotiable guarantee: *the artwork is
@@ -39,7 +39,8 @@ operator. Everything in this directory is designed to uphold that invariant.
 |---|---|---|
 | `src/interfaces/IForeverLibrary.sol` | Interface for the Forever Library token: ERC-721 + ERC-2981 with the URI-sharding surface the frontend/indexer depend on (mandatory on-chain proof gate, selected shard, lock state, shard accessors, mint/provenance record, events, `ShardBackend` enum). | §7 |
 | `src/interfaces/IPerpetualSettlement.sol` | Seaport-compatible settlement interface: signed-order structs, `fulfillOrder`, `cancel`, `getOrderStatus`, counter/nonce replay protection, and the documented ERC-2981 royalty-enforcement guarantee. Covers fixed-price orders **and NFT-for-NFT + criteria barter** (Seaport-native offer/consideration with criteria items). | §8, §12 |
-| `src/ForeverLibrary.sol` | Reference implementation sketch of `IForeverLibrary`. Immutable provenance on mint, per-token shard config with content-hash recording, **mandatory Shard 0 (ethfs) on-chain proof**, edit windows → immutability, lock, ERC-2981 `royaltyInfo`. Reentrancy-guarded. | §7 |
+| `src/ForeverLibrary.sol` | Implementation of `IForeverLibrary`. Immutable provenance on mint, per-token shard config with content-hash recording, **mandatory Shard 0 (SSTORE2 STATE shard)** written atomically at mint, edit windows → immutability, lock, ERC-2981 `royaltyInfo`. Reentrancy-guarded. | §7 |
+| `src/LogLedger.sol` | Standalone contract that stores full-resolution media in Ethereum event logs (~8 gas/byte). Stores Merkle root + file size in contract state; full file is reconstructed from `ChunkWritten` events and Merkle-verified. Deployed to Base Sepolia + Ethereum Sepolia. | §7 |
 | `src/PerpetualSettlement.sol` | Reference implementation sketch of `IPerpetualSettlement`. EIP-712 order hashing, signature verification, nonce/counter cancellation, configurable protocol fee (2.0-2.5%, default 2.25% = 225 bps), and **mandatory ERC-2981 royalty payout enforced in `fulfillOrder`** (reverts if not honored). Supports fixed-price sales and **barter** orders: NFT-for-NFT with optional ETH on either side, and **criteria** items (any token from a collection, optionally with a trait), both expressed natively in the Seaport order model. Non-custodial, reentrancy-guarded. | §8, §12 |
 | `LISTING_ELIGIBILITY.md` | Spec of the PRD §9.6 listing-eligibility gate and how the centralized orderbook enforces it off-chain before accepting a signed listing. | §9.6 |
 | `README.md` | This file. | §6, §18 |
@@ -48,10 +49,14 @@ operator. Everything in this directory is designed to uphold that invariant.
 
 ## The two differentiating invariants (make these unmistakable)
 
-1. **Mandatory on-chain proof (PRD §7.3, §9.6).** Shard 0 is an ethfs on-chain
-   proof, written atomically at mint and immutable thereafter. No token can
-   exist without it, and `shard0Configured(tokenId)` gates listing eligibility.
-   It is the permanence backstop that survives as long as Ethereum (PRD §5.1).
+1. **Mandatory STATE shard (PRD §7.3, §9.6).** Shard 0 is a low-res canonical
+   image stored on-chain via **SSTORE2** (bytes-as-contract-bytecode) in ForeverLibrary,
+   written atomically at mint and immutable thereafter. The content hash is computed
+   on-chain at write time. No token can exist without it, and `shard0Configured(tokenId)`
+   gates listing eligibility. It is the consensus-guaranteed permanence backstop that
+   survives as long as Ethereum (PRD §5.1). The LogLedger **LOG shard** (Shard 1) stores
+   the full-resolution media cost-efficiently in event logs with Merkle verification;
+   it is retention-monitored and backstopped by the STATE shard.
 
 2. **Protocol-level royalty enforcement (PRD §8.2).** `fulfillOrder` computes
    the token's ERC-2981 royalty from its own `royaltyInfo` at fill time and
@@ -79,11 +84,12 @@ are configured per deployment (see `.env.example`).
 
 ## Multi-chain deployment
 
-Forever Library and `PerpetualSettlement` are **EVM** contracts and deploy to each supported EVM
-chain: Ethereum, Base, Polygon, Arbitrum, Optimism, and Zora (permanence-native; the mandatory
-ethfs onchain proof applies on each). The non-EVM networks Perpetual indexes and trades (Solana,
-Tezos, Flow) use their native storage and settlement and are out of scope for these EVM contracts.
-Per-chain deployed addresses (Forever Library, settlement, ethfs, bridge) are configured via
+ForeverLibrary, LogLedger, and `PerpetualSettlement` are **EVM** contracts and deploy to each
+supported EVM chain: Ethereum, Base, Polygon, Arbitrum, Optimism, and Zora (permanence-native;
+the mandatory SSTORE2 STATE shard applies on each). The non-EVM networks Perpetual indexes and
+trades (Solana, Tezos, Flow) use their native storage and settlement and are out of scope for
+these EVM contracts. Currently deployed to **Base Sepolia + Ethereum Sepolia** (testnet, unaudited).
+Per-chain deployed addresses (ForeverLibrary, LogLedger, settlement, bridge) are configured via
 [`.env.example`](../.env.example); never hardcode them.
 
 ## How this maps to the PRD

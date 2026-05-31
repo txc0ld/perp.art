@@ -11,15 +11,26 @@ https://perpetual-art-tx-build.vercel.app
 
 ## Permanence (the core)
 
-- **Four storage shards** per token, in parallel: `shard 0` ethfs onchain proof (mandatory
-  backstop, survives as long as Ethereum), IPFS, Arweave, Irys.
+- **Five storage shards** per token, in parallel, independently verifiable:
+  - **STATE (Shard 0, mandatory)** — low-res canonical image stored on-chain via **SSTORE2**
+    (bytes-as-contract-bytecode) in the ForeverLibrary contract. Consensus-guaranteed (contract
+    state, unprunable); content hash computed on-chain. The permanence backstop and the ONLY shard
+    that qualifies a token for listing.
+  - **LOG (high-res primary)** — full-res media in Ethereum **event logs** via a standalone
+    **LogLedger** contract (~8 gas/byte). Only a Merkle root + size live in contract state.
+    Root-verifiable by anyone; availability is retention-monitored (EIP-4444 — nodes may prune
+    historical logs); backstopped by STATE. Cost-efficient, not consensus-guaranteed.
+  - **IPFS** (via Pinata), **Arweave**, **Irys** — redundant off-chain permanent copies.
 - **Read-only verification service** resolves each shard, hashes the bytes, and compares against
-  the content hash recorded onchain at mint. Public data only, so anyone can reproduce it.
+  the content hash recorded on-chain at mint. Public data only, so anyone can reproduce it.
 - **Permanence Status panel** on every token: one row per shard, live status, each row linking to
   its raw public source.
-- **The decoupling:** because `shard 0` carries permanence on its own, IPFS/CDN costs are
+- **The decoupling:** because the STATE shard carries permanence on its own, IPFS/CDN costs are
   performance optimizations, not permanence obligations. Permanence is decoupled from operator
   solvency.
+- **Live on testnet:** the mint pipeline (real uploads, real on-chain storage, relayer, resolver)
+  is verified end-to-end on Base Sepolia + Ethereum Sepolia. Token browsing still uses the mock
+  data layer pending a live indexer.
 
 ## Multi-chain (one-stop shop)
 
@@ -82,7 +93,7 @@ https://perpetual-art-tx-build.vercel.app
 
 ## Configuration
 
-- The app runs on a deterministic in-memory layer, so no configuration is needed for local
-  development. To take it live, every variable (per-chain RPCs, WalletConnect, contracts, the
-  bridge, the indexer + database, storage providers, the verification service, ENS) is documented
-  in [`.env.example`](../.env.example).
+- Minting and storage are live on testnet; catalog/browse runs on the in-memory layer for local
+  development with no configuration required. To wire live infrastructure, every variable (per-chain
+  RPCs, WalletConnect, contracts, the bridge, the indexer + database, storage providers, the
+  verification service, ENS) is documented in [`.env.example`](../.env.example).
