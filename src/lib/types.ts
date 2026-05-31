@@ -91,6 +91,7 @@ export type Chain =
   | "arbitrum"
   | "optimism"
   | "zora"
+  | "shape"
   | "solana"
   | "tezos"
   | "flow";

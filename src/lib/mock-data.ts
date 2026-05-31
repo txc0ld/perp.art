@@ -90,6 +90,7 @@ const COLLECTION_SEED: Array<{
   { slug: "ramparts", name: "Ramparts", artistHandle: "claudewren", genre: "3D", description: "Eroded fortifications rebuilt in volume. Geometry that refuses to forget.", chain: "arbitrum", floorEth: 0.7, royaltyBps: 750, count: 6 },
   { slug: "long-exposure", name: "Long Exposure", artistHandle: "kenjiao", genre: "Photography", description: "Time, gathered onto a single plate. The slow accumulation of light made permanent.", chain: "optimism", floorEth: 0.55, royaltyBps: 800, count: 6 },
   { slug: "soliton", name: "Soliton", artistHandle: "novaarchive", genre: "AI", description: "Standing waves that never disperse. Latent forms held exactly as first dreamed.", chain: "flow", floorEth: 95, royaltyBps: 900, count: 6 },
+  { slug: "gilded-mesh", name: "Gilded Mesh", artistHandle: "claudewren", genre: "3D", description: "Interlocking lattices cast in volume. Structure that holds its shape across centuries.", chain: "shape", floorEth: 0.4, royaltyBps: 700, count: 6 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -498,6 +499,7 @@ export const CHAINS: Record<Chain, ChainMeta> = {
   arbitrum: { id: "arbitrum", label: "Arbitrum", short: "Arbitrum", color: "#86c5ff", explorer: "https://arbiscan.io", permanenceNative: true, currency: "ETH" },
   optimism: { id: "optimism", label: "Optimism", short: "Optimism", color: "#fda4af", explorer: "https://optimistic.etherscan.io", permanenceNative: true, currency: "ETH" },
   zora: { id: "zora", label: "Zora", short: "Zora", color: "#a5b4fc", explorer: "https://explorer.zora.energy", permanenceNative: true, currency: "ETH" },
+  shape: { id: "shape", label: "Shape", short: "Shape", color: "#e8f06a", explorer: "https://shapescan.xyz", permanenceNative: true, currency: "ETH" },
   solana: { id: "solana", label: "Solana", short: "Solana", color: "#99f6c8", explorer: "https://solscan.io", permanenceNative: false, currency: "SOL" },
   tezos: { id: "tezos", label: "Tezos", short: "Tezos", color: "#93c5fd", explorer: "https://tzkt.io", permanenceNative: false, currency: "XTZ" },
   flow: { id: "flow", label: "Flow", short: "Flow", color: "#86efac", explorer: "https://flowscan.io", permanenceNative: false, currency: "FLOW" },
@@ -505,7 +507,7 @@ export const CHAINS: Record<Chain, ChainMeta> = {
 
 /** Display order for chain pickers/filters (most active NFT chains first). */
 export const CHAIN_ORDER: Chain[] = [
-  "ethereum", "base", "solana", "polygon", "tezos", "arbitrum", "optimism", "zora", "flow",
+  "ethereum", "base", "solana", "polygon", "shape", "tezos", "arbitrum", "optimism", "zora", "flow",
 ];
 
 export function getChainMeta(c: Chain): ChainMeta {
