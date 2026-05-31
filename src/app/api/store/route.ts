@@ -1,64 +1,68 @@
 import { NextResponse } from "next/server";
 import { keccak256 } from "viem";
+import { del } from "@vercel/blob";
 import { serverEnv, publicEnv } from "@/lib/env";
 
 /**
- * POST /api/store  (multipart/form-data)
- * Stores the artist's actual uploaded artwork bytes across the permanent
- * off-chain shards and returns each result + the content hash (keccak256 of the
- * bytes, anchored on-chain).
+ * POST /api/store  (application/json)
+ * Pins the artist's uploaded artwork (already in Vercel Blob, uploaded directly
+ * from the browser) across the permanent off-chain shards, and returns each
+ * result + the content hash (keccak256 of the bytes, anchored on-chain).
  *
  *   - IPFS    (Pinata)              -> needs PINATA_JWT
  *   - Arweave (arweave SDK)         -> needs ARWEAVE_WALLET_JWK (funded)
  *   - Irys    (@irys/upload)        -> needs IRYS_PRIVATE_KEY (free < 100 KiB)
  *
- * A backend without a configured/funded key returns { ok:false } and is simply
- * skipped; the others still store. The onchain proof shard (Shard 0) is built
- * client-side from this content hash.
+ * The bytes are streamed from the Blob URL (not an HTTP request body), so the
+ * ~4.5 MB serverless body cap does not apply — files up to ~100 MB work. A
+ * backend without a configured/funded key returns { ok:false } and is skipped.
  *
- * Form fields: file (Blob, required), name, description?, genre?, mediaType?,
- *              traits? (JSON array of {key,value})
+ * Body: { blobUrl, name, description?, genre?, mediaType?, traits? }
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
-// Keep under Vercel's ~4.5 MB serverless request-body cap.
-const MAX_BYTES = 4_400_000;
+const MAX_BYTES = 100 * 1024 * 1024; // 100 MB
 
 type ShardResult = { backend: string; ok: boolean; uri?: string; gateway?: string; error?: string };
 
 export async function POST(request: Request) {
-  let form: FormData;
+  let body: {
+    blobUrl?: string;
+    name?: string;
+    description?: string;
+    genre?: string;
+    mediaType?: string;
+    fileName?: string;
+    traits?: { key?: string; value?: string }[];
+  };
   try {
-    form = await request.formData();
+    body = await request.json();
   } catch {
-    return NextResponse.json({ error: "expected multipart/form-data" }, { status: 400 });
+    return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
 
-  const file = form.get("file");
-  if (!(file instanceof Blob)) {
-    return NextResponse.json({ error: "missing file" }, { status: 400 });
+  const { blobUrl, name = "Untitled", description = "", genre, mediaType, fileName = "artwork", traits = [] } = body;
+  if (!blobUrl || typeof blobUrl !== "string" || !/^https:\/\/[^/]+\.public\.blob\.vercel-storage\.com\//.test(blobUrl)) {
+    return NextResponse.json({ error: "missing or invalid blobUrl" }, { status: 400 });
   }
-  if (file.size === 0 || file.size > MAX_BYTES) {
+
+  // Stream the uploaded file back from Blob storage (no request-body cap here).
+  let fileBlob: Blob;
+  try {
+    const res = await fetch(blobUrl);
+    if (!res.ok) return NextResponse.json({ error: `could not read upload (${res.status})` }, { status: 400 });
+    fileBlob = await res.blob();
+  } catch {
+    return NextResponse.json({ error: "could not read upload" }, { status: 400 });
+  }
+  if (fileBlob.size === 0 || fileBlob.size > MAX_BYTES) {
     return NextResponse.json({ error: "missing or oversized file" }, { status: 413 });
   }
 
-  const name = String(form.get("name") ?? "Untitled");
-  const description = String(form.get("description") ?? "");
-  const genre = form.get("genre") ? String(form.get("genre")) : undefined;
-  const fileName = ("name" in file && typeof (file as File).name === "string" ? (file as File).name : "artwork") || "artwork";
-  const mime = file.type || String(form.get("mediaType") ?? "application/octet-stream");
-
-  let traits: { key?: string; value?: string }[] = [];
-  try {
-    const raw = form.get("traits");
-    if (raw) traits = JSON.parse(String(raw));
-  } catch {
-    traits = [];
-  }
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  const mime = mediaType || fileBlob.type || "application/octet-stream";
+  const bytes = new Uint8Array(await fileBlob.arrayBuffer());
   const contentHash = keccak256(bytes);
   const env = serverEnv();
 
@@ -80,20 +84,19 @@ export async function POST(request: Request) {
   };
 
   const [ipfs, arweave, irys] = await Promise.all([
-    pinIpfs(file, fileName, metadata, env.pinataJwt),
+    pinIpfs(fileBlob, fileName, metadata, env.pinataJwt),
     uploadArweave(bytes, mime, env.arweaveWalletJwk),
     uploadIrys(bytes, mime, env.irysPrivateKey),
   ]);
 
+  // Best-effort cleanup: the bytes now live in permanent storage; drop the
+  // temporary Blob copy so it doesn't accrue storage cost.
+  del(blobUrl).catch(() => {});
+
   return NextResponse.json({ contentHash, mediaType: mime, ipfs, arweave, irys });
 }
 
-async function pinIpfs(
-  file: Blob,
-  fileName: string,
-  metadata: object,
-  jwt?: string,
-): Promise<ShardResult> {
+async function pinIpfs(file: Blob, fileName: string, metadata: object, jwt?: string): Promise<ShardResult> {
   if (!jwt) return { backend: "ipfs", ok: false, error: "PINATA_JWT not set" };
   try {
     const fd = new FormData();
@@ -105,7 +108,6 @@ async function pinIpfs(
     });
     if (!res.ok) return { backend: "ipfs", ok: false, error: `pin failed ${res.status}` };
     const cid = ((await res.json()) as { IpfsHash: string }).IpfsHash;
-    // Pin a metadata JSON referencing the image so tokenURI consumers resolve cleanly.
     await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
       method: "POST",
       headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
@@ -144,12 +146,7 @@ async function uploadIrys(bytes: Uint8Array, mime: string, privateKey?: string):
     const receipt = await irys.upload(Buffer.from(bytes), {
       tags: [{ name: "Content-Type", value: mime }],
     });
-    return {
-      backend: "irys",
-      ok: true,
-      uri: `irys://${receipt.id}`,
-      gateway: `https://gateway.irys.xyz/${receipt.id}`,
-    };
+    return { backend: "irys", ok: true, uri: `irys://${receipt.id}`, gateway: `https://gateway.irys.xyz/${receipt.id}` };
   } catch (e) {
     return { backend: "irys", ok: false, error: e instanceof Error ? e.message : "error" };
   }

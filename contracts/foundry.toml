@@ -8,6 +8,7 @@ solc_version = "0.8.24"
 evm_version = "cancun"
 optimizer = true
 optimizer_runs = 200
+via_ir = true
 remappings = [
     "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
     "forge-std/=lib/forge-std/src/",
@@ -22,5 +23,7 @@ sepolia = "${RPC_SEPOLIA}"
 base_sepolia = "${RPC_BASE_SEPOLIA}"
 
 [etherscan]
-ethereum = { key = "${ETHERSCAN_API_KEY}" }
-base = { key = "${BASESCAN_API_KEY}" }
+ethereum = { key = "${ETHERSCAN_API_KEY}", chain = 1 }
+base = { key = "${BASESCAN_API_KEY}", chain = 8453 }
+sepolia = { key = "${ETHERSCAN_API_KEY}", chain = 11155111 }
+base_sepolia = { key = "${BASESCAN_API_KEY}", chain = 84532 }

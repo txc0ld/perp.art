@@ -30,7 +30,7 @@ contract PerpetualSettlementTest is Test {
         vm.prank(creator);
         tokenId = fl.mint(
             creator, "Creator", "Work", "image/png",
-            ROYALTY_BPS, keccak256("m"), "ethfs://p", keccak256("p")
+            ROYALTY_BPS, keccak256("m"), "ethfs://p", keccak256("p"), 0
         );
         vm.prank(creator);
         fl.transferFrom(creator, seller, tokenId);
@@ -82,6 +82,36 @@ contract PerpetualSettlementTest is Test {
         assertEq(seller.balance, proceeds, "seller proceeds");
         assertEq(buyer.balance, 10 ether - PRICE, "buyer paid price");
         assertTrue(exchange.filled(exchange.hashOrder(order)));
+    }
+
+    /// A Perpetual-hosted token charges the 1.5% hosting fee on top of the
+    /// protocol fee, both to the treasury, reducing seller proceeds accordingly.
+    function test_HostingFeeChargedOnSale() public {
+        vm.prank(creator);
+        uint256 hostedId = fl.mint(
+            creator, "Creator", "Hosted", "image/png",
+            ROYALTY_BPS, keccak256("m2"), "ethfs://p2", keccak256("p2"), 150
+        );
+        vm.prank(creator);
+        fl.transferFrom(creator, seller, hostedId);
+
+        PerpetualSettlement.Order memory order = PerpetualSettlement.Order({
+            seller: seller, nft: address(fl), tokenId: hostedId,
+            paymentToken: address(0), price: PRICE, startTime: 0,
+            endTime: block.timestamp + 1 days, counter: 0, salt: 2
+        });
+        bytes memory sig = _sign(order, SELLER_PK);
+
+        vm.deal(buyer, 10 ether);
+        vm.prank(buyer);
+        exchange.fulfillOrder{value: PRICE}(order, sig);
+
+        uint256 royalty = (PRICE * ROYALTY_BPS) / 10_000;
+        uint256 fee = (PRICE * exchange.protocolFeeBps()) / 10_000;
+        uint256 hosting = (PRICE * 150) / 10_000;
+        assertEq(feeRecipient.balance, fee + hosting, "protocol + hosting fee to treasury");
+        assertEq(seller.balance, PRICE - royalty - fee - hosting, "seller proceeds net of hosting");
+        assertEq(creator.balance, royalty, "royalty unaffected");
     }
 
     function test_RevertOnBadSignature() public {

@@ -33,7 +33,8 @@ contract ForeverLibraryTest is Test {
             750, // 7.5%
             keccak256("metadata"),
             "ethfs://proof",
-            keccak256("proof-bytes")
+            keccak256("proof-bytes"),
+            0 // artist-paid (fee-exempt)
         );
 
         assertEq(fl.ownerOf(id), address(this));
@@ -94,6 +95,54 @@ contract ForeverLibraryTest is Test {
         fl.configureShard(id, 1, IForeverLibrary.ShardBackend.IPFS, "ipfs://cid", keccak256("ipfs"));
     }
 
+    /// Perpetual-hosted mint records the per-token hosting fee and takes no payment.
+    function test_HostedMintRecordsFee() public {
+        uint256 id = fl.mint(
+            address(this), "Artist", "Hosted", "image/png", 500,
+            keccak256("m"), "ethfs://p", keccak256("p"),
+            150 // Perpetual hosts @ 1.5%
+        );
+        assertEq(fl.hostingFeeBps(id), 150);
+    }
+
+    /// Hosting fee above the cap is rejected.
+    function test_HostingFeeTooHighReverts() public {
+        vm.expectRevert(ForeverLibrary.HostingFeeTooHigh.selector);
+        fl.mint(
+            address(this), "Artist", "X", "image/png", 500,
+            keccak256("m"), "ethfs://p", keccak256("p"),
+            151
+        );
+    }
+
+    /// Artist-paid mint must cover the storage fee, which forwards to the treasury.
+    function test_ArtistPaidRequiresStorageFee() public {
+        vm.prank(owner);
+        fl.setStorageFeeWei(0.001 ether);
+        vm.deal(address(this), 1 ether);
+        // too little reverts
+        vm.expectRevert(ForeverLibrary.InsufficientStorageFee.selector);
+        fl.mint(
+            address(this), "Artist", "Y", "image/png", 500,
+            keccak256("m"), "ethfs://p", keccak256("p"), 0
+        );
+        // exact amount succeeds and is fee-exempt
+        uint256 id = fl.mint{value: 0.001 ether}(
+            address(this), "Artist", "Y", "image/png", 500,
+            keccak256("m"), "ethfs://p", keccak256("p"), 0
+        );
+        assertEq(fl.hostingFeeBps(id), 0);
+    }
+
+    /// A hosted (fee>0) mint must not carry payment.
+    function test_HostedMintRejectsPayment() public {
+        vm.expectRevert(ForeverLibrary.UnexpectedPayment.selector);
+        fl.mint{value: 1 wei}(
+            address(this), "Artist", "Z", "image/png", 500,
+            keccak256("m"), "ethfs://p", keccak256("p"), 150
+        );
+    }
+
     function _mint() internal returns (uint256) {
         return fl.mint(
             address(this),
@@ -103,7 +152,8 @@ contract ForeverLibraryTest is Test {
             500,
             keccak256("m"),
             "ethfs://p",
-            keccak256("p")
+            keccak256("p"),
+            0
         );
     }
 }

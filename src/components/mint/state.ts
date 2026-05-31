@@ -65,11 +65,12 @@ export function initialForm(shardOptions: ShardOption[], genres: Genre[]): MintF
 }
 
 /**
- * Max upload size. Vercel serverless request bodies cap at ~4.5 MB, so we keep
- * uploads under that; larger media (long video) would need a direct-to-storage
- * presigned flow, which we don't have yet.
+ * Max upload size. Files are uploaded directly to Vercel Blob from the browser
+ * (see useOnchainMint), so the ~4.5 MB serverless body cap doesn't apply; this
+ * is our own ceiling. Note: Irys is free only < 100 KiB and Arweave cost scales
+ * with size, so large files need those wallets funded.
  */
-export const MAX_UPLOAD_BYTES = 4_400_000;
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 /** Accepted upload MIME types -> the contract's coarse MediaType bucket. */
 export const ACCEPTED_UPLOAD = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml,video/mp4,video/webm,text/html,.html";

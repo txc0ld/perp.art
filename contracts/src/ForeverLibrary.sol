@@ -49,6 +49,10 @@ contract ForeverLibrary is
     error MandatoryProofMissing();
     error InvalidRoyalty();
     error EmptyContentHash();
+    error HostingFeeTooHigh();
+    error InsufficientStorageFee();
+    error UnexpectedPayment();
+    error StorageFeeTransferFailed();
 
     /*//////////////////////////////////////////////////////////////////////
                                     TYPES
@@ -96,6 +100,29 @@ contract ForeverLibrary is
     mapping(uint256 => uint64) private _editDeadline;
 
     /*//////////////////////////////////////////////////////////////////////
+                            HOSTING / STORAGE FEE
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// @dev Largest per-sale hosting fee the contract will record: 1.50%.
+    uint16 public constant MAX_HOSTING_FEE_BPS = 150;
+
+    /// @dev tokenId => Perpetual hosting fee in bps charged on every sale.
+    ///      0 means the artist pre-paid storage at mint (fee-exempt); a positive
+    ///      value means Perpetual fronts storage and earns this on each sale.
+    mapping(uint256 => uint16) private _hostingFeeBps;
+
+    /// @dev Flat storage fee (wei) an artist pays at mint when self-funding
+    ///      storage (hosting fee == 0). Owner-settable; 0 = free.
+    uint256 public storageFeeWei;
+
+    /// @dev Recipient of artist-paid storage fees (defaults to the owner).
+    address payable public treasury;
+
+    event HostingConfigured(uint256 indexed tokenId, uint16 hostingFeeBps, uint256 storagePaidWei);
+    event StorageFeeUpdated(uint256 newFeeWei);
+    event TreasuryUpdated(address newTreasury);
+
+    /*//////////////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
     //////////////////////////////////////////////////////////////////////*/
 
@@ -110,6 +137,23 @@ contract ForeverLibrary is
         uint64 editWindow_
     ) ERC721(name_, symbol_) Ownable(owner_) {
         editWindow = editWindow_;
+        treasury = payable(owner_);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////
+                                    ADMIN
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// @notice Set the flat storage fee (wei) artists pay when self-funding.
+    function setStorageFeeWei(uint256 newFeeWei) external onlyOwner {
+        storageFeeWei = newFeeWei;
+        emit StorageFeeUpdated(newFeeWei);
+    }
+
+    /// @notice Set the recipient of artist-paid storage fees.
+    function setTreasury(address payable newTreasury) external onlyOwner {
+        treasury = newTreasury;
+        emit TreasuryUpdated(newTreasury);
     }
 
     /*//////////////////////////////////////////////////////////////////////
@@ -148,6 +192,9 @@ contract ForeverLibrary is
     /// @param proofURI        resolvable locator for the onchain proof shard.
     /// @param proofContentHash keccak256 of the onchain proof shard content.
     /// @return tokenId        the newly minted token id.
+    /// @param hostingFeeBps_  0 == artist pre-pays storage (must send >=
+    ///        storageFeeWei, token is fee-exempt on resale); >0 (<= MAX) ==
+    ///        Perpetual hosts storage and earns this fee on every future sale.
     function mint(
         address to,
         string calldata artistName,
@@ -156,13 +203,26 @@ contract ForeverLibrary is
         uint96 royaltyBps,
         bytes32 metadataHash,
         string calldata proofURI,
-        bytes32 proofContentHash
-    ) external nonReentrant returns (uint256 tokenId) {
+        bytes32 proofContentHash,
+        uint16 hostingFeeBps_
+    ) external payable nonReentrant returns (uint256 tokenId) {
         if (royaltyBps > _feeDenominator()) revert InvalidRoyalty(); // <= 100%.
         if (metadataHash == bytes32(0)) revert EmptyContentHash();
         if (proofContentHash == bytes32(0)) revert EmptyContentHash();
+        if (hostingFeeBps_ > MAX_HOSTING_FEE_BPS) revert HostingFeeTooHigh();
+
+        // Hosting model. fee == 0: the artist self-funds permanent storage by
+        // paying the flat storage fee now, and the token carries no resale fee.
+        // fee > 0: Perpetual fronts storage for free and is paid this fee on
+        // every sale (enforced in PerpetualSettlement), so no upfront payment.
+        if (hostingFeeBps_ == 0) {
+            if (msg.value < storageFeeWei) revert InsufficientStorageFee();
+        } else if (msg.value != 0) {
+            revert UnexpectedPayment();
+        }
 
         tokenId = _nextTokenId++;
+        _hostingFeeBps[tokenId] = hostingFeeBps_;
 
         // Immutable provenance record (PRD §7.4). Written before mint so it is
         // available the instant the Transfer event fires for indexers.
@@ -205,6 +265,13 @@ contract ForeverLibrary is
             uint64(block.timestamp),
             uint64(block.number)
         );
+        emit HostingConfigured(tokenId, hostingFeeBps_, msg.value);
+
+        // Forward any artist-paid storage fee to the treasury (interactions last).
+        if (msg.value > 0) {
+            (bool ok, ) = treasury.call{value: msg.value}("");
+            if (!ok) revert StorageFeeTransferFailed();
+        }
     }
 
     /*//////////////////////////////////////////////////////////////////////
@@ -310,6 +377,11 @@ contract ForeverLibrary is
     /*//////////////////////////////////////////////////////////////////////
                         IForeverLibrary VIEWS
     //////////////////////////////////////////////////////////////////////*/
+
+    /// @notice Per-token Perpetual hosting fee in bps, read at settlement.
+    function hostingFeeBps(uint256 tokenId) external view returns (uint16) {
+        return _hostingFeeBps[tokenId];
+    }
 
     /// @inheritdoc IForeverLibrary
     function shard0Configured(uint256 tokenId) external view returns (bool) {

@@ -123,7 +123,10 @@ export function MintWizard({
   };
 
   const PHASE_LABEL: Record<string, string> = {
-    storing: "Storing the artwork across shards (IPFS / Arweave / Irys)…",
+    storing:
+      onchain.uploadPct > 0 && onchain.uploadPct < 100
+        ? `Uploading the artwork… ${onchain.uploadPct}%`
+        : "Storing the artwork across shards (IPFS / Arweave / Irys)…",
     minting: "Writing provenance + the onchain proof. Confirm in your wallet…",
     recording: "Recording each shard onchain. Confirm in your wallet…",
   };

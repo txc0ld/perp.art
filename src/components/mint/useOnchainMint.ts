@@ -4,6 +4,7 @@ import * as React from "react";
 import { useAccount, useChainId } from "wagmi";
 import { writeContract, waitForTransactionReceipt } from "@wagmi/core";
 import { keccak256, stringToBytes, decodeEventLog } from "viem";
+import { upload } from "@vercel/blob/client";
 import { wagmiConfig } from "@/lib/web3/config";
 import { getContracts } from "@/lib/web3/contracts";
 import { FOREVER_LIBRARY_ABI } from "@/lib/web3/abis";
@@ -39,6 +40,7 @@ export function useOnchainMint() {
   const [mintTxHash, setMintTxHash] = React.useState<`0x${string}`>();
   const [tokenId, setTokenId] = React.useState<string>();
   const [shards, setShards] = React.useState<ShardRecord[]>([]);
+  const [uploadPct, setUploadPct] = React.useState(0);
   const [error, setError] = React.useState<string>();
 
   function reset() {
@@ -46,6 +48,7 @@ export function useOnchainMint() {
     setMintTxHash(undefined);
     setTokenId(undefined);
     setShards([]);
+    setUploadPct(0);
     setError(undefined);
   }
 
@@ -67,16 +70,31 @@ export function useOnchainMint() {
 
     // 1) Store the artist's actual file bytes across the off-chain shards.
     setPhase("storing");
+    setUploadPct(0);
     let store: StoreResponse;
     try {
-      const fd = new FormData();
-      fd.append("file", form.file, form.fileName || "artwork");
-      fd.append("name", form.title);
-      fd.append("description", form.description);
-      fd.append("genre", form.genre);
-      fd.append("mediaType", mediaType);
-      fd.append("traits", JSON.stringify(cleanTraits(form)));
-      const res = await fetch("/api/store", { method: "POST", body: fd });
+      // Upload the file DIRECTLY to Vercel Blob from the browser (bypasses the
+      // ~4.5MB serverless body cap), then have the server pin it from there.
+      const blob = await upload(form.fileName || "artwork", form.file, {
+        access: "public",
+        handleUploadUrl: "/api/upload",
+        contentType: mediaType,
+        multipart: form.file.size > 8_000_000,
+        onUploadProgress: (p) => setUploadPct(Math.round(p.percentage)),
+      });
+      const res = await fetch("/api/store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blobUrl: blob.url,
+          name: form.title,
+          description: form.description,
+          genre: form.genre,
+          mediaType,
+          fileName: form.fileName || "artwork",
+          traits: cleanTraits(form),
+        }),
+      });
       if (!res.ok) throw new Error(`storage failed (${res.status})`);
       store = (await res.json()) as StoreResponse;
     } catch (e) {
@@ -171,6 +189,7 @@ export function useOnchainMint() {
     mintTxHash,
     tokenId,
     shards,
+    uploadPct,
     error,
     chainId,
     canMintOnchain: Boolean(fl && address),

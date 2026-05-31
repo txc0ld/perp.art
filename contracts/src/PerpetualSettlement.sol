@@ -25,6 +25,12 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
+/// @notice Minimal view to read a Forever Library token's per-token Perpetual
+///         hosting fee. Non-Perpetual NFTs simply don't implement it (fee 0).
+interface IPerpetualHostingFee {
+    function hostingFeeBps(uint256 tokenId) external view returns (uint16);
+}
+
 /// @title PerpetualSettlement
 /// @notice Non-custodial fixed-price exchange with enforced ERC-2981 royalties.
 contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
@@ -78,7 +84,8 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         uint256 price,
         uint256 royaltyAmount,
         address royaltyReceiver,
-        uint256 protocolFee
+        uint256 protocolFee,
+        uint256 hostingFee
     );
     event OrderCancelled(bytes32 indexed orderHash, address indexed seller);
     event CounterIncremented(uint256 newCounter, address indexed seller);
@@ -163,8 +170,11 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         (address royaltyReceiver, uint256 royaltyAmount) =
             _royaltyInfo(order.nft, order.tokenId, order.price);
         uint256 protocolFee = (order.price * _protocolFeeBps) / BPS_DENOMINATOR;
-        if (royaltyAmount + protocolFee > order.price) revert RoyaltyExceedsPrice();
-        uint256 sellerProceeds = order.price - royaltyAmount - protocolFee;
+        // Perpetual hosting fee: only set on Perpetual-hosted tokens (PRD §7),
+        // read from the NFT itself so it follows the token to any marketplace.
+        uint256 hostingFee = (order.price * _hostingFeeBps(order.nft, order.tokenId)) / BPS_DENOMINATOR;
+        if (royaltyAmount + protocolFee + hostingFee > order.price) revert RoyaltyExceedsPrice();
+        uint256 sellerProceeds = order.price - royaltyAmount - protocolFee - hostingFee;
 
         // (4) Effects before interactions.
         filled[orderHash] = true;
@@ -176,7 +186,8 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         if (royaltyAmount > 0 && royaltyReceiver != address(0)) {
             _pay(payable(royaltyReceiver), royaltyAmount);
         }
-        if (protocolFee > 0) _pay(feeRecipient, protocolFee);
+        // Protocol fee and hosting fee both accrue to the Perpetual treasury.
+        if (protocolFee + hostingFee > 0) _pay(feeRecipient, protocolFee + hostingFee);
         _pay(payable(order.seller), sellerProceeds);
 
         emit OrderFulfilled(
@@ -188,7 +199,8 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
             order.price,
             royaltyAmount,
             royaltyReceiver,
-            protocolFee
+            protocolFee,
+            hostingFee
         );
     }
 
@@ -248,6 +260,16 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////////////
                                     INTERNAL
     //////////////////////////////////////////////////////////////////////*/
+
+    /// @dev Read the token's Perpetual hosting fee; tokens that don't implement
+    ///      the interface (any non-Perpetual NFT) carry no hosting fee.
+    function _hostingFeeBps(address nft, uint256 tokenId) internal view returns (uint256) {
+        try IPerpetualHostingFee(nft).hostingFeeBps(tokenId) returns (uint16 b) {
+            return uint256(b);
+        } catch {
+            return 0;
+        }
+    }
 
     /// @dev Query ERC-2981 royalty; tokens without it carry no royalty.
     function _royaltyInfo(address nft, uint256 tokenId, uint256 price)
