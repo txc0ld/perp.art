@@ -23,6 +23,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { MonoLabel } from "@/components/ui";
 import { cn, formatEth } from "@/lib/utils";
@@ -47,6 +48,7 @@ const RECEDE_Z = 150; // px each neighbour recedes
 const MAX_VISIBLE = 3; // slides drawn on each side before they fade out
 
 export function Coverflow3D({ items, className }: Props) {
+  const router = useRouter();
   const count = items.length;
   const [active, setActive] = React.useState(0);
   // null until measured, so the very first paint matches on server + client.
@@ -223,7 +225,7 @@ export function Coverflow3D({ items, className }: Props) {
                 onClick={() => {
                   if (pointer.current?.moved) return;
                   if (isActive) {
-                    window.location.assign(`/token/${item.token.id}`);
+                    router.push(`/token/${item.token.id}`);
                   } else {
                     go(i);
                   }

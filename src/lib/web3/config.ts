@@ -30,7 +30,9 @@ export const projectId = publicEnv.walletConnectProjectId;
 if (!projectId) {
   // Non-fatal: the modal will not function until this is set (in .env.local
   // locally, and in the Vercel project env for production).
-  console.warn("[web3] NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set.");
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[web3] NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set.");
+  }
 }
 
 export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [

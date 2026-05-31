@@ -7,8 +7,6 @@ import { createAppKit } from "@reown/appkit/react";
 import { wagmiAdapter, projectId, networks } from "@/lib/web3/config";
 import { publicEnv } from "@/lib/env";
 
-const queryClient = new QueryClient();
-
 const metadata = {
   name: "Perpetual",
   description: "Art, engineered to outlast everything.",
@@ -41,6 +39,16 @@ export const appKitModal =
 
 /** Wraps the app in wagmi + react-query so wallet hooks work everywhere. */
 export function Web3Provider({ children }: { children: React.ReactNode }) {
+  const [queryClient] = React.useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 30_000,
+        gcTime: 300_000,
+        retry: 1,
+        refetchOnWindowFocus: false,
+      },
+    },
+  }));
   return (
     <WagmiProvider config={wagmiAdapter.wagmiConfig}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>

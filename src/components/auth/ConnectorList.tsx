@@ -83,7 +83,7 @@ export function ConnectorList() {
               }
               onClick={() => connectWallet(conn.name)}
               className={
-                "group flex min-h-[44px] w-full items-center gap-3.5 rounded-[8px] border bg-surface px-4 py-3.5 text-left transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 " +
+                "group flex min-h-[44px] w-full items-center gap-3.5 rounded-[8px] border bg-surface px-4 py-3.5 text-left transition-[border-color,box-shadow,transform,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 " +
                 (recommended
                   ? "border-border-bright hover:border-accent/50"
                   : "border-border hover:border-border-bright")
@@ -115,7 +115,7 @@ export function ConnectorList() {
 
               <svg
                 viewBox="0 0 16 16"
-                className="h-3.5 w-3.5 shrink-0 text-faint transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-foreground"
+                className="h-3.5 w-3.5 shrink-0 text-faint transition-[color,transform] duration-200 group-hover:translate-x-0.5 group-hover:text-foreground"
                 fill="none"
                 aria-hidden
               >

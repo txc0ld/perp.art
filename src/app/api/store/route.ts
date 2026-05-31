@@ -118,7 +118,7 @@ async function pinIpfs(file: Blob, fileName: string, metadata: object, jwt?: str
       method: "POST",
       headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
       body: JSON.stringify({ pinataContent: { ...metadata, image: `ipfs://${cid}` } }),
-    }).catch(() => {});
+    }).catch((err) => { if (process.env.NODE_ENV !== "production") console.warn("[store] metadata pin failed", err); });
     const gw = publicEnv.ipfsGateway.replace(/\/$/, "");
     return { backend: "ipfs", ok: true, uri: `ipfs://${cid}`, gateway: `${gw}/${cid}` };
   } catch (e) {

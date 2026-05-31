@@ -29,7 +29,7 @@ export function CollectionCard({
   return (
     <Link
       href={resolvedHref}
-      className="group flex h-full flex-col overflow-hidden rounded-[10px] border border-border bg-surface transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:border-border-bright hover:shadow-[0_16px_44px_-28px_rgba(0,0,0,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group flex h-full flex-col overflow-hidden rounded-[10px] border border-border bg-surface transition-[border-color,box-shadow,transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:border-border-bright hover:shadow-[0_16px_44px_-28px_rgba(0,0,0,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       {/* Cover - tasteful pointer tilt + sheen (this is NOT an ArtTile) */}
       <Tilt3D max={6} lift={10} glare scale={1.0} className="relative aspect-[16/9] overflow-hidden bg-background">

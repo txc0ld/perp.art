@@ -51,7 +51,7 @@ export function MediaPreview({
     }
     // images (incl. svg, gif, webp)
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt={alt} className={className} />;
+    return <img src={url} alt={alt} className={className} loading="lazy" decoding="async" />;
   }
   return <GenerativeArt seed={seed} genre={genre} className={className} />;
 }

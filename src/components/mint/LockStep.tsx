@@ -29,7 +29,7 @@ export function LockStep({
         aria-checked={locked}
         onClick={() => set({ lockShards: !locked })}
         className={cn(
-          "flex w-full items-center justify-between gap-5 rounded-[8px] border p-6 text-left transition-all duration-300",
+          "flex w-full items-center justify-between gap-5 rounded-[8px] border p-6 text-left transition-[border-color,box-shadow,transform,opacity] duration-300",
           locked
             ? "border-accent/30 bg-accent/[0.04]"
             : "border-border bg-surface-2/40 hover:border-border-bright",

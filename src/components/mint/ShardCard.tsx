@@ -74,7 +74,7 @@ export function ShardCard({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-[8px] border p-5 transition-all duration-300",
+        "group relative overflow-hidden rounded-[8px] border p-5 transition-[border-color,box-shadow,transform,opacity] duration-300",
         mandatory
           ? "border-accent/30 bg-accent/[0.04]"
           : enabled

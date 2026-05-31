@@ -20,12 +20,14 @@ function OnchainWorks() {
 
   React.useEffect(() => {
     if (!address) { setItems(null); return; }
+    const controller = new AbortController();
     setLoading(true);
-    fetch(`/api/onchain/owned?chainId=${chainId}&owner=${address}`)
+    fetch(`/api/onchain/owned?chainId=${chainId}&owner=${address}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : { items: [] }))
       .then((d) => setItems(d.items ?? []))
-      .catch(() => setItems([]))
+      .catch((err) => { if (err.name !== "AbortError") setItems([]); })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, [address, chainId]);
 
   if (!address) return null;
@@ -46,7 +48,7 @@ function OnchainWorks() {
             >
               {it.image && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={it.image} alt={it.title} className="aspect-square w-full object-contain" />
+                <img src={it.image} alt={it.title} className="aspect-square w-full object-contain" loading="lazy" decoding="async" />
               )}
               <div className="p-2.5">
                 <p className="truncate font-mono text-[12px] text-foreground">{it.title}</p>
