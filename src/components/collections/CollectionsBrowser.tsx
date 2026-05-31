@@ -16,13 +16,15 @@ import { CollectionCard } from "./CollectionCard";
 export function CollectionsBrowser({
   collections,
   genres,
-  hrefFor,
+  liveSlugs = [],
 }: {
   collections: Collection[];
   genres: Genre[];
-  hrefFor?: (slug: string) => string | undefined;
+  /** Slugs of live on-chain collections (no dedicated page) → link to /explore. */
+  liveSlugs?: string[];
 }) {
   const [genre, setGenre] = React.useState<Genre | "all">("all");
+  const liveSet = React.useMemo(() => new Set(liveSlugs), [liveSlugs]);
 
   const results = React.useMemo(
     () => (genre === "all" ? collections : collections.filter((c) => c.genre === genre)),
@@ -51,7 +53,7 @@ export function CollectionsBrowser({
         <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {results.map((c, i) => (
             <div key={c.slug} className="h-full animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
-              <CollectionCard collection={c} href={hrefFor?.(c.slug)} />
+              <CollectionCard collection={c} href={liveSet.has(c.slug) ? "/explore" : undefined} />
             </div>
           ))}
         </div>

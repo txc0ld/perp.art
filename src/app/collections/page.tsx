@@ -19,12 +19,10 @@ export const metadata: Metadata = {
  */
 export default async function CollectionsPage() {
   const liveCollections = await indexedCollections(84532);
-  const liveSlugSet = new Set(liveCollections.map((c) => c.slug));
+  // Pass serializable slugs (not a function) across the server→client boundary;
+  // the client computes the live cards' href from this list.
+  const liveSlugs = liveCollections.map((c) => c.slug);
   const collections = [...liveCollections, ...getCollections()];
-
-  function hrefFor(slug: string): string | undefined {
-    return liveSlugSet.has(slug) ? "/explore" : undefined;
-  }
 
   return (
     <Section>
@@ -37,7 +35,7 @@ export default async function CollectionsPage() {
         </p>
       </div>
 
-      <CollectionsBrowser collections={collections} genres={GENRES} hrefFor={hrefFor} />
+      <CollectionsBrowser collections={collections} genres={GENRES} liveSlugs={liveSlugs} />
     </Section>
   );
 }
