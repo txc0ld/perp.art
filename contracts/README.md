@@ -127,11 +127,19 @@ forge test -vv
 forge script script/DeployForeverLibrary.s.sol --rpc-url base_sepolia --account deployer --broadcast --verify
 ```
 
-Status: **`ForeverLibrary` compiles and passes its test suite** (mint writes the
-mandatory on-chain proof, shard config, edit-window + lock immutability, creator
-gating, ERC-2981 royalty). `PerpetualSettlement` compiles as a reference but its
-EIP-712 fill/royalty logic and the cross-chain bridge are **draft** and need
-completion + audit before any value flows. `SPDX-License-Identifier: MIT`,
+Status (15 passing tests):
+- **`ForeverLibrary`** - mint writes the mandatory on-chain proof, shard config,
+  edit-window + lock immutability, creator gating, ERC-2981 royalty.
+- **`PerpetualSettlement`** - fixed-price ETH listings end to end: EIP-712 order
+  hashing + signature verification, replay protection (counter + per-order
+  hash), cancel, the 2.0-2.5% fee band, and **enforced ERC-2981 royalties paid
+  out of the sale** (royalty -> receiver, fee -> recipient, remainder -> seller),
+  so royalties cannot be bypassed (PRD §8.2).
+
+Follow-ups before mainnet value: ERC-20 payment tokens, NFT-for-NFT + criteria
+**barter** and **offers** (the Seaport-compatible surface in
+`src/interfaces/IPerpetualSettlement.sol`), the **cross-chain escrow bridge**,
+and a **security audit**. `SPDX-License-Identifier: MIT`,
 `pragma solidity ^0.8.24;`, `evm_version = cancun` throughout.
 
 > Still **UNAUDITED**. Compiling and testing is not a substitute for a security
