@@ -1,7 +1,10 @@
 import "server-only";
-import type { Hex } from "viem";
+import { parseAbiItem, type Hex, type PublicClient } from "viem";
 import type { Token, StorageShard, ShardBackend, PermanenceStatus, ProvenanceEvent, Chain } from "@/lib/types";
 import { resolveShardUrl } from "@/lib/logledger/resolve-url";
+import { serverPublicClient } from "./server-client";
+import { getContracts } from "./contracts";
+import { FOREVER_LIBRARY_ABI } from "./abis";
 
 const BACKEND_BY_ENUM: Record<number, ShardBackend> = {
   0: "onchain", 1: "ipfs", 2: "arweave", 3: "irys", 4: "cdn", 5: "log",
@@ -11,6 +14,15 @@ const SHARD_LABEL: Record<ShardBackend, string> = {
   ipfs: "IPFS", arweave: "Arweave", irys: "Irys", cdn: "CDN",
 };
 const CHAIN_BY_ID: Record<number, Chain> = { 84532: "base", 11155111: "ethereum" };
+const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+/** A shard has a content-hash recorded on-chain (non-zero). For STATE/LOG this
+ *  hash is the on-chain/Merkle commitment; for off-chain shards it is the hash
+ *  recorded at configureShard (live content verification is the permanence
+ *  service's job, not this read layer). */
+function hasRecordedHash(h: string): boolean {
+  return !!h && h.toLowerCase() !== ZERO_HASH;
+}
 
 export interface RawShard { index: number; backend: number; uri: string; contentHash: string; }
 export interface RawMint {
@@ -38,19 +50,23 @@ export function mapMintToToken(raw: RawTokenReads): Token {
       detail:
         backend === "onchain" ? "in contract state · root matches"
         : backend === "log" ? "high-res · root matches · retention-monitored"
-        : "stored · hash matches",
+        : "recorded on-chain · hash recorded",
       sourceUrl: resolveShardUrl(s.uri, { chainId: raw.chainId, contentHash }),
       locator: s.uri,
-      hashMatches: true,
+      hashMatches: hasRecordedHash(s.contentHash),
       mandatory: s.index === 0,
       guaranteed,
     };
   });
+  // The STATE shard (index 0) is the listing gate: its content hash is computed
+  // on-chain at mint, so a recorded non-zero hash genuinely means it matches.
+  const stateShard = raw.shards.find((s) => s.index === 0);
+  const stateHashOk = !!stateShard && hasRecordedHash(stateShard.contentHash);
   const permanence: PermanenceStatus = {
     onchainProofConfigured: shards.some((s) => s.index === 0 && s.backend === "onchain"),
     shards,
     contentHash,
-    contentHashMatches: true,
+    contentHashMatches: stateHashOk,
     locked: raw.locked,
     selectedShardIndex: Number(raw.selectedShardIndex),
     lastVerified: new Date().toISOString(),
@@ -76,11 +92,6 @@ export function mapMintToToken(raw: RawTokenReads): Token {
     listable: permanence.onchainProofConfigured && permanence.contentHashMatches,
   };
 }
-
-import { serverPublicClient } from "./server-client";
-import { getContracts } from "./contracts";
-import { FOREVER_LIBRARY_ABI } from "./abis";
-import { parseAbiItem, type PublicClient } from "viem";
 
 const TRANSFER_EVENT = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)");
 const LOG_WINDOW = BigInt(2000);
@@ -109,12 +120,17 @@ async function readShards(pub: PublicClient, fl: Hex, tokenId: bigint): Promise<
   const out: RawShard[] = [];
   for (let i = 0; i < count; i++) {
     const idx = BigInt(i);
-    const [backend, uri, contentHash] = await Promise.all([
-      pub.readContract({ address: fl, abi: FOREVER_LIBRARY_ABI, functionName: "shardBackend", args: [tokenId, idx] }),
-      pub.readContract({ address: fl, abi: FOREVER_LIBRARY_ABI, functionName: "shardURI", args: [tokenId, idx] }),
-      pub.readContract({ address: fl, abi: FOREVER_LIBRARY_ABI, functionName: "shardContentHash", args: [tokenId, idx] }),
-    ]);
-    out.push({ index: i, backend: Number(backend), uri: uri as string, contentHash: contentHash as string });
+    try {
+      const [backend, uri, contentHash] = await Promise.all([
+        pub.readContract({ address: fl, abi: FOREVER_LIBRARY_ABI, functionName: "shardBackend", args: [tokenId, idx] }),
+        pub.readContract({ address: fl, abi: FOREVER_LIBRARY_ABI, functionName: "shardURI", args: [tokenId, idx] }),
+        pub.readContract({ address: fl, abi: FOREVER_LIBRARY_ABI, functionName: "shardContentHash", args: [tokenId, idx] }),
+      ]);
+      out.push({ index: i, backend: Number(backend), uri: uri as string, contentHash: contentHash as string });
+    } catch {
+      // Isolate a single shard's read failure (RPC blip) — show the rest
+      // rather than 500-ing the whole token page.
+    }
   }
   return out;
 }
@@ -124,19 +140,37 @@ export async function readOnchainProvenance(chainId: number, tokenId: bigint): P
   const fl = getContracts(chainId).foreverLibrary;
   if (!pub || !fl) return [];
   const latest = await pub.getBlockNumber();
-  const events: ProvenanceEvent[] = [];
+  const raw: { from?: string; to?: string; blockNumber: bigint }[] = [];
   let from = scanStartBlock(chainId, latest);
   // Transfer logs are sparse; scan in windows up to latest (cap for safety).
   for (let w = 0; w < MAX_WINDOWS && from <= latest; w++) {
     const to = from + LOG_WINDOW - BigInt(1) > latest ? latest : from + LOG_WINDOW - BigInt(1);
     const logs = await pub.getLogs({ address: fl as Hex, event: TRANSFER_EVENT, args: { tokenId }, fromBlock: from, toBlock: to });
-    for (const l of logs) {
-      const zero = l.args.from === "0x0000000000000000000000000000000000000000";
-      events.push({ kind: zero ? "minted" : "transfer", timestamp: new Date().toISOString(), from: l.args.from, to: l.args.to, blockNumber: Number(l.blockNumber) });
-    }
+    for (const l of logs) raw.push({ from: l.args.from, to: l.args.to, blockNumber: l.blockNumber as bigint });
     from = to + BigInt(1);
   }
-  return events;
+  // Resolve real block timestamps (one getBlock per unique block).
+  const ts = new Map<string, string>();
+  await Promise.all(
+    [...new Set(raw.map((r) => r.blockNumber.toString()))].map(async (bn) => {
+      try {
+        const block = await pub.getBlock({ blockNumber: BigInt(bn) });
+        ts.set(bn, new Date(Number(block.timestamp) * 1000).toISOString());
+      } catch {
+        /* leave unset → fall back below */
+      }
+    }),
+  );
+  return raw.map((r) => {
+    const zero = r.from === "0x0000000000000000000000000000000000000000";
+    return {
+      kind: zero ? "minted" : "transfer",
+      timestamp: ts.get(r.blockNumber.toString()) ?? new Date(0).toISOString(),
+      from: r.from,
+      to: r.to,
+      blockNumber: Number(r.blockNumber),
+    } as ProvenanceEvent;
+  });
 }
 
 export async function readOnchainToken(chainId: number, tokenId: bigint): Promise<Token | null> {
