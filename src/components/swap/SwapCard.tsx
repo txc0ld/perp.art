@@ -293,7 +293,7 @@ export function SwapCard({
                 type="button"
                 disabled={busy != null}
                 onClick={() => act("accepted-local", "accept")}
-                className="inline-flex h-9 flex-1 min-w-[96px] items-center justify-center gap-2 rounded-[8px] bg-accent px-3 text-[13px] font-medium text-background transition-colors hover:bg-accent-dim disabled:opacity-40"
+                className="inline-flex h-11 flex-1 min-w-[96px] items-center justify-center gap-2 rounded-[8px] bg-accent px-3 text-[13px] font-medium text-background transition-colors hover:bg-accent-dim disabled:opacity-40"
               >
                 {busy === "accept" ? <Spinner /> : "Accept"}
               </button>
@@ -301,14 +301,14 @@ export function SwapCard({
                 type="button"
                 disabled={busy != null}
                 onClick={() => act("declined-local", "decline")}
-                className="inline-flex h-9 items-center justify-center rounded-[8px] border border-border bg-surface px-3 text-[13px] text-muted transition-colors hover:border-border-bright hover:text-foreground disabled:opacity-40"
+                className="inline-flex h-11 items-center justify-center rounded-[8px] border border-border bg-surface px-3 text-[13px] text-muted transition-colors hover:border-border-bright hover:text-foreground disabled:opacity-40"
               >
                 Decline
               </button>
               {targetForCounter && (
                 <Link
                   href={`/token/${targetForCounter}`}
-                  className="inline-flex h-9 items-center justify-center rounded-[8px] border border-border bg-surface px-3 text-[13px] text-muted transition-colors hover:border-border-bright hover:text-foreground"
+                  className="inline-flex h-11 items-center justify-center rounded-[8px] border border-border bg-surface px-3 text-[13px] text-muted transition-colors hover:border-border-bright hover:text-foreground"
                 >
                   Counter
                 </Link>
@@ -321,7 +321,7 @@ export function SwapCard({
               type="button"
               disabled={busy != null}
               onClick={() => act("cancelled-local", "cancel")}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-surface px-3 text-[13px] text-muted transition-colors hover:border-border-bright hover:text-foreground disabled:opacity-40"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] border border-border bg-surface px-3 text-[13px] text-muted transition-colors hover:border-border-bright hover:text-foreground disabled:opacity-40"
             >
               {busy === "cancel" ? <Spinner muted /> : "Cancel swap"}
             </button>
@@ -332,7 +332,7 @@ export function SwapCard({
               {targetForCounter && (
                 <Link
                   href={`/token/${targetForCounter}`}
-                  className="inline-flex h-9 flex-1 min-w-[120px] items-center justify-center rounded-[8px] border border-border-bright bg-surface px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-surface-2"
+                  className="inline-flex h-11 flex-1 min-w-[120px] items-center justify-center rounded-[8px] border border-border-bright bg-surface px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-surface-2"
                 >
                   Propose counter
                 </Link>
@@ -340,7 +340,7 @@ export function SwapCard({
               {targetForCounter && (
                 <Link
                   href={`/token/${targetForCounter}`}
-                  className="inline-flex h-9 items-center justify-center rounded-[8px] px-3 text-[13px] text-muted transition-colors hover:text-foreground"
+                  className="inline-flex h-11 items-center justify-center rounded-[8px] px-3 text-[13px] text-muted transition-colors hover:text-foreground"
                 >
                   View
                 </Link>
@@ -383,7 +383,7 @@ function CriteriaAccept({
         <button
           type="button"
           onClick={onConnect}
-          className="inline-flex h-8 items-center justify-center rounded-[8px] border border-border bg-surface px-3 text-[12px] text-muted transition-colors hover:border-border-bright hover:text-foreground"
+          className="inline-flex h-10 items-center justify-center rounded-[8px] border border-border bg-surface px-3 text-[12px] text-muted transition-colors hover:border-border-bright hover:text-foreground"
         >
           Connect wallet
         </button>
@@ -445,7 +445,7 @@ function CriteriaAccept({
             type="button"
             disabled={!chosen || busy != null}
             onClick={onAccept}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-[8px] bg-accent px-3 text-[13px] font-medium text-background transition-colors hover:bg-accent-dim disabled:opacity-40"
+            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[8px] bg-accent px-3 text-[13px] font-medium text-background transition-colors hover:bg-accent-dim disabled:opacity-40"
           >
             {busy === "accept" ? <Spinner /> : chosen ? "Confirm accept" : "Select a work"}
           </button>
@@ -453,7 +453,7 @@ function CriteriaAccept({
             type="button"
             disabled={busy != null}
             onClick={onCancelPick}
-            className="inline-flex h-9 items-center justify-center rounded-[8px] border border-border bg-surface px-3 text-[13px] text-muted transition-colors hover:border-border-bright hover:text-foreground disabled:opacity-40"
+            className="inline-flex h-11 items-center justify-center rounded-[8px] border border-border bg-surface px-3 text-[13px] text-muted transition-colors hover:border-border-bright hover:text-foreground disabled:opacity-40"
           >
             Cancel
           </button>
@@ -469,7 +469,7 @@ function CriteriaAccept({
         type="button"
         disabled={busy != null}
         onClick={onStartPick}
-        className="inline-flex h-9 flex-1 min-w-[96px] items-center justify-center gap-2 rounded-[8px] bg-accent px-3 text-[13px] font-medium text-background transition-colors hover:bg-accent-dim disabled:opacity-40"
+        className="inline-flex h-11 flex-1 min-w-[96px] items-center justify-center gap-2 rounded-[8px] bg-accent px-3 text-[13px] font-medium text-background transition-colors hover:bg-accent-dim disabled:opacity-40"
       >
         Accept
       </button>

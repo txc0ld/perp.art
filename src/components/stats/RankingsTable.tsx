@@ -120,7 +120,7 @@ export function RankingsTable({
 
       {/* Table */}
       <div className="mt-2 overflow-x-auto">
-        <table className="w-full min-w-[760px] border-collapse">
+        <table className="w-full min-w-[560px] border-collapse">
           <caption className="sr-only">
             Collections ranked by {WINDOW_LABEL[window]} trading volume. Use the column
             headers to sort, and the filters above to narrow by chain and category.

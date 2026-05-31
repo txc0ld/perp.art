@@ -64,10 +64,11 @@ export function ArtworkViewer({ token }: { token: Token }) {
             onClick={() => setZoomed(true)}
             aria-label="View fullscreen"
             className={cn(
-              "absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-[8px]",
+              "absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-[8px]",
               "border border-border/60 bg-background/70 text-muted backdrop-blur-md",
               "opacity-0 transition-all duration-300 hover:border-accent/40 hover:text-accent",
               "group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+              "[@media(hover:none)]:opacity-100",
             )}
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none">

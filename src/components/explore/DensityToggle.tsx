@@ -27,7 +27,7 @@ export function DensityToggle({
         aria-label="Larger cards"
         title="Larger cards"
         className={cn(
-          "flex h-8 w-9 items-center justify-center rounded-[6px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+          "flex h-10 w-10 items-center justify-center rounded-[6px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
           value === "comfortable" ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground",
         )}
       >
@@ -45,7 +45,7 @@ export function DensityToggle({
         aria-label="More cards"
         title="More cards"
         className={cn(
-          "flex h-8 w-9 items-center justify-center rounded-[6px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+          "flex h-10 w-10 items-center justify-center rounded-[6px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
           value === "compact" ? "bg-accent/15 text-accent" : "text-muted hover:text-foreground",
         )}
       >

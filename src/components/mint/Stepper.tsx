@@ -63,8 +63,8 @@ export function Stepper({
                 </span>
                 <span
                   className={cn(
-                    "hidden font-mono text-[11px] font-semibold uppercase tracking-wider sm:inline",
-                    state === "current" && "text-accent",
+                    "font-mono text-[11px] font-semibold uppercase tracking-wider",
+                    state === "current" ? "inline text-accent" : "hidden sm:inline",
                     state === "done" && "text-muted group-hover:text-foreground",
                     state === "todo" && "text-faint",
                   )}

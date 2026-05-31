@@ -32,7 +32,7 @@ export function ExploreClient({
   initialFilters: ExploreFilters;
 }) {
   const [filters, setFilters] = React.useState<ExploreFilters>(initialFilters);
-  const [railOpen, setRailOpen] = React.useState(true);
+  const [railOpen, setRailOpen] = React.useState(false);
   const [density, setDensity] = React.useState<Density>("comfortable");
 
   // searchTokens is a pure local lookup over the same mock dataset - safe in the client.
@@ -110,17 +110,22 @@ export function ExploreClient({
       </div>
 
       <div className="flex items-start gap-6 pt-6 lg:gap-8">
-        {/* Collapsible filter rail */}
-        {railOpen ? (
-          <aside id="explore-filter-rail" aria-label="Filters" className="animate-fade w-full shrink-0 lg:w-64">
-            <div className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
-              <FilterRail filters={filters} setFilters={setFilters} onReset={reset} />
-            </div>
-          </aside>
-        ) : null}
+        {/* Collapsible filter rail — overlay on mobile, static sidebar on lg+ */}
+        <aside
+          id="explore-filter-rail"
+          aria-label="Filters"
+          className={cn(
+            "shrink-0 lg:w-64 lg:block",
+            railOpen ? "w-full" : "hidden lg:block",
+          )}
+        >
+          <div className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
+            <FilterRail filters={filters} setFilters={setFilters} onReset={reset} />
+          </div>
+        </aside>
 
-        {/* Results column */}
-        <div className={cn("min-w-0 flex-1", railOpen && "hidden lg:block")}>
+        {/* Results column — always visible */}
+        <div className="min-w-0 flex-1">
           {/* Mobile count + active chips */}
           <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="font-mono text-[13px] tabular-nums text-muted sm:hidden">
@@ -137,7 +142,7 @@ export function ExploreClient({
                         type="button"
                         onClick={() => setFilters(c.clear)}
                         aria-label={`Remove filter ${c.label}`}
-                        className="group inline-flex min-h-[32px] items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider leading-none text-accent transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                        className="group inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider leading-none text-accent transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                       >
                         {c.label}
                         <svg aria-hidden viewBox="0 0 16 16" className="h-3 w-3 opacity-70 group-hover:opacity-100" fill="none">
@@ -150,7 +155,7 @@ export function ExploreClient({
                 <button
                   type="button"
                   onClick={reset}
-                  className="inline-flex min-h-[32px] items-center font-mono text-[10px] uppercase tracking-wider text-faint transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-[6px]"
+                  className="inline-flex min-h-[44px] items-center font-mono text-[10px] uppercase tracking-wider text-faint transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-[6px]"
                 >
                   Clear all
                 </button>

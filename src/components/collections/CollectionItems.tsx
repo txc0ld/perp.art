@@ -216,7 +216,7 @@ function ActivityTable({ rows, collectionName }: { rows: ActivityRow[]; collecti
   }
   return (
     <div className="mt-6 overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse">
+      <table className="w-full min-w-[480px] border-collapse">
         <caption className="sr-only">
           Recent activity{collectionName ? ` for ${collectionName}` : ""}: sales, transfers, and listings,
           most recent first.

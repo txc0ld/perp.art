@@ -26,7 +26,7 @@ function Pill({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-[36px] items-center rounded-full border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider leading-none transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+        "inline-flex min-h-[44px] items-center rounded-full border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider leading-none transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
         active
           ? "border-accent/40 bg-accent/10 text-accent"
           : "border-border bg-surface text-muted hover:border-border-bright hover:text-foreground",

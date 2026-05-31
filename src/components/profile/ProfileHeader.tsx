@@ -146,7 +146,7 @@ export function ProfileHeader({
                 type="button"
                 onClick={copyAddress}
                 aria-label={`Copy wallet address ${address}`}
-                className="group inline-flex min-h-[32px] items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 font-mono text-[11px] text-muted transition-colors hover:border-border-bright hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                className="group inline-flex min-h-[40px] items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 font-mono text-[11px] text-muted transition-colors hover:border-border-bright hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
               >
                 <span className="tabular-nums">{shortAddress(address)}</span>
                 {copied ? (

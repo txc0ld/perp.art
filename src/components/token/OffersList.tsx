@@ -16,29 +16,25 @@ export function OffersList({ offers }: { offers: Offer[] }) {
         </p>
       ) : (
         <div className="overflow-x-auto rounded-[8px] border border-border">
-          <div className="min-w-[420px]">
+          <div className="min-w-[320px]">
             {/* Header row */}
-            <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-3 border-b border-border bg-surface px-4 py-2.5">
-              {["Price", "From", "Scope", "Expires"].map((h) => (
-                <span
-                  key={h}
-                  className="font-mono text-[10px] uppercase tracking-wider text-faint last:text-right"
-                >
-                  {h}
-                </span>
-              ))}
+            <div className="grid grid-cols-[1fr_auto] gap-3 border-b border-border bg-surface px-4 py-2.5 sm:grid-cols-[1fr_1fr_auto_auto]">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Price</span>
+              <span className="hidden font-mono text-[10px] uppercase tracking-wider text-faint sm:block">From</span>
+              <span className="hidden font-mono text-[10px] uppercase tracking-wider text-faint sm:block">Scope</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint text-right">Expires</span>
             </div>
 
             {offers.map((o) => (
               <div
                 key={o.orderId}
-                className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-3 border-b border-border px-4 py-3 last:border-b-0 hover:bg-surface-2"
+                className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border px-4 py-3 last:border-b-0 hover:bg-surface-2 sm:grid-cols-[1fr_1fr_auto_auto]"
               >
                 <span className="whitespace-nowrap font-mono text-[13px] tabular-nums text-foreground">
                   {formatEth(o.priceEth)} {getChainMeta(o.chain).currency}
                 </span>
-                <Identity address={o.from} className="min-w-0 text-[12px] text-muted" />
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted">{o.scope}</span>
+                <Identity address={o.from} className="hidden min-w-0 text-[12px] text-muted sm:block" />
+                <span className="hidden font-mono text-[10px] uppercase tracking-wider text-muted sm:block">{o.scope}</span>
                 <span className="text-right font-mono text-[11px] uppercase tracking-wider text-faint">
                   {relativeTime(o.expiresAt)}
                 </span>
