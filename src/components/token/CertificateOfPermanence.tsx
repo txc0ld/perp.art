@@ -21,7 +21,8 @@ import { Button } from "@/components/ui";
 import { shortAddress, shortHash, cn } from "@/lib/utils";
 
 const BACKEND_LABEL: Record<string, string> = {
-  onchain: "Onchain (ethfs)",
+  onchain: "Onchain STATE (SSTORE2)",
+  log: "Onchain LOG (high-res)",
   ipfs: "IPFS",
   arweave: "Arweave",
   irys: "Irys",

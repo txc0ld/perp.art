@@ -13,7 +13,7 @@
 // Storage shards (PRD §7.2)
 // ---------------------------------------------------------------------------
 
-export type ShardBackend = "onchain" | "ipfs" | "arweave" | "irys" | "cdn";
+export type ShardBackend = "onchain" | "log" | "ipfs" | "arweave" | "irys" | "cdn";
 
 /** Live status reported by the permanence verification service (PRD §9.4). */
 export type ShardStatus = "verified" | "resolving" | "failed" | "not-configured";
@@ -35,6 +35,12 @@ export interface StorageShard {
   hashMatches: boolean;
   /** Mandatory for every token (Shard 0). */
   mandatory: boolean;
+  /** Consensus-guaranteed: bytes live in contract state and cannot be pruned
+   *  (the STATE/SSTORE2 proof). LOG and off-chain shards are false. */
+  guaranteed?: boolean;
+  /** For retention-monitored shards (LOG): last time it was confirmed
+   *  reconstructable from public nodes, ISO string. */
+  retentionCheckedAt?: string;
 }
 
 export interface PermanenceStatus {

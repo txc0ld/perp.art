@@ -99,40 +99,50 @@ const COLLECTION_SEED: Array<{
 
 function buildShards(seed: string, opts: { locked: boolean; cdn: boolean; failIpfs?: boolean }): StorageShard[] {
   const r = seededRandom("shard:" + seed);
-  const bytes = 18_000 + Math.floor(r() * 30_000);
+  const stateBytes = 4_000 + Math.floor(r() * 16_000); // low-res STATE proof <= 24 KB
   const shards: StorageShard[] = [
     {
-      index: 0, backend: "onchain", label: "Onchain (ethfs)", status: "verified",
-      detail: `${Math.round(bytes / 1024)} KB stored onchain`, bytes,
-      sourceUrl: `https://etherscan.io/address/${pseudoAddress("ethfs:" + seed)}#code`,
-      hashMatches: true, mandatory: true,
+      // STATE: low-res canonical bytes in contract state (SSTORE2). The only
+      // shard that satisfies listing eligibility; can never be pruned.
+      index: 0, backend: "onchain", label: "Onchain STATE (SSTORE2)", status: "verified",
+      detail: `${Math.round(stateBytes / 1024)} KB in contract state · root matches`, bytes: stateBytes,
+      sourceUrl: `https://basescan.org/address/${pseudoAddress("fl:" + seed)}#readContract`,
+      hashMatches: true, mandatory: true, guaranteed: true,
     },
     {
-      index: 1, backend: "ipfs", label: "IPFS",
+      // LOG: high-res primary, bytes in event logs (~8 gas/byte). Cost-efficient
+      // and root-verifiable, but availability is retention-monitored, not guaranteed.
+      index: 1, backend: "log", label: "Onchain LOG (high-res)", status: "verified",
+      detail: "high-res · root matches · retention-checked", locator: pseudoHash("log:" + seed).slice(0, 18),
+      sourceUrl: `https://basescan.org/address/${pseudoAddress("ledger:" + seed)}#events`,
+      hashMatches: true, mandatory: false, guaranteed: false, retentionCheckedAt: isoDaysBefore(r() * 2),
+    },
+    {
+      index: 2, backend: "ipfs", label: "IPFS",
       status: opts.failIpfs ? "failed" : "verified",
-      detail: opts.failIpfs ? "pin lapsed - onchain proof backstops" : "CID matches hash",
+      detail: opts.failIpfs ? "pin lapsed - STATE proof backstops" : "CID matches hash",
       locator: pseudoCid(seed),
       sourceUrl: `https://ipfs.io/ipfs/${pseudoCid(seed)}`,
-      hashMatches: !opts.failIpfs, mandatory: false,
+      hashMatches: !opts.failIpfs, mandatory: false, guaranteed: false,
     },
     {
-      index: 2, backend: "arweave", label: "Arweave", status: "verified",
+      index: 3, backend: "arweave", label: "Arweave", status: "verified",
       detail: "confirmed permanent", locator: pseudoHash("ar:" + seed).slice(2, 45),
       sourceUrl: `https://arweave.net/${pseudoHash("ar:" + seed).slice(2, 45)}`,
-      hashMatches: true, mandatory: false,
+      hashMatches: true, mandatory: false, guaranteed: false,
     },
     {
-      index: 3, backend: "irys", label: "Irys", status: "verified",
+      index: 4, backend: "irys", label: "Irys", status: "verified",
       detail: "confirmed", locator: pseudoHash("irys:" + seed).slice(2, 45),
       sourceUrl: `https://gateway.irys.xyz/${pseudoHash("irys:" + seed).slice(2, 45)}`,
-      hashMatches: true, mandatory: false,
+      hashMatches: true, mandatory: false, guaranteed: false,
     },
   ];
   if (opts.cdn) {
     shards.push({
-      index: 4, backend: "cdn", label: "CDN (high-res)", status: "verified",
+      index: 5, backend: "cdn", label: "CDN (performance)", status: "verified",
       detail: "performance mirror", sourceUrl: `https://cdn.perpetual.art/${seed}.webp`,
-      hashMatches: true, mandatory: false,
+      hashMatches: true, mandatory: false, guaranteed: false,
     });
   }
   return shards;
@@ -151,7 +161,7 @@ function buildPermanence(seed: string): PermanenceStatus {
     contentHash: pseudoHash("content:" + seed),
     contentHashMatches: true,
     locked,
-    selectedShardIndex: cdn ? 4 : 2,
+    selectedShardIndex: 1, // LOG (high-res primary) for display; STATE is the backstop
     lastVerified: isoDaysBefore(r() * 2),
   };
 }
@@ -415,7 +425,8 @@ export const CURRENT_USER = {
 // ---------------------------------------------------------------------------
 
 export const SHARD_OPTIONS: ShardOption[] = [
-  { backend: "onchain", label: "Onchain proof (ethfs)", blurb: "The permanent backstop. Survives as long as Ethereum itself.", estCostEth: 0.018, mandatory: true, defaultEnabled: true },
+  { backend: "onchain", label: "Onchain STATE proof (SSTORE2)", blurb: "Low-res canonical bytes in contract state. The consensus-guaranteed backstop and the only shard that satisfies listing eligibility.", estCostEth: 0.012, mandatory: true, defaultEnabled: true },
+  { backend: "log", label: "Onchain LOG (high-res)", blurb: "Full-resolution media in event logs (~8 gas/byte). Cost-efficient and root-verifiable; availability is retention-monitored.", estCostEth: 0.002, mandatory: false, defaultEnabled: true },
   { backend: "ipfs", label: "IPFS", blurb: "Content-addressed high-resolution media, auto-pinned.", estCostEth: 0.0, mandatory: false, defaultEnabled: true },
   { backend: "arweave", label: "Arweave", blurb: "Pay-once permanent storage. Confirmed forever.", estCostEth: 0.004, mandatory: false, defaultEnabled: true },
   { backend: "irys", label: "Irys (Datachain)", blurb: "Additional permanent redundancy across an independent network.", estCostEth: 0.003, mandatory: false, defaultEnabled: true },
@@ -698,7 +709,7 @@ export function permanenceScore(t: Token): PermanenceScore {
     grade,
     redundancy,
     factors: [
-      { label: "Onchain proof (ethfs)", ok: p.onchainProofConfigured },
+      { label: "Onchain STATE proof (SSTORE2)", ok: p.onchainProofConfigured },
       { label: "Content hash matches record", ok: p.contentHashMatches },
       { label: "Redundant permanent copies", ok: redundancy >= 3, detail: `${redundancy} of 3+` },
       { label: "Shards locked (immutable)", ok: p.locked },

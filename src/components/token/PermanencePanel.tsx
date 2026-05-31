@@ -16,7 +16,8 @@ import { StatusGlyph, MonoLabel } from "@/components/ui";
 import { shortHash, cn } from "@/lib/utils";
 
 const BACKEND_LABEL: Record<string, string> = {
-  onchain: "ONCHAIN (ethfs)",
+  onchain: "ONCHAIN · STATE",
+  log: "ONCHAIN · LOG",
   ipfs: "IPFS",
   arweave: "ARWEAVE",
   irys: "IRYS",
@@ -250,7 +251,7 @@ export function PermanencePanel({ token }: { token: Token }) {
         >
           <p className="text-[12px] leading-relaxed text-muted">
             <span className="font-mono text-[11px] uppercase tracking-wider text-faint">Note · </span>
-            An IPFS pin has lapsed. Permanence is unaffected - the onchain proof shard
+            An IPFS pin has lapsed. Permanence is unaffected - the onchain STATE proof shard
             backstops the artwork and survives as long as Ethereum itself. IPFS is a
             performance mirror, not a permanence obligation.
           </p>
@@ -267,6 +268,13 @@ export function PermanencePanel({ token }: { token: Token }) {
       >
         <p className="text-[13px] font-medium leading-relaxed text-foreground sm:text-sm">
           This artwork survives even if Perpetual disappears.
+        </p>
+        <p className="mt-2 text-[12px] leading-relaxed text-muted">
+          <span className="text-accent">STATE</span> is the consensus-guaranteed backstop
+          (in contract state, can&apos;t be pruned) and the only shard that qualifies a
+          token for listing. <span className="text-foreground">LOG</span> is the
+          cost-efficient high-resolution copy — root-verifiable, availability monitored,
+          never the guarantee.
         </p>
         <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wider text-faint">
           Verified {relTimeShort(permanence.lastVerified)} · independently checkable
