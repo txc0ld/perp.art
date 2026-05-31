@@ -38,11 +38,12 @@ interface IForeverLibrary {
     ///         always Shard 0. The remaining backends are redundant,
     ///         architecturally distinct copies (PRD §4.3 archival redundancy).
     enum ShardBackend {
-        Onchain, // 0 - ethfs onchain proof shard. MANDATORY. Shard 0.
+        Onchain, // 0 - SSTORE2 on-chain proof shard. MANDATORY. Shard 0.
         IPFS,    // 1 - content-addressed media (high resolution).
         Arweave, // 2 - pay-once permanent storage.
         Irys,    // 3 - additional permanent redundancy (Datachain).
-        CDN      // 4 - extensible centralized/CDN performance shard.
+        CDN,     // 4 - extensible centralized/CDN performance shard.
+        Log      // 5 - LogLedger event-log storage (cheap high-res; retention-monitored).
     }
 
     /// @notice Immutable provenance record written at mint (PRD §7.4).
