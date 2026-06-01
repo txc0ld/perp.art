@@ -32,6 +32,16 @@ export interface MintForm {
 
   // Step 4 - lock
   lockShards: boolean;
+
+  // Step 5 - collection & edition type (Phase 4)
+  /** Target collection contract address; undefined = canonical ForeverLibrary ("Default (open)"). */
+  collectionAddress?: `0x${string}`;
+  /** Human-readable name for the chosen collection, for display only. */
+  collectionName?: string;
+  /** "single" = 1-of-1 mint; "edition" = N copies sharing one LOG/IPFS/Arweave/Irys upload. */
+  mintType: "single" | "edition";
+  /** Number of edition copies (1..10). Only used when mintType="edition". */
+  editionSize: number;
 }
 
 export const STEPS = [
@@ -39,6 +49,7 @@ export const STEPS = [
   { key: "royalty", label: "Royalty" },
   { key: "permanence", label: "Permanence" },
   { key: "lock", label: "Lock" },
+  { key: "collection", label: "Collection" },
   { key: "review", label: "Review" },
 ] as const;
 
@@ -61,6 +72,10 @@ export function initialForm(shardOptions: ShardOption[], genres: Genre[]): MintF
     royaltyPct: 7.5,
     enabledShards,
     lockShards: true,
+    collectionAddress: undefined,
+    collectionName: undefined,
+    mintType: "single",
+    editionSize: 1,
   };
 }
 

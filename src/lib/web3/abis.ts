@@ -174,6 +174,17 @@ export const FOREVER_LIBRARY_ABI = [
     inputs: [{ name: "operator", type: "address" }, { name: "approved", type: "bool" }],
     outputs: [],
   },
+  // Needed for the collection picker: enumerate owner + ERC721 name of sovereign collections.
+  {
+    type: "function", name: "owner", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function", name: "name", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "string" }],
+  },
 ] as const;
 
 /** LogLedger: cheap on-chain media storage via event logs (Plan 1 contract). */
