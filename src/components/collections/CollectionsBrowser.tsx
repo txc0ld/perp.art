@@ -9,18 +9,20 @@ import { CollectionCard } from "./CollectionCard";
  * Client browser for the collections index: a category pill row that filters
  * the server-provided collection list, rendered into a dense responsive grid.
  *
- * `hrefFor` optionally overrides the link href per collection slug — used to
- * send live on-chain collections (no dedicated page) to `/explore` instead of
- * their slug route (which would 404).
+ * Live on-chain collection slugs (42-char contract addresses) link to their
+ * per-collection page at `/collections/onchain/{liveChainId}/{slug}`.
  */
 export function CollectionsBrowser({
   collections,
   genres,
+  liveChainId,
   liveSlugs = [],
 }: {
   collections: Collection[];
   genres: Genre[];
-  /** Slugs of live on-chain collections (no dedicated page) → link to /explore. */
+  /** The chainId for live on-chain collections (used to build /collections/onchain/... links). */
+  liveChainId?: number;
+  /** Slugs of live on-chain collections. */
   liveSlugs?: string[];
 }) {
   const [genre, setGenre] = React.useState<Genre | "all">("all");
@@ -53,7 +55,7 @@ export function CollectionsBrowser({
         <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {results.map((c, i) => (
             <div key={c.slug} className="h-full animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
-              <CollectionCard collection={c} href={liveSet.has(c.slug) ? "/explore" : undefined} />
+              <CollectionCard collection={c} href={liveSet.has(c.slug) && liveChainId ? `/collections/onchain/${liveChainId}/${c.slug}` : undefined} />
             </div>
           ))}
         </div>

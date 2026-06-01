@@ -35,7 +35,7 @@ export default async function CollectionsPage() {
         </p>
       </div>
 
-      <CollectionsBrowser collections={collections} genres={GENRES} liveSlugs={liveSlugs} />
+      <CollectionsBrowser collections={collections} genres={GENRES} liveChainId={84532} liveSlugs={liveSlugs} />
     </Section>
   );
 }
