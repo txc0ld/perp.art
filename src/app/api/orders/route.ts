@@ -9,6 +9,10 @@
  * GET  ?chainId=&nft=&tokenId=
  *   Lists open (unfilled) orders for the given token.
  *   Returns: { orders: SerializedSignedOrder[] }  (no-store)
+ *
+ * GET  ?chainId=            (nft + tokenId absent)
+ *   Lists ALL open orders for the chain (the full orderbook).
+ *   Returns: { orders: SerializedSignedOrder[] }  (no-store)
  */
 import { NextResponse } from "next/server";
 import { verifyTypedData, isAddress } from "viem";
@@ -19,7 +23,7 @@ import {
   serializeOrder,
   type SerializedSignedOrder,
 } from "@/lib/web3/orders";
-import { putOrder, listOpenOrders } from "@/lib/web3/orderbook";
+import { putOrder, listOpenOrders, listAllOpenOrders } from "@/lib/web3/orderbook";
 import { getContracts } from "@/lib/web3/contracts";
 
 export const runtime = "nodejs";
@@ -119,6 +123,18 @@ export async function GET(request: Request) {
   if (!Number.isInteger(chainId) || chainId <= 0) {
     return NextResponse.json({ error: "missing or invalid chainId" }, { status: 400 });
   }
+
+  // Whole-chain orderbook mode: when nft AND tokenId are both absent, return
+  // every open order for the chain. (Backwards-compatible: the per-token path
+  // below is unchanged when nft+tokenId are supplied.)
+  if (!nft && !tokenIdParam) {
+    const orders = await listAllOpenOrders(chainId);
+    return NextResponse.json(
+      { orders: orders.map(serializeOrder) },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   if (!isAddress(nft)) {
     return NextResponse.json({ error: "missing or invalid nft address" }, { status: 400 });
   }

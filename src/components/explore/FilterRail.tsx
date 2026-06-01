@@ -2,12 +2,11 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { GENRES } from "@/lib/mock-data";
 import {
-  CHAINS,
   STORAGE_OPTIONS,
   STATUS_OPTIONS,
   type ExploreFilters,
+  type ExploreFacets,
 } from "./filters";
 
 /** A single pill toggle. Active state earns the pink accent (the only accent here). */
@@ -93,11 +92,14 @@ export function FilterRail({
   filters,
   setFilters,
   onReset,
+  facets,
   className,
 }: {
   filters: ExploreFilters;
   setFilters: React.Dispatch<React.SetStateAction<ExploreFilters>>;
   onReset: () => void;
+  /** Genre/chain options actually present in the live token set. */
+  facets: ExploreFacets;
   className?: string;
 }) {
   const hasAny =
@@ -141,33 +143,37 @@ export function FilterRail({
         </div>
       </Accordion>
 
-      <Accordion label="Genre" count={filters.genres.length}>
-        <div className="flex flex-wrap gap-2">
-          {GENRES.map((g) => (
-            <Pill
-              key={g}
-              active={filters.genres.includes(g)}
-              onClick={() => setFilters((f) => ({ ...f, genres: toggle(f.genres, g) }))}
-            >
-              {g}
-            </Pill>
-          ))}
-        </div>
-      </Accordion>
+      {facets.genres.length > 0 && (
+        <Accordion label="Genre" count={filters.genres.length}>
+          <div className="flex flex-wrap gap-2">
+            {facets.genres.map((g) => (
+              <Pill
+                key={g}
+                active={filters.genres.includes(g)}
+                onClick={() => setFilters((f) => ({ ...f, genres: toggle(f.genres, g) }))}
+              >
+                {g}
+              </Pill>
+            ))}
+          </div>
+        </Accordion>
+      )}
 
-      <Accordion label="Chain" count={filters.chains.length}>
-        <div className="flex flex-wrap gap-2">
-          {CHAINS.map((c) => (
-            <Pill
-              key={c.value}
-              active={filters.chains.includes(c.value)}
-              onClick={() => setFilters((f) => ({ ...f, chains: toggle(f.chains, c.value) }))}
-            >
-              {c.label}
-            </Pill>
-          ))}
-        </div>
-      </Accordion>
+      {facets.chains.length > 0 && (
+        <Accordion label="Chain" count={filters.chains.length}>
+          <div className="flex flex-wrap gap-2">
+            {facets.chains.map((c) => (
+              <Pill
+                key={c.value}
+                active={filters.chains.includes(c.value)}
+                onClick={() => setFilters((f) => ({ ...f, chains: toggle(f.chains, c.value) }))}
+              >
+                {c.label}
+              </Pill>
+            ))}
+          </div>
+        </Accordion>
+      )}
 
       <Accordion label="Price (ETH)" count={(filters.minEth.trim() ? 1 : 0) + (filters.maxEth.trim() ? 1 : 0)}>
         <div className="flex items-center gap-2">

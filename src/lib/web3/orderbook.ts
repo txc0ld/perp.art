@@ -32,14 +32,13 @@ export async function putOrder(signed: SignedOrder): Promise<void> {
 }
 
 /**
- * List open (unfilled) orders for a specific NFT token.
- * Scans the `orders/<chainId>/` prefix, fetches each blob, and filters to
- * those that match the requested nft+tokenId and are not tombstoned.
+ * Internal: scan the `orders/<chainId>/` prefix and return every open (non-
+ * tombstoned, readable) signed order, optionally filtered by a predicate.
+ * Shared by listOpenOrders (per-token) and listAllOpenOrders (whole chain).
  */
-export async function listOpenOrders(
+async function scanOpenOrders(
   chainId: number,
-  nft: string,
-  tokenId: bigint,
+  match?: (signed: SignedOrder) => boolean,
 ): Promise<SignedOrder[]> {
   const prefix = `orders/${chainId}/`;
   const { blobs } = await list({ prefix });
@@ -54,11 +53,7 @@ export async function listOpenOrders(
         if (!res.ok) return;
         const raw: SerializedSignedOrder = await res.json();
         const signed = deserializeOrder(raw);
-        // Filter to the requested token.
-        if (
-          signed.order.nft.toLowerCase() === nft.toLowerCase() &&
-          signed.order.tokenId === tokenId
-        ) {
+        if (!match || match(signed)) {
           results.push(signed);
         }
       } catch {
@@ -70,6 +65,33 @@ export async function listOpenOrders(
   // Newest first.
   results.sort((a, b) => b.createdAt - a.createdAt);
   return results;
+}
+
+/**
+ * List open (unfilled) orders for a specific NFT token.
+ * Scans the `orders/<chainId>/` prefix, fetches each blob, and filters to
+ * those that match the requested nft+tokenId and are not tombstoned.
+ */
+export async function listOpenOrders(
+  chainId: number,
+  nft: string,
+  tokenId: bigint,
+): Promise<SignedOrder[]> {
+  return scanOpenOrders(
+    chainId,
+    (signed) =>
+      signed.order.nft.toLowerCase() === nft.toLowerCase() &&
+      signed.order.tokenId === tokenId,
+  );
+}
+
+/**
+ * List ALL open (unfilled) orders for a chain — the whole orderbook for that
+ * chain, with no nft/tokenId filter. Used to enrich the live catalog with
+ * marketplace listings. Skips `.filled` tombstones and unreadable blobs.
+ */
+export async function listAllOpenOrders(chainId: number): Promise<SignedOrder[]> {
+  return scanOpenOrders(chainId);
 }
 
 /**

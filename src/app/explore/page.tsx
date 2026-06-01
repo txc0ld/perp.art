@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { getAllTokens } from "@/lib/mock-data";
-import { indexAllTokens, mergeForExplore } from "@/lib/web3/indexer";
+import { getLiveTokens } from "@/lib/live/catalog";
 import { ExploreClient } from "@/components/explore/ExploreClient";
 import { filtersFromSearchParams } from "@/components/explore/filters";
 
@@ -15,7 +14,8 @@ export const metadata: Metadata = {
  * Explore / Browse (design prompt §4.2).
  * Server component: reads searchParams (a Promise in Next 16) and does all data
  * access, then hands a plain token list + initial filter state to the client shell.
- * Live on-chain tokens (Base Sepolia 84532) are merged first; mock tokens follow.
+ * Renders ONLY live, listing-enriched on-chain tokens (no mock catalog), so a
+ * just-listed token surfaces here with its price under the real filters/sort.
  */
 export default async function ExplorePage({
   searchParams,
@@ -23,8 +23,7 @@ export default async function ExplorePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const live = await indexAllTokens(84532);
-  const tokens = mergeForExplore(live, getAllTokens());
+  const tokens = await getLiveTokens();
   const initialFilters = filtersFromSearchParams(sp);
 
   return (

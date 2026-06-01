@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import type { Token } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { searchTokens } from "@/lib/mock-data";
-import { SectionHeader } from "@/components/ui";
+import { SectionHeader, EmptyState } from "@/components/ui";
 import { FilterRail } from "./FilterRail";
 import { SortMenu } from "./SortMenu";
 import { DensityToggle } from "./DensityToggle";
@@ -14,6 +14,7 @@ import {
   EMPTY_FILTERS,
   applyFilters,
   activeChips,
+  facetsFromTokens,
   type Density,
   type ExploreFilters,
 } from "./filters";
@@ -35,19 +36,19 @@ export function ExploreClient({
   const [railOpen, setRailOpen] = React.useState(false);
   const [density, setDensity] = React.useState<Density>("comfortable");
 
-  // searchTokens is a pure local lookup over the same mock dataset - safe in the client.
-  const searchHits = React.useMemo(
-    () => (filters.q.trim() ? searchTokens(filters.q) : tokens),
-    [filters.q, tokens],
-  );
+  // Facets are derived from the live token set so no filter can offer a value
+  // that would silently empty the grid (e.g. a chain with zero live tokens).
+  const facets = React.useMemo(() => facetsFromTokens(tokens), [tokens]);
 
   const results = React.useMemo(
-    () => applyFilters(tokens, searchHits, filters),
-    [tokens, searchHits, filters],
+    () => applyFilters(tokens, filters),
+    [tokens, filters],
   );
 
   const chips = activeChips(filters);
   const reset = () => setFilters({ ...EMPTY_FILTERS, sort: filters.sort });
+  // No live data at all vs. an active-filter miss — distinct empty states.
+  const noData = tokens.length === 0;
 
   return (
     <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6">
@@ -120,7 +121,7 @@ export function ExploreClient({
           )}
         >
           <div className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
-            <FilterRail filters={filters} setFilters={setFilters} onReset={reset} />
+            <FilterRail filters={filters} setFilters={setFilters} onReset={reset} facets={facets} />
           </div>
         </aside>
 
@@ -165,8 +166,35 @@ export function ExploreClient({
 
           {results.length > 0 ? (
             <ExploreGrid tokens={results} density={density} />
+          ) : noData ? (
+            <EmptyState
+              eyebrow="The catalog"
+              title="No works yet — be the first to mint"
+              body="Nothing has been minted on-chain yet. Mint a work with a permanent on-chain proof and it appears here instantly."
+              action={
+                <Link
+                  href="/mint"
+                  className="inline-flex min-h-[44px] items-center rounded-[8px] border border-accent/40 bg-accent/10 px-4 font-mono text-[11px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                >
+                  Mint a work
+                </Link>
+              }
+            />
           ) : (
-            <EmptyState onReset={reset} />
+            <EmptyState
+              eyebrow="No matches"
+              title="No works match these filters"
+              body="The catalog is deliberate, not endless. Try widening the storage, chain, or price constraints."
+              action={
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="inline-flex min-h-[44px] items-center rounded-[8px] border border-accent/40 bg-accent/10 px-4 font-mono text-[11px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                >
+                  Clear all filters
+                </button>
+              }
+            />
           )}
         </div>
       </div>
@@ -201,26 +229,3 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
   );
 }
 
-function EmptyState({ onReset }: { onReset: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-border px-6 py-24 text-center">
-      <div aria-hidden className="mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-border text-faint">
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-          <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M15.5 15.5L21 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
-      <p className="text-base text-foreground">No works match these filters</p>
-      <p className="mt-2 max-w-sm text-sm text-muted">
-        The catalog is deliberate, not endless. Try widening the storage, chain, or price constraints.
-      </p>
-      <button
-        type="button"
-        onClick={onReset}
-        className="mt-6 inline-flex min-h-[44px] items-center rounded-[8px] border border-accent/40 bg-accent/10 px-4 font-mono text-[11px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-      >
-        Clear all filters
-      </button>
-    </div>
-  );
-}

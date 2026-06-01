@@ -4,7 +4,8 @@
  * client filter shell and its child controls.
  */
 import type { Token, Genre, Chain } from "@/lib/types";
-import { getChains, CHAIN_ORDER, GENRES } from "@/lib/mock-data";
+import { CHAINS as CHAIN_META, CHAIN_ORDER, getChainMeta } from "@/lib/chains";
+import { GENRES } from "@/lib/catalog-constants";
 
 export type StorageKind = "arweave" | "irys" | "onchain-only";
 export type StatusKind = "listed" | "unlisted";
@@ -35,11 +36,50 @@ export const EMPTY_FILTERS: ExploreFilters = {
   sort: "recent",
 };
 
-/** Every supported chain, in display order, for the Chain filter group. */
-export const CHAINS: { value: Chain; label: string }[] = getChains().map((c) => ({
-  value: c.id,
-  label: c.short,
+/** Every supported chain, in display order — used for chip labels. */
+export const CHAINS: { value: Chain; label: string }[] = CHAIN_ORDER.map((c) => ({
+  value: c,
+  label: CHAIN_META[c].short,
 }));
+
+/**
+ * Facets actually present in the current (live) token set. The Explore filter
+ * rail renders ONLY these so that no facet can silently empty the grid — e.g.
+ * with only Base tokens live, the chain group shows just "Base", and the genre
+ * group shows just the genres that exist on-chain.
+ */
+export interface ExploreFacets {
+  genres: Genre[];
+  chains: { value: Chain; label: string }[];
+}
+
+export function facetsFromTokens(tokens: Token[]): ExploreFacets {
+  const genreSet = new Set<Genre>();
+  const chainSet = new Set<Chain>();
+  for (const t of tokens) {
+    genreSet.add(t.genre);
+    chainSet.add(t.chain);
+  }
+  // Preserve the canonical display order for both groups.
+  const genres = GENRES.filter((g) => genreSet.has(g));
+  const chains = CHAIN_ORDER.filter((c) => chainSet.has(c)).map((c) => ({
+    value: c,
+    label: getChainMeta(c).short,
+  }));
+  return { genres, chains };
+}
+
+/** Self-contained search over the live token set (no mock dependency). */
+export function searchLiveTokens(tokens: Token[], query: string): Token[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return tokens;
+  return tokens.filter((t) => {
+    const hay = [t.title, t.collectionSlug, t.genre, t.artistHandle, t.owner]
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(q);
+  });
+}
 
 export const STORAGE_OPTIONS: { value: StorageKind; label: string }[] = [
   { value: "arweave", label: "Has Arweave" },
@@ -80,13 +120,11 @@ function listingPrice(t: Token): number | undefined {
   return t.listing?.priceEth;
 }
 
-export function applyFilters(tokens: Token[], searchHits: Token[], f: ExploreFilters): Token[] {
-  // searchHits is the pre-computed result of searchTokens(q) passed from the shell
-  // when q is non-empty; otherwise it equals the full list.
-  const allowedIds = f.q.trim() ? new Set(searchHits.map((t) => t.id)) : null;
+export function applyFilters(tokens: Token[], f: ExploreFilters): Token[] {
+  // Search is applied here over the live set (no external mock lookup).
+  const searched = searchLiveTokens(tokens, f.q);
 
-  let out = tokens.filter((t) => {
-    if (allowedIds && !allowedIds.has(t.id)) return false;
+  let out = searched.filter((t) => {
     if (f.genres.length && !f.genres.includes(t.genre)) return false;
     if (f.chains.length && !f.chains.includes(t.chain)) return false;
 

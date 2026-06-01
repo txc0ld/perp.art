@@ -8,9 +8,29 @@ import "server-only";
  *
  * Caching is delegated to the indexer (60s TTL); we add none here.
  */
-import type { Token, Collection } from "@/lib/types";
+import { formatEther } from "viem";
+import type { Token, Collection, Chain } from "@/lib/types";
 import { indexAllTokens, indexedCollections } from "@/lib/web3/indexer";
 import { getContracts } from "@/lib/web3/contracts";
+import { listAllOpenOrders } from "@/lib/web3/orderbook";
+
+/** Map a numeric chain id to the Token `chain` tag (mirrors read-token.ts). */
+const CHAIN_BY_ID: Record<number, Chain> = { 84532: "base", 11155111: "ethereum" };
+
+/** A single open listing aggregated from the orderbook, keyed by token id. */
+export interface OpenListing {
+  priceWei: bigint;
+  seller: string;
+  orderHash: string;
+  chainId: number;
+  /** endTime (unix seconds) from the order, 0 = no expiry. */
+  endTime: bigint;
+}
+
+/** Token-id key matching read-token.ts: `${chainId}-${nft.toLowerCase()}-${tokenId}`. */
+function listingKey(chainId: number, nft: string, tokenId: bigint): string {
+  return `${chainId}-${nft.toLowerCase()}-${tokenId}`;
+}
 
 /** Chain ids in the contracts REGISTRY that have a deployed Forever Library. */
 export const LIVE_CHAIN_IDS: number[] = [84532, 11155111].filter(
@@ -25,9 +45,85 @@ export interface LiveMarketStats {
   onchainProofRate: number;
 }
 
+/**
+ * Aggregate every open listing across the live chains, keyed by token id
+ * (`${chainId}-${nft.toLowerCase()}-${tokenId}`). When a token has multiple
+ * open orders, the lowest-priced one wins (the marketplace floor for it).
+ * Never throws: an orderbook failure on one chain degrades to no listings.
+ */
+export async function getOpenListings(): Promise<Map<string, OpenListing>> {
+  const map = new Map<string, OpenListing>();
+  const batches = await Promise.all(
+    LIVE_CHAIN_IDS.map(async (chainId) => {
+      try {
+        return await listAllOpenOrders(chainId);
+      } catch {
+        return [];
+      }
+    }),
+  );
+
+  for (const orders of batches) {
+    for (const signed of orders) {
+      const { chainId, orderHash } = signed;
+      const { nft, tokenId, price, seller, endTime } = signed.order;
+      const key = listingKey(chainId, nft, tokenId);
+      const existing = map.get(key);
+      // Keep the lowest-priced open order for each token.
+      if (!existing || price < existing.priceWei) {
+        map.set(key, {
+          priceWei: price,
+          seller,
+          orderHash,
+          chainId,
+          endTime,
+        });
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * All live on-chain tokens across the live chains, enriched with their open
+ * marketplace listing (`token.listing`) when one exists. Tokens with no open
+ * order keep `listing: undefined`. This is the base accessor every surface
+ * (explore / home / collections) consumes, so listings are populated once here.
+ */
 export async function getLiveTokens(): Promise<Token[]> {
-  const batches = await Promise.all(LIVE_CHAIN_IDS.map((id) => indexAllTokens(id)));
-  return batches.flat();
+  const [batches, listings] = await Promise.all([
+    Promise.all(LIVE_CHAIN_IDS.map((id) => indexAllTokens(id))),
+    getOpenListings(),
+  ]);
+  const tokens = batches.flat();
+  if (listings.size === 0) return tokens;
+
+  return tokens.map((t) => {
+    const open = listings.get(t.id);
+    if (!open) return t;
+    const chain = CHAIN_BY_ID[open.chainId] ?? t.chain;
+    return {
+      ...t,
+      listing: {
+        orderId: open.orderHash,
+        priceEth: Number(formatEther(open.priceWei)),
+        chain,
+        seller: open.seller,
+        // endTime 0 means "no expiry"; surface a far-future ISO so the
+        // Listing shape (which requires expiresAt) stays well-formed.
+        expiresAt:
+          open.endTime > BigInt(0)
+            ? new Date(Number(open.endTime) * 1000).toISOString()
+            : new Date(8640000000000000).toISOString(),
+      },
+    };
+  });
+}
+
+/** Live tokens that currently have an open listing — the active marketplace. */
+export async function getLiveListedTokens(): Promise<Token[]> {
+  const tokens = await getLiveTokens();
+  return tokens.filter((t) => t.listing !== undefined);
 }
 
 export async function getLiveToken(id: string): Promise<Token | undefined> {
