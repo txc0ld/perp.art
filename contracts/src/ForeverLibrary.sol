@@ -19,7 +19,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {IForeverLibrary} from "./interfaces/IForeverLibrary.sol";
-import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
+import {Base64} from "solady/utils/Base64.sol";
+import {LibString} from "solady/utils/LibString.sol";
 import {SSTORE2} from "solady/utils/SSTORE2.sol";
 
 /// @title ForeverLibrary
@@ -567,17 +568,107 @@ contract ForeverLibrary is
                                 TOKEN URI
     //////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Token URI resolves to the selected shard's locator (PRD §7.3).
-    /// @dev    External platforms (our indexer, OpenSea) read this. The onchain
-    ///         proof (Shard 0) is always available as the fallback resolution
-    ///         path (PRD §5.1, §18) even if the selected shard's backend is down.
+    /// @notice OpenSea-compatible token metadata as an on-chain JSON data URI.
+    /// @dev    Returns `data:application/json;base64,<{...}>` so marketplaces
+    ///         (OpenSea, etc.) render the token. The `image` field is the
+    ///         resolvable media: the selected shard's locator when one is set
+    ///         (e.g. high-res IPFS/Arweave), otherwise the always-available
+    ///         on-chain STATE data URI (Shard 0). The onchain proof remains the
+    ///         permanence fallback (PRD §5.1, §18).
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireMinted(tokenId);
+        return string.concat(
+            "data:application/json;base64,",
+            Base64.encode(bytes(_tokenMetadataJSON(tokenId)))
+        );
+    }
+
+    /// @notice The resolvable media URI for a token: the selected shard's
+    ///         locator when set, else the on-chain STATE data URI (Shard 0).
+    function _tokenImageURI(uint256 tokenId) internal view returns (string memory) {
         uint256 idx = _selectedShardIndex[tokenId];
         Shard[] storage shards = _shards[tokenId];
         if (idx >= shards.length) idx = 0;
         if (idx == 0) return _stateDataUri(tokenId);
         return shards[idx].uri;
+    }
+
+    /// @dev Build the OpenSea-compatible metadata JSON document for a token.
+    ///      All free-text fields are JSON-string-escaped (solady escapeJSON).
+    function _tokenMetadataJSON(uint256 tokenId) internal view returns (string memory) {
+        MintData storage d = _mintData[tokenId];
+
+        // name: "<title> #<tokenId>"
+        string memory name = string.concat(
+            LibString.escapeJSON(d.title),
+            " #",
+            LibString.toString(tokenId)
+        );
+
+        // description: short permanence line + artist.
+        string memory description = string.concat(
+            "Permanently preserved on Perpetual. Artist: ",
+            LibString.escapeJSON(d.artistName),
+            "."
+        );
+
+        // attributes: Artist, Media type, and Edition (when editionSize > 1).
+        string memory attributes = string.concat(
+            '[{"trait_type":"Artist","value":"',
+            LibString.escapeJSON(d.artistName),
+            '"},{"trait_type":"Media type","value":"',
+            LibString.escapeJSON(d.mediaType),
+            '"}'
+        );
+        uint32 edSz = _editionSize[tokenId];
+        if (edSz > 1) {
+            uint32 edIdx = _editionIndex[tokenId];
+            attributes = string.concat(
+                attributes,
+                ',{"trait_type":"Edition","value":"',
+                LibString.toString(uint256(edIdx)),
+                " of ",
+                LibString.toString(uint256(edSz)),
+                '"}'
+            );
+        }
+        attributes = string.concat(attributes, "]");
+
+        return string.concat(
+            '{"name":"', name,
+            '","description":"', description,
+            '","image":"', _tokenImageURI(tokenId),
+            '","attributes":', attributes,
+            "}"
+        );
+    }
+
+    /*//////////////////////////////////////////////////////////////////////
+                                CONTRACT URI
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// @notice OpenSea collection-level metadata (name, description, image,
+    ///         seller_fee_basis_points, fee_recipient) as a JSON data URI.
+    /// @dev    `fee_recipient` is the contract owner; `seller_fee_basis_points`
+    ///         is the contract default royalty (0 here — per-token royalties are
+    ///         set at mint via ERC-2981). Collection image is the first token's
+    ///         media when one exists.
+    function contractURI() external view returns (string memory) {
+        (, uint256 royaltyAmount) = royaltyInfo(0, 10_000);
+        string memory image = _nextTokenId > 1 ? _tokenImageURI(1) : "";
+
+        string memory json = string.concat(
+            '{"name":"', LibString.escapeJSON(name()),
+            '","description":"Permanence-first NFTs on Perpetual.',
+            '","image":"', image,
+            '","seller_fee_basis_points":', LibString.toString(royaltyAmount),
+            ',"fee_recipient":"', LibString.toHexStringChecksummed(owner()),
+            '"}'
+        );
+        return string.concat(
+            "data:application/json;base64,",
+            Base64.encode(bytes(json))
+        );
     }
 
     /*//////////////////////////////////////////////////////////////////////

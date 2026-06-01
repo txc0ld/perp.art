@@ -7,6 +7,18 @@ import {ForeverLibraryFactory} from "../src/ForeverLibraryFactory.sol";
 /**
  * Deploy the ForeverLibraryFactory.
  *
+ * The factory delegates contract creation to two external libraries
+ * (CollectionDeployer, DropDeployer) so it stays under the EIP-170
+ * 24,576-byte limit. Foundry auto-deploys and links these libraries when
+ * running this script. For a manual keystore deploy, deploy each library
+ * first and link with `--libraries`:
+ *
+ *   forge create src/libraries/CollectionDeployer.sol:CollectionDeployer --account deployer ...
+ *   forge create src/libraries/DropDeployer.sol:DropDeployer --account deployer ...
+ *   forge create src/ForeverLibraryFactory.sol:ForeverLibraryFactory --account deployer \
+ *     --libraries src/libraries/CollectionDeployer.sol:CollectionDeployer:<addr> \
+ *     --libraries src/libraries/DropDeployer.sol:DropDeployer:<addr>
+ *
  * Usage (testnet example):
  *   forge script script/DeployFactory.s.sol \
  *     --rpc-url base_sepolia --account deployer --broadcast --verify

@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {ForeverLibrary} from "../src/ForeverLibrary.sol";
 import {IForeverLibrary} from "../src/interfaces/IForeverLibrary.sol";
+import {Base64} from "solady/utils/Base64.sol";
 
 contract ForeverLibraryTest is Test {
     ForeverLibrary internal fl;
@@ -299,5 +300,90 @@ contract ForeverLibraryTest is Test {
         uint256 id = _mint();
         assertEq(fl.editionSize(id), 1, "editionSize defaults to 1");
         assertEq(fl.editionIndex(id), 1, "editionIndex defaults to 1");
+    }
+
+    /*//////////////////////////////////////////////////////////////////////
+                        OPENSEA METADATA TESTS
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// tokenURI returns a base64 JSON document containing name/description/image.
+    function test_TokenURIReturnsJSONMetadata() public {
+        uint256 id = fl.mint(
+            address(this), "Claude Wren", "Strata No. 1", "image/svg+xml",
+            750, keccak256("metadata"), bytes("proof-bytes"), 0
+        );
+
+        string memory uri = fl.tokenURI(id);
+        string memory prefix = "data:application/json;base64,";
+        assertTrue(_startsWith(uri, prefix), "json data uri prefix");
+
+        string memory json = string(Base64.decode(_slice(uri, bytes(prefix).length)));
+        assertTrue(_contains(json, '"name":"Strata No. 1 #1"'), "name = title #id");
+        assertTrue(_contains(json, "Claude Wren"), "artist in description/attributes");
+        // image is the on-chain STATE data uri (Shard 0 fallback).
+        assertTrue(_contains(json, '"image":"data:image/svg+xml;base64,'), "image field");
+        assertTrue(_contains(json, '"attributes":['), "attributes array");
+        assertTrue(_contains(json, '"trait_type":"Media type"'), "media type trait");
+    }
+
+    /// Edition tokens carry an "X of N" Edition attribute in their metadata.
+    function test_TokenURIEditionAttribute() public {
+        uint256 first = fl.mintEdition(
+            address(this), "Artist", "Series", "image/png",
+            500, keccak256("m"), bytes("proof"), 0, 3
+        );
+        string memory prefix = "data:application/json;base64,";
+        string memory json =
+            string(Base64.decode(_slice(fl.tokenURI(first + 1), bytes(prefix).length)));
+        assertTrue(_contains(json, '"trait_type":"Edition","value":"2 of 3"'), "edition attr");
+    }
+
+    /// contractURI returns base64 JSON with royalties + fee_recipient.
+    function test_ContractURIShape() public view {
+        string memory uri = fl.contractURI();
+        string memory prefix = "data:application/json;base64,";
+        assertTrue(_startsWith(uri, prefix), "json data uri prefix");
+
+        string memory json = string(Base64.decode(_slice(uri, bytes(prefix).length)));
+        assertTrue(_contains(json, '"name":"Perpetual"'), "collection name");
+        assertTrue(_contains(json, '"seller_fee_basis_points":'), "royalty bps");
+        assertTrue(_contains(json, '"fee_recipient":"'), "fee recipient");
+    }
+
+    /// Titles/artist names with quotes are JSON-escaped (no broken JSON).
+    function test_TokenURIEscapesSpecialChars() public {
+        uint256 id = fl.mint(
+            address(this), 'Ar"tist', 'Ti"tle', "image/png",
+            500, keccak256("m"), bytes("proof"), 0
+        );
+        string memory prefix = "data:application/json;base64,";
+        string memory json =
+            string(Base64.decode(_slice(fl.tokenURI(id), bytes(prefix).length)));
+        // The raw double-quote must be escaped as \" inside the JSON string.
+        assertTrue(_contains(json, 'Ti\\"tle'), "title escaped");
+        assertTrue(_contains(json, 'Ar\\"tist'), "artist escaped");
+    }
+
+    function _slice(string memory str, uint256 start) internal pure returns (string memory) {
+        bytes memory s = bytes(str);
+        bytes memory out = new bytes(s.length - start);
+        for (uint256 i = start; i < s.length; i++) {
+            out[i - start] = s[i];
+        }
+        return string(out);
+    }
+
+    function _contains(string memory haystack, string memory needle) internal pure returns (bool) {
+        bytes memory h = bytes(haystack);
+        bytes memory n = bytes(needle);
+        if (n.length == 0 || h.length < n.length) return false;
+        for (uint256 i = 0; i <= h.length - n.length; i++) {
+            bool ok = true;
+            for (uint256 j = 0; j < n.length; j++) {
+                if (h[i + j] != n[j]) { ok = false; break; }
+            }
+            if (ok) return true;
+        }
+        return false;
     }
 }
