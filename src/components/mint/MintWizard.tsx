@@ -6,7 +6,7 @@ import type { Genre, ShardOption } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWallet, connectWallet } from "@/lib/wallet";
 import { useOnchainMint, type ShardRecord } from "./useOnchainMint";
-import { chainLabelForId, getContracts } from "@/lib/web3/contracts";
+import { chainLabelForId } from "@/lib/web3/contracts";
 import { Button, MonoLabel, Surface } from "@/components/ui";
 import { Stepper } from "./Stepper";
 import { UploadStep } from "./UploadStep";
@@ -15,6 +15,7 @@ import { PermanenceStep } from "./PermanenceStep";
 import { LockStep } from "./LockStep";
 import { ReviewStep } from "./ReviewStep";
 import { CollectionStep } from "./CollectionStep";
+import { DropFlow } from "./DropFlow";
 import { MintSuccess } from "./MintSuccess";
 import {
   STEPS,
@@ -135,6 +136,11 @@ export function MintWizard({
     onchain.reset();
   };
 
+  const isDrop = form.mintType === "drop";
+  // The drop path is a distinct flow (its own wallet steps), so we only show the
+  // mode toggle when we're not mid-mint / not on the success screen.
+  const showModeToggle = !minted && !busy;
+
   const PHASE_LABEL: Record<string, string> = {
     storing:
       onchain.uploadPct > 0 && onchain.uploadPct < 100
@@ -163,6 +169,41 @@ export function MintWizard({
         </p>
       </header>
 
+      {/* Mode toggle: the guided 1-of-1 / Edition wizard vs the bulk Collection drop flow. */}
+      {showModeToggle && (
+        <div className="mb-8">
+          <MonoLabel className="text-faint">What are you minting?</MonoLabel>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ModeOption
+              selected={!isDrop}
+              onSelect={() => set({ mintType: "single", editionSize: 1 })}
+              title="1-of-1 or Edition"
+              subtitle="Per-token 5-shard permanence · the guided flow"
+            />
+            <ModeOption
+              selected={isDrop}
+              onSelect={() => set({ mintType: "drop" })}
+              title="Collection drop"
+              subtitle="Bulk PFP / generative · folder permanence"
+            />
+          </div>
+        </div>
+      )}
+
+      {isDrop ? (
+        <Surface className="p-6 sm:p-8 lg:p-10">
+          <div className="mb-7">
+            <MonoLabel className="text-faint">Collection drop</MonoLabel>
+            <h2 className="mt-2 text-xl font-medium text-foreground sm:text-2xl">Release a bulk collection</h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted">
+              Upload one archive, deploy a dedicated batch-mint contract, commit a provenance hash,
+              mint the supply, and reveal — OpenSea-compatible.
+            </p>
+          </div>
+          <DropFlow />
+        </Surface>
+      ) : (
+      <>
       {!minted && !busy && (
         <div className="mb-8">
           <Stepper current={stepIndex} furthest={furthest} onJump={goTo} />
@@ -281,7 +322,30 @@ export function MintWizard({
           </div>
         </div>
       )}
+      </>
+      )}
     </div>
+  );
+}
+
+/** Top-level mint-mode selector card (guided wizard vs bulk drop). */
+function ModeOption({
+  selected, onSelect, title, subtitle,
+}: {
+  selected: boolean; onSelect: () => void; title: string; subtitle: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "flex flex-col items-start rounded-[8px] border px-4 py-4 text-left transition-colors",
+        selected ? "border-accent/50 bg-accent/5" : "border-border bg-transparent hover:border-border-bright hover:bg-surface-2/40",
+      )}
+    >
+      <span className={cn("text-sm font-medium", selected ? "text-accent" : "text-foreground")}>{title}</span>
+      <span className="mt-0.5 text-[12px] text-faint">{subtitle}</span>
+    </button>
   );
 }
 

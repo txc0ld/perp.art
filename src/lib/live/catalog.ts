@@ -11,6 +11,7 @@ import "server-only";
 import { formatEther } from "viem";
 import type { Token, Collection, Chain } from "@/lib/types";
 import { indexAllTokens, indexedCollections, indexCollections } from "@/lib/web3/indexer";
+import { indexDropTokens, indexedDropCollections } from "@/lib/web3/drops-indexer";
 import { getContracts } from "@/lib/web3/contracts";
 import { listAllOpenOrders } from "@/lib/web3/orderbook";
 
@@ -91,11 +92,13 @@ export async function getOpenListings(): Promise<Map<string, OpenListing>> {
  * (explore / home / collections) consumes, so listings are populated once here.
  */
 export async function getLiveTokens(): Promise<Token[]> {
-  const [batches, listings] = await Promise.all([
+  const [batches, dropBatches, listings] = await Promise.all([
     Promise.all(LIVE_CHAIN_IDS.map((id) => indexAllTokens(id))),
+    Promise.all(LIVE_CHAIN_IDS.map((id) => indexDropTokens(id))),
     getOpenListings(),
   ]);
-  const tokens = batches.flat();
+  // Library (5-shard) tokens first, then folder-permanence drop tokens.
+  const tokens = [...batches.flat(), ...dropBatches.flat()];
   if (listings.size === 0) return tokens;
 
   return tokens.map((t) => {
@@ -146,8 +149,14 @@ export async function getLiveTokensByCreator(address: string): Promise<Token[]> 
 }
 
 export async function getLiveCollections(): Promise<Collection[]> {
-  const batches = await Promise.all(LIVE_CHAIN_IDS.map((id) => indexedCollections(id)));
-  return batches.flat();
+  const [libBatches, dropBatches] = await Promise.all([
+    Promise.all(LIVE_CHAIN_IDS.map((id) => indexedCollections(id))),
+    Promise.all(LIVE_CHAIN_IDS.map((id) => indexedDropCollections(id))),
+  ]);
+  // Tag library collections explicitly so the UI can distinguish the
+  // 5-shard tier from folder-permanence drops (drops already carry kind:"drop").
+  const libraries = libBatches.flat().map((c) => ({ ...c, kind: c.kind ?? ("library" as const) }));
+  return [...libraries, ...dropBatches.flat()];
 }
 
 /**

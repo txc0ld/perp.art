@@ -175,6 +175,18 @@ export interface Collection {
   contractAddress: string;
   chain: Chain;
   sovereign: boolean;
+  /**
+   * Permanence tier of the contract behind this collection:
+   *  - "library": ForeverLibrary (5-shard, per-token permanence guarantee).
+   *  - "drop": PerpetualDrop (folder-permanence — IPFS + Arweave folder anchored
+   *    by one on-chain provenance hash). Distinct, weaker per-token guarantee.
+   * Defaults to "library" when omitted (every pre-existing collection).
+   */
+  kind?: "library" | "drop";
+  /** Drop-only: total tokens batch-minted so far (`totalMinted()`). */
+  dropMinted?: number;
+  /** Drop-only: whether the real metadata has been revealed yet. */
+  dropRevealed?: boolean;
   /** Cover artwork seed for the generated visual. */
   coverSeed: string;
   floorEth: number;

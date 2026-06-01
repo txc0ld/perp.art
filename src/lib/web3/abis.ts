@@ -192,6 +192,131 @@ export const FOREVER_LIBRARY_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "string" }],
   },
+  // OpenSea collection-level metadata (on-chain data: URI).
+  {
+    type: "function", name: "contractURI", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "string" }],
+  },
+] as const;
+
+/**
+ * PerpetualDrop — dedicated batch-mint ERC-721 for large PFP / generative
+ * "folder-permanence" drops (see PerpetualDrop.sol). One on-chain
+ * `provenanceHash` anchors the ordered asset set; a `baseURI` (placeholder
+ * pre-reveal) resolves per-token JSON metadata as `baseURI + tokenId`.
+ */
+export const PERPETUAL_DROP_ABI = [
+  {
+    type: "function", name: "mintBatch", stateMutability: "nonpayable",
+    inputs: [{ name: "to", type: "address" }, { name: "quantity", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function", name: "commitProvenance", stateMutability: "nonpayable",
+    inputs: [{ name: "hash", type: "bytes32" }],
+    outputs: [],
+  },
+  {
+    type: "function", name: "reveal", stateMutability: "nonpayable",
+    inputs: [{ name: "realBaseURI", type: "string" }],
+    outputs: [],
+  },
+  {
+    type: "function", name: "tokenURI", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "string" }],
+  },
+  {
+    type: "function", name: "contractURI", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "string" }],
+  },
+  {
+    type: "function", name: "provenanceHash", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+  {
+    type: "function", name: "revealed", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function", name: "maxSupply", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function", name: "totalMinted", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function", name: "baseURI", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "string" }],
+  },
+  {
+    type: "function", name: "owner", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function", name: "name", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "string" }],
+  },
+  {
+    type: "function", name: "symbol", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "string" }],
+  },
+  {
+    type: "function", name: "ownerOf", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function", name: "balanceOf", stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function", name: "royaltyInfo", stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }, { name: "salePrice", type: "uint256" }],
+    outputs: [{ name: "receiver", type: "address" }, { name: "amount", type: "uint256" }],
+  },
+  {
+    type: "function", name: "MAX_BATCH", stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "event", name: "ProvenanceCommitted",
+    inputs: [{ name: "provenanceHash", type: "bytes32", indexed: false }],
+  },
+  {
+    type: "event", name: "BatchMinted",
+    inputs: [
+      { name: "to", type: "address", indexed: true },
+      { name: "fromTokenId", type: "uint256", indexed: false },
+      { name: "toTokenId", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event", name: "Revealed",
+    inputs: [{ name: "baseURI", type: "string", indexed: false }],
+  },
+  {
+    type: "event", name: "ConsecutiveTransfer",
+    inputs: [
+      { name: "fromTokenId", type: "uint256", indexed: true },
+      { name: "toTokenId", type: "uint256", indexed: false },
+      { name: "fromAddress", type: "address", indexed: true },
+      { name: "toAddress", type: "address", indexed: true },
+    ],
+  },
 ] as const;
 
 /** LogLedger: cheap on-chain media storage via event logs (Plan 1 contract). */
@@ -416,6 +541,59 @@ export const FACTORY_ABI = [
       { name: "owner", type: "address", indexed: true },
       { name: "name", type: "string", indexed: false },
       { name: "symbol", type: "string", indexed: false },
+    ],
+  },
+  // ── PerpetualDrop registry (batch-mint PFP / generative drops) ──
+  {
+    type: "function",
+    name: "createDrop",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "name", type: "string" },
+      { name: "symbol", type: "string" },
+      { name: "royaltyBps", type: "uint96" },
+      { name: "maxSupply", type: "uint256" },
+      { name: "placeholderBaseURI", type: "string" },
+    ],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "dropsCount",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "dropAt",
+    stateMutability: "view",
+    inputs: [{ name: "index", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "drops",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "isDrop",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "event",
+    name: "DropCreated",
+    inputs: [
+      { name: "drop", type: "address", indexed: true },
+      { name: "owner", type: "address", indexed: true },
+      { name: "name", type: "string", indexed: false },
+      { name: "symbol", type: "string", indexed: false },
+      { name: "maxSupply", type: "uint256", indexed: false },
     ],
   },
 ] as const;

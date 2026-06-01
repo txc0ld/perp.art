@@ -38,8 +38,12 @@ export interface MintForm {
   collectionAddress?: `0x${string}`;
   /** Human-readable name for the chosen collection, for display only. */
   collectionName?: string;
-  /** "single" = 1-of-1 mint; "edition" = N copies sharing one LOG/IPFS/Arweave/Irys upload. */
-  mintType: "single" | "edition";
+  /**
+   * "single" = 1-of-1 mint; "edition" = N copies sharing one upload;
+   * "drop" = bulk PFP/generative collection (PerpetualDrop, folder-permanence).
+   * The "drop" path bypasses the step wizard entirely (see DropFlow).
+   */
+  mintType: "single" | "edition" | "drop";
   /** Number of edition copies (1..10). Only used when mintType="edition". */
   editionSize: number;
 }
