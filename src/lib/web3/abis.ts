@@ -19,6 +19,37 @@ export const FOREVER_LIBRARY_ABI = [
   },
   {
     type: "function",
+    name: "mintEdition",
+    stateMutability: "payable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "artistName", type: "string" },
+      { name: "title", type: "string" },
+      { name: "mediaType", type: "string" },
+      { name: "royaltyBps", type: "uint96" },
+      { name: "metadataHash", type: "bytes32" },
+      { name: "proofData", type: "bytes" },
+      { name: "hostingFeeBps_", type: "uint16" },
+      { name: "editionSize", type: "uint32" },
+    ],
+    outputs: [{ name: "firstTokenId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "editionSize",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint32" }],
+  },
+  {
+    type: "function",
+    name: "editionIndex",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint32" }],
+  },
+  {
+    type: "function",
     name: "configureShard",
     stateMutability: "nonpayable",
     inputs: [
@@ -324,3 +355,49 @@ export const SHARD_BACKEND = {
   cdn: 4,
   log: 5,
 } as const;
+
+/** ForeverLibraryFactory — deploys + enumerates sovereign collection contracts. */
+export const FACTORY_ABI = [
+  {
+    type: "function",
+    name: "createCollection",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "name", type: "string" },
+      { name: "symbol", type: "string" },
+      { name: "editWindow", type: "uint64" },
+    ],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "collectionsCount",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "collectionAt",
+    stateMutability: "view",
+    inputs: [{ name: "index", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "isCollection",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "event",
+    name: "CollectionCreated",
+    inputs: [
+      { name: "collection", type: "address", indexed: true },
+      { name: "owner", type: "address", indexed: true },
+      { name: "name", type: "string", indexed: false },
+      { name: "symbol", type: "string", indexed: false },
+    ],
+  },
+] as const;

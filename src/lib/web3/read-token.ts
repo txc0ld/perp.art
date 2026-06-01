@@ -104,8 +104,8 @@ export const MAX_WINDOWS = 120;
 // ForeverLibrary deploy blocks — the lower bound for log scans (no Transfer can
 // predate the contract). Keep in sync with the deployed addresses.
 export const FL_DEPLOY_BLOCK: Record<number, bigint> = {
-  84532: BigInt(42222546),
-  11155111: BigInt(10959823),
+  84532: BigInt(42258311),
+  11155111: BigInt(10965380),
 };
 
 /** Where to start a Transfer-log scan: the deploy block, or a recent lookback
