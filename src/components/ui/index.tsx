@@ -7,6 +7,8 @@ import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
+export { EmptyState, type EmptyStateProps } from "./EmptyState";
+
 // ---------------------------------------------------------------------------
 // Button
 // ---------------------------------------------------------------------------

@@ -14,6 +14,15 @@ import type {
   SwapOrder, SwapSide, SwapStatus, SwapCriteria,
 } from "./types";
 import { seededRandom, hashSeed, shortAddress } from "./utils";
+import { tokenMatchesCriteria } from "./swap-criteria";
+
+// ---------------------------------------------------------------------------
+// Re-exports of extracted (non-mock) modules — keep "@/lib/mock-data" imports
+// working unchanged while the real logic now lives in clean modules.
+// ---------------------------------------------------------------------------
+export { GENRES, SHARD_OPTIONS } from "./catalog-constants";
+export { permanenceScore, portfolioPermanence, type PermanenceScore } from "./permanence";
+export { tokenMatchesCriteria, type SwapCriteria } from "./swap-criteria";
 
 // ---------------------------------------------------------------------------
 // Deterministic helpers
@@ -331,11 +340,6 @@ const WORLD = buildWorld();
 // Public accessors (mirror an eventual indexer/orderbook API)
 // ---------------------------------------------------------------------------
 
-export const GENRES: Genre[] = [
-  "Generative", "AI", "PFP", "Photography", "Illustration", "3D", "Pixel",
-  "Voxel", "Glitch", "Vector", "Motion", "Fractal", "Collage", "Audio", "Abstract",
-];
-
 export function getAllTokens(): Token[] {
   return WORLD.tokens;
 }
@@ -420,18 +424,6 @@ export const CURRENT_USER = {
   name: "Your Collection",
 };
 
-// ---------------------------------------------------------------------------
-// Mint flow shard options (PRD §10.3)
-// ---------------------------------------------------------------------------
-
-export const SHARD_OPTIONS: ShardOption[] = [
-  { backend: "onchain", label: "Onchain STATE (SSTORE2)", blurb: "The low-res canonical proof, stored in contract state. The consensus-guaranteed backstop and the only shard that satisfies listing eligibility.", estCostEth: 0.012, mandatory: true, defaultEnabled: true },
-  { backend: "log", label: "Onchain LOG (high-res)", blurb: "Full-resolution media in event logs (~8 gas/byte). Cost-efficient and root-verifiable; availability is retention-monitored.", estCostEth: 0.002, mandatory: false, defaultEnabled: true },
-  { backend: "ipfs", label: "IPFS", blurb: "Content-addressed high-resolution media, auto-pinned.", estCostEth: 0.0, mandatory: false, defaultEnabled: true },
-  { backend: "arweave", label: "Arweave", blurb: "Pay-once permanent storage. Confirmed forever.", estCostEth: 0.004, mandatory: false, defaultEnabled: true },
-  { backend: "irys", label: "Irys (Datachain)", blurb: "Additional permanent redundancy across an independent network.", estCostEth: 0.003, mandatory: false, defaultEnabled: true },
-];
-
 /** Marketplace-wide stats for the home explainer band. */
 export function getMarketStats() {
   const tokens = WORLD.tokens;
@@ -491,49 +483,18 @@ export function getTopMovers(window: RankWindow = "24h"): CollectionRanking[] {
 }
 
 // ---------------------------------------------------------------------------
-// Chains (cross-chain trading metadata)
+// Chains (cross-chain trading metadata) — moved to src/lib/chains.ts.
+// Re-exported here so existing "@/lib/mock-data" imports keep working.
 // ---------------------------------------------------------------------------
 
-export interface ChainMeta {
-  id: Chain;
-  label: string;
-  short: string;
-  color: string;        // accent swatch for the chain
-  explorer: string;
-  /** True where Forever Library deploys and permanence is native (EVM). */
-  permanenceNative: boolean;
-  /** Native settlement currency symbol. */
-  currency: string;
-}
-
-export const CHAINS: Record<Chain, ChainMeta> = {
-  ethereum: { id: "ethereum", label: "Ethereum", short: "Ethereum", color: "#9eb8ff", explorer: "https://etherscan.io", permanenceNative: true, currency: "ETH" },
-  base: { id: "base", label: "Base", short: "Base", color: "#7dd3fc", explorer: "https://basescan.org", permanenceNative: true, currency: "ETH" },
-  polygon: { id: "polygon", label: "Polygon", short: "Polygon", color: "#c4b5fd", explorer: "https://polygonscan.com", permanenceNative: true, currency: "POL" },
-  arbitrum: { id: "arbitrum", label: "Arbitrum", short: "Arbitrum", color: "#86c5ff", explorer: "https://arbiscan.io", permanenceNative: true, currency: "ETH" },
-  optimism: { id: "optimism", label: "Optimism", short: "Optimism", color: "#fda4af", explorer: "https://optimistic.etherscan.io", permanenceNative: true, currency: "ETH" },
-  zora: { id: "zora", label: "Zora", short: "Zora", color: "#a5b4fc", explorer: "https://explorer.zora.energy", permanenceNative: true, currency: "ETH" },
-  shape: { id: "shape", label: "Shape", short: "Shape", color: "#e8f06a", explorer: "https://shapescan.xyz", permanenceNative: true, currency: "ETH" },
-  solana: { id: "solana", label: "Solana", short: "Solana", color: "#99f6c8", explorer: "https://solscan.io", permanenceNative: false, currency: "SOL" },
-  tezos: { id: "tezos", label: "Tezos", short: "Tezos", color: "#93c5fd", explorer: "https://tzkt.io", permanenceNative: false, currency: "XTZ" },
-  flow: { id: "flow", label: "Flow", short: "Flow", color: "#86efac", explorer: "https://flowscan.io", permanenceNative: false, currency: "FLOW" },
-};
-
-/** Display order for chain pickers/filters (most active NFT chains first). */
-export const CHAIN_ORDER: Chain[] = [
-  "ethereum", "base", "solana", "polygon", "shape", "tezos", "arbitrum", "optimism", "zora", "flow",
-];
-
-export function getChainMeta(c: Chain): ChainMeta {
-  return CHAINS[c];
-}
-
-export function getChains(): ChainMeta[] {
-  return CHAIN_ORDER.map((c) => CHAINS[c]);
-}
-
-/** Cross-chain settlement bridge fee (flat, surfaced at point of trade). */
-export const BRIDGE_FEE_ETH = 0.0009;
+export {
+  CHAINS,
+  CHAIN_ORDER,
+  getChainMeta,
+  getChains,
+  BRIDGE_FEE_ETH,
+  type ChainMeta,
+} from "./chains";
 
 // ---------------------------------------------------------------------------
 // Swaps: NFT-for-NFT barter + cross-chain (the differentiators, PRD §8 barter)
@@ -627,15 +588,6 @@ function buildSwaps(): SwapOrder[] {
   return swaps;
 }
 
-/** Does a token satisfy a criteria-based swap request? */
-export function tokenMatchesCriteria(token: Token, c: SwapCriteria): boolean {
-  if (c.collectionSlug && token.collectionSlug !== c.collectionSlug) return false;
-  if (c.traitKey && c.traitValue) {
-    return token.traits.some((t) => t.key === c.traitKey && t.value === c.traitValue);
-  }
-  return true;
-}
-
 /** Tokens the connected user owns that can fill a criteria swap. */
 export function tokensMatchingCriteria(c: SwapCriteria, ownerAddress?: string): Token[] {
   return WORLD.tokens.filter(
@@ -676,56 +628,6 @@ export function resolveEns(address: string): string | null {
 /** Best human-readable label for an address: ENS name, else shortened hex. */
 export function displayName(address: string): string {
   return resolveEns(address) ?? shortAddress(address);
-}
-
-// ---------------------------------------------------------------------------
-// Permanence Score - a data-backed grade for how durable a token is.
-// ---------------------------------------------------------------------------
-
-export interface PermanenceScore {
-  score: number;       // 0..100
-  grade: "A+" | "A" | "B" | "C" | "D";
-  redundancy: number;  // verified non-onchain copies
-  factors: Array<{ label: string; ok: boolean; detail?: string }>;
-}
-
-export function permanenceScore(t: Token): PermanenceScore {
-  const p = t.permanence;
-  const verified = p.shards.filter((s) => s.status === "verified");
-  const redundancy = verified.filter((s) => s.backend !== "onchain").length;
-
-  let score = 0;
-  if (p.onchainProofConfigured) score += 50; // the guarantee itself
-  if (p.contentHashMatches) score += 15;
-  score += Math.min(redundancy, 4) * 6;      // up to 24 for redundancy
-  if (p.locked) score += 11;
-  score = Math.min(100, score);
-
-  const grade: PermanenceScore["grade"] =
-    score >= 96 ? "A+" : score >= 88 ? "A" : score >= 78 ? "B" : score >= 65 ? "C" : "D";
-
-  return {
-    score,
-    grade,
-    redundancy,
-    factors: [
-      { label: "Onchain STATE proof (SSTORE2)", ok: p.onchainProofConfigured },
-      { label: "Content hash matches record", ok: p.contentHashMatches },
-      { label: "Redundant permanent copies", ok: redundancy >= 3, detail: `${redundancy} of 3+` },
-      { label: "Shards locked (immutable)", ok: p.locked },
-    ],
-  };
-}
-
-/** Aggregate permanence health across a set of tokens (a wallet's holdings). */
-export function portfolioPermanence(tokens: Token[]) {
-  if (tokens.length === 0) return { avg: 0, grade: "A+" as const, allPermanent: true, atRisk: 0 };
-  const scores = tokens.map((t) => permanenceScore(t));
-  const avg = Math.round(scores.reduce((n, s) => n + s.score, 0) / scores.length);
-  const atRisk = scores.filter((s) => !tokens[0] || s.grade === "C" || s.grade === "D").length;
-  const grade = avg >= 96 ? "A+" : avg >= 88 ? "A" : avg >= 78 ? "B" : avg >= 65 ? "C" : "D";
-  const allPermanent = tokens.every((t) => t.permanence.onchainProofConfigured && t.permanence.contentHashMatches);
-  return { avg, grade, allPermanent, atRisk };
 }
 
 const SWAPS = buildSwaps();
