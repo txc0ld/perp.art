@@ -16,7 +16,10 @@
  */
 import * as React from "react";
 import type { Token } from "@/lib/types";
-import { permanenceScore, resolveEns, getChainMeta } from "@/lib/mock-data";
+import { permanenceScore } from "@/lib/permanence";
+import { getChainMeta } from "@/lib/chains";
+import { useEnsName } from "@/lib/use-ens";
+import { displayName } from "@/lib/ens";
 import { Button } from "@/components/ui";
 import { shortAddress, shortHash, cn } from "@/lib/utils";
 
@@ -189,10 +192,8 @@ function buildSvg(d: CertData): string {
 
 export function CertificateOfPermanence({ token }: { token: Token }) {
   // ENS/name for the artist receiver address; falls back to short address.
-  const artistName = React.useMemo(() => {
-    const ens = resolveEns(token.royalty.receiver);
-    return ens ?? shortAddress(token.royalty.receiver);
-  }, [token.royalty.receiver]);
+  const artistEns = useEnsName(token.royalty.receiver);
+  const artistName = displayName(token.royalty.receiver, artistEns);
 
   const data = React.useMemo(
     () => buildCertData(token, artistName),

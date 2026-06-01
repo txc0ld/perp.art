@@ -9,7 +9,7 @@ import * as React from "react";
 import type { Token } from "@/lib/types";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { Tilt3D } from "@/components/visual/Tilt3D";
-import { getChainMeta } from "@/lib/mock-data";
+import { getChainMeta } from "@/lib/chains";
 import { cn } from "@/lib/utils";
 
 export function ArtworkViewer({ token }: { token: Token }) {

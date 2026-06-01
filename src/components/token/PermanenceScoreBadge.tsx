@@ -6,7 +6,7 @@
  * Server-safe: pure render off a pure accessor, no interactivity.
  */
 import type { Token } from "@/lib/types";
-import { permanenceScore } from "@/lib/mock-data";
+import { permanenceScore } from "@/lib/permanence";
 import { cn } from "@/lib/utils";
 
 export function PermanenceScoreBadge({

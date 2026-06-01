@@ -7,7 +7,7 @@
  * rating for permanence: calm, exact, reassuring. Server-safe (pure accessor).
  */
 import type { Token } from "@/lib/types";
-import { permanenceScore } from "@/lib/mock-data";
+import { permanenceScore } from "@/lib/permanence";
 import { StatusGlyph } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
