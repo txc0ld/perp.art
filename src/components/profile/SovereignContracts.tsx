@@ -147,7 +147,7 @@ function ContractCard({ contract: c }: { contract: ContractView }) {
             type="button"
             onClick={copy}
             aria-label={`Copy contract address ${c.contractAddress}`}
-            className="group mt-1.5 inline-flex min-h-[40px] items-center gap-1.5 font-mono text-xs text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            className="group mt-1.5 inline-flex min-h-[44px] items-center gap-1.5 font-mono text-xs text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           >
             <span className="tabular-nums">{shortAddress(c.contractAddress)}</span>
             {copied ? (

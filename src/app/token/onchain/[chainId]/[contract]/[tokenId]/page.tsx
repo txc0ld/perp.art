@@ -68,6 +68,7 @@ export default async function OnchainTokenPage(
               mime={mime}
               seed={token.artSeed}
               genre={token.genre}
+              alt={`${token.title} by ${token.artistHandle}`}
               className="h-full w-full object-contain"
             />
           </div>

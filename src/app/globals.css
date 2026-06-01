@@ -13,7 +13,7 @@
   --color-border-bright: #3f3f46;/* hover / focus border */
   --color-foreground: #ffffff;   /* text-primary */
   --color-muted: #a1a1aa;        /* text-secondary */
-  --color-faint: #71717a;        /* tertiary metadata */
+  --color-faint: #8b8b93;        /* tertiary metadata - AA-clears 4.5:1 on all surfaces */
 
   /* Signature accent - orchid pink. Used on <5% of any screen:
      permanence-verified states, active selection, the single

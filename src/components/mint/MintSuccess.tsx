@@ -134,7 +134,7 @@ export function MintSuccess({
               <StatusGlyph status="verified" />
             </span>
           )}
-          <div>
+          <div role="status" aria-live="polite">
             <h2 className="display-sm text-balance text-foreground">
               {phase === "writing" ? "Writing provenance onchain…" : "Committed to permanence"}
             </h2>

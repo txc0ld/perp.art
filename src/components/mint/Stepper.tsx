@@ -33,7 +33,7 @@ export function Stepper({
                 onClick={() => reachable && onJump(i)}
                 aria-current={state === "current" ? "step" : undefined}
                 className={cn(
-                  "group flex items-center gap-2.5 rounded-full pr-1 text-left transition-colors",
+                  "group flex min-h-[44px] items-center gap-2.5 rounded-full py-2 -my-2 pr-1 text-left transition-colors",
                   reachable ? "cursor-pointer" : "cursor-default",
                 )}
               >

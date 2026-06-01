@@ -177,7 +177,7 @@ export function MintWizard({
           />
         ) : busy ? (
           <div className="space-y-7">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3" role="status" aria-live="polite">
               <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-verify animate-verify-pulse" aria-hidden />
               <p className="text-sm text-foreground">{PHASE_LABEL[onchain.phase]}</p>
             </div>
@@ -239,7 +239,7 @@ export function MintWizard({
             {isLast ? (
               <div className="flex flex-col items-end gap-1.5">
                 {onchain.error && (
-                  <span className="max-w-[280px] text-right font-mono text-[11px] leading-tight text-error">
+                  <span role="alert" aria-live="assertive" className="max-w-[280px] text-right font-mono text-[11px] leading-tight text-error">
                     {onchain.error}
                   </span>
                 )}
