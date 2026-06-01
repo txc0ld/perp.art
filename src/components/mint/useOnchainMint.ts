@@ -23,6 +23,12 @@ export interface ShardRecord {
   error?: string;
 }
 
+/** Progress counter for per-token shard recording in edition mints. */
+export interface RecordingProgress {
+  done: number;
+  total: number;
+}
+
 interface OffchainShardResult {
   ok: boolean;
   uri?: string;
@@ -52,25 +58,32 @@ interface StoreResponse {
 export function useOnchainMint() {
   const { address } = useAccount();
   const chainId = useChainId();
-  const fl = getContracts(chainId).foreverLibrary;
 
   const [phase, setPhase] = React.useState<ShardPhase>("idle");
   const [mintTxHash, setMintTxHash] = React.useState<`0x${string}`>();
   const [tokenId, setTokenId] = React.useState<string>();
+  /** The contract address that was actually minted into (chosen collection or canonical FL). */
+  const [mintedContract, setMintedContract] = React.useState<`0x${string}` | undefined>();
   const [shards, setShards] = React.useState<ShardRecord[]>([]);
   const [uploadPct, setUploadPct] = React.useState(0);
   const [error, setError] = React.useState<string>();
+  const [recordingProgress, setRecordingProgress] = React.useState<RecordingProgress | undefined>();
 
   function reset() {
     setPhase("idle");
     setMintTxHash(undefined);
     setTokenId(undefined);
+    setMintedContract(undefined);
     setShards([]);
     setUploadPct(0);
     setError(undefined);
+    setRecordingProgress(undefined);
   }
 
   async function start(form: MintForm): Promise<void> {
+    // The target FL contract: chosen sovereign collection, or the canonical FL for this chain.
+    const fl = form.collectionAddress ?? getContracts(chainId).foreverLibrary;
+
     if (!address || !fl) {
       setError("Connect a wallet on a supported network.");
       setPhase("error");
@@ -82,12 +95,16 @@ export function useOnchainMint() {
       return;
     }
     setError(undefined);
+    setMintedContract(fl);
 
     const originalMime = form.fileMime || form.file.type || "application/octet-stream";
     const royaltyBps = Math.round(Math.min(Math.max(form.royaltyPct, 0), 100) * 100);
+    const isEdition = form.mintType === "edition" && form.editionSize > 1;
+    const editionSize = isEdition ? Math.max(1, Math.min(10, form.editionSize)) : 1;
 
     // 1) Store the artist's actual file across the off-chain shards AND publish
     //    the high-res LOG copy (server relayer open/upload/seal).
+    //    For editions: ONE upload shared across all N tokens.
     setPhase("storing");
     setUploadPct(0);
     let store: StoreResponse;
@@ -123,9 +140,7 @@ export function useOnchainMint() {
 
     const contentHash = store.contentHash;
 
-    // 2) Generate the on-chain STATE proof (Shard 0) bytes: a small image the
-    //    contract serves as a data: URI. Image→downscale, video→poster, else→
-    //    SVG cover-card. Always <= MAX_PROOF_BYTES.
+    // 2) Generate the on-chain STATE proof (Shard 0) bytes.
     let proofData: `0x${string}`;
     let proofMime: string;
     try {
@@ -142,7 +157,7 @@ export function useOnchainMint() {
       return;
     }
 
-    // Off-chain shard display records.
+    // Off-chain shard display records (shared for editions).
     const offchain: ShardRecord[] = [
       { backend: "ipfs", stored: store.ipfs.ok, recorded: false, uri: store.ipfs.uri, gateway: store.ipfs.gateway, error: store.ipfs.error },
       { backend: "arweave", stored: store.arweave.ok, recorded: false, uri: store.arweave.uri, gateway: store.arweave.gateway, error: store.arweave.error },
@@ -154,7 +169,6 @@ export function useOnchainMint() {
       stored: Boolean(log?.sealed),
       recorded: false,
       uri: log?.uri,
-      // Resolve the high-res LOG copy through the reconstruct+verify endpoint.
       gateway: log?.uri ? resolveShardUrl(log.uri, { mime: originalMime, chainId, contentHash }) : undefined,
       error: log?.ok ? undefined : log?.error,
     };
@@ -176,82 +190,123 @@ export function useOnchainMint() {
       ),
     );
 
-    // 3) Mint — writes provenance + the SSTORE2 STATE proof (Shard 0). The
-    //    mint mediaType is the PROOF's mime so Shard 0 resolves as a data: URI;
-    //    the artwork's true media type lives in the off-chain metadata + LOG.
-    //    hostingFeeBps 0 == artist-paid/fee-exempt (storageFeeWei is 0).
+    // 3) Mint — writes provenance + the SSTORE2 STATE proof (Shard 0).
     setPhase("minting");
     let mintHash: `0x${string}`;
-    let newTokenId: bigint | undefined;
+    let firstTokenId: bigint | undefined;
     try {
-      mintHash = await writeContract(wagmiConfig, {
-        address: fl,
-        abi: FOREVER_LIBRARY_ABI,
-        functionName: "mint",
-        args: [address, form.artistName, form.title, proofMime, BigInt(royaltyBps), metadataHash, proofData, 0],
-        value: BigInt(0),
-      });
+      if (isEdition) {
+        // mintEdition returns firstTokenId; tokens are firstTokenId .. firstTokenId+editionSize-1
+        mintHash = await writeContract(wagmiConfig, {
+          address: fl,
+          abi: FOREVER_LIBRARY_ABI,
+          functionName: "mintEdition",
+          args: [address, form.artistName, form.title, proofMime, BigInt(royaltyBps), metadataHash, proofData, 0, editionSize],
+          value: BigInt(0),
+        });
+      } else {
+        mintHash = await writeContract(wagmiConfig, {
+          address: fl,
+          abi: FOREVER_LIBRARY_ABI,
+          functionName: "mint",
+          args: [address, form.artistName, form.title, proofMime, BigInt(royaltyBps), metadataHash, proofData, 0],
+          value: BigInt(0),
+        });
+      }
       setMintTxHash(mintHash);
       const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: mintHash });
+
+      // Decode the FIRST TokenMinted event for the firstTokenId.
       for (const logItem of receipt.logs) {
         try {
           const d = decodeEventLog({ abi: FOREVER_LIBRARY_ABI, data: logItem.data, topics: logItem.topics });
           if (d.eventName === "TokenMinted") {
-            newTokenId = (d.args as { tokenId: bigint }).tokenId;
+            // For mint: args.tokenId; for mintEdition: args.tokenId is the first
+            firstTokenId = (d.args as { tokenId: bigint }).tokenId;
             break;
           }
         } catch {
           /* not our event */
         }
       }
-      if (newTokenId !== undefined) setTokenId(newTokenId.toString());
+      if (firstTokenId !== undefined) setTokenId(firstTokenId.toString());
     } catch (e) {
       setError(/denied|rejected/i.test(String(e)) ? "Transaction rejected in wallet." : (e instanceof Error ? e.message.split("\n")[0] : "mint failed"));
       setPhase("error");
       return;
     }
 
-    // 4) Record the redundant shards on-chain (append). LOG first (the high-res
-    //    primary), then the off-chain copies. Shard 0 (STATE) already exists.
+    // 4) Record the redundant shards on-chain (append). For editions: loop over all
+    //    N tokenIds. The STATE shard (Shard 0) is auto-configured by the contract for
+    //    all edition tokens. The LOG fileId + IPFS/Arweave/Irys URIs are SHARED — one
+    //    upload, but each token needs its own on-chain shard descriptor tx.
     setPhase("recording");
-    if (newTokenId !== undefined) {
-      let nextIndex = 1;
-      const appended = [stateShard, logShard, ...offchain];
+    if (firstTokenId !== undefined) {
+      // Build the ordered list of token IDs: [firstTokenId, firstTokenId+1, ..., firstTokenId+N-1]
+      const tokenIds: bigint[] = [];
+      for (let i = 0; i < editionSize; i++) {
+        tokenIds.push(firstTokenId + BigInt(i));
+      }
 
-      const recordShard = async (
-        shard: ShardRecord,
-        backendId: number,
-        uri: string,
-        shardContentHash: `0x${string}`,
-      ) => {
-        try {
-          const h = await writeContract(wagmiConfig, {
-            address: fl,
-            abi: FOREVER_LIBRARY_ABI,
-            functionName: "configureShard",
-            args: [newTokenId!, BigInt(nextIndex), backendId, uri, shardContentHash],
-            // Explicit gas skips estimation, which can spuriously revert
-            // (TokenDoesNotExist) if the wallet RPC hasn't yet indexed the mint.
-            gas: BigInt(450_000),
-          });
-          await waitForTransactionReceipt(wagmiConfig, { hash: h });
-          shard.recorded = true;
-          nextIndex++;
-        } catch {
-          shard.error = "not recorded onchain";
+      const totalShardTxs = tokenIds.length * ([
+        log?.sealed && log.uri && log.root ? 1 : 0,
+        ...offchain.filter((s) => s.stored && s.uri).map(() => 1),
+      ].reduce((a, b) => a + b, 0));
+
+      setRecordingProgress({ done: 0, total: totalShardTxs });
+      let progressDone = 0;
+
+      // For each token ID, record LOG shard then off-chain shards.
+      for (const tid of tokenIds) {
+        // Reset shard index per token (index 0 = STATE, already on-chain)
+        let nextIndex = 1;
+        const appended = [stateShard, logShard, ...offchain];
+
+        const recordShard = async (
+          shard: ShardRecord,
+          backendId: number,
+          uri: string,
+          shardContentHash: `0x${string}`,
+        ) => {
+          try {
+            const h = await writeContract(wagmiConfig, {
+              address: fl,
+              abi: FOREVER_LIBRARY_ABI,
+              functionName: "configureShard",
+              args: [tid, BigInt(nextIndex), backendId, uri, shardContentHash],
+              gas: BigInt(450_000),
+            });
+            await waitForTransactionReceipt(wagmiConfig, { hash: h });
+            // Mark recorded on the display record for the first token (representative)
+            if (tid === firstTokenId) {
+              shard.recorded = true;
+            }
+            nextIndex++;
+            progressDone++;
+            setRecordingProgress({ done: progressDone, total: totalShardTxs });
+          } catch {
+            if (tid === firstTokenId) {
+              shard.error = "not recorded onchain";
+            }
+          }
+          if (tid === firstTokenId) {
+            setShards([...appended]);
+          }
+        };
+
+        if (log?.sealed && log.uri && log.root) {
+          await recordShard(logShard, SHARD_BACKEND.log, log.uri, log.root);
         }
-        setShards([...appended]);
-      };
+        for (const shard of offchain) {
+          if (!shard.stored || !shard.uri) continue;
+          const backendId = SHARD_BACKEND[shard.backend];
+          await recordShard(shard, backendId, shard.uri, contentHash);
+        }
 
-      if (log?.sealed && log.uri && log.root) {
-        await recordShard(logShard, SHARD_BACKEND.log, log.uri, log.root);
+        if (tid === firstTokenId) {
+          setShards([...appended]);
+        }
       }
-      for (const shard of offchain) {
-        if (!shard.stored || !shard.uri) continue;
-        const backendId = SHARD_BACKEND[shard.backend];
-        await recordShard(shard, backendId, shard.uri, contentHash);
-      }
-      setShards([...appended]);
     }
 
     setPhase("done");
@@ -263,10 +318,12 @@ export function useOnchainMint() {
     phase,
     mintTxHash,
     tokenId,
+    mintedContract,
     shards,
     uploadPct,
     error,
+    recordingProgress,
     chainId,
-    canMintOnchain: Boolean(fl && address),
+    canMintOnchain: Boolean(getContracts(chainId).foreverLibrary && address),
   };
 }
