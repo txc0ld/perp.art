@@ -200,6 +200,19 @@ export function CertificateOfPermanence({ token }: { token: Token }) {
   );
   const svg = React.useMemo(() => buildSvg(data), [data]);
 
+  // Preview variant: the SVG carries explicit width/height for a faithful
+  // download, but injected inline that fixed size overflows and clips its
+  // container. Swap the root width/height for a responsive box (the viewBox
+  // preserves the aspect ratio) so the preview scales to its column.
+  const previewSvg = React.useMemo(
+    () =>
+      svg.replace(
+        /width="\d+" height="\d+"/,
+        'width="100%" height="auto" style="display:block"',
+      ),
+    [svg],
+  );
+
   const [downloaded, setDownloaded] = React.useState(false);
   const resetTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -235,8 +248,8 @@ export function CertificateOfPermanence({ token }: { token: Token }) {
         <div className="border-b border-border bg-background/40 p-4 sm:p-6 lg:border-b-0 lg:border-r">
           <div
             className="mx-auto w-full max-w-[420px] overflow-hidden rounded-[8px] border border-border shadow-[0_40px_90px_-50px_rgba(0,0,0,0.9)]"
-            // Faithful preview: the exact SVG that downloads. Static, generated string.
-            dangerouslySetInnerHTML={{ __html: svg }}
+            // Responsive preview of the exact SVG that downloads. Static, generated string.
+            dangerouslySetInnerHTML={{ __html: previewSvg }}
           />
         </div>
 

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Genre, Token } from "@/lib/types";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { Button, VerifiedBadge } from "@/components/ui";
 import { shortAddress, formatEth, relativeTime } from "@/lib/utils";
 import { resolveEns } from "@/lib/mock-data";
+import { loadProfile, saveProfile } from "@/lib/profile-store";
 import { EditProfileModal } from "./EditProfileModal";
 
 /**
@@ -47,9 +48,26 @@ export function ProfileHeader({
   const [bio, setBio] = useState(
     "Permanence-first works, hash-anchored onchain and kept across independent shards.",
   );
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+  const [bannerUrl, setBannerUrl] = useState<string | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [editing, setEditing] = useState(false);
+
+  // Hydrate server-stored profile overrides (name/bio/avatar/banner) for this address.
+  useEffect(() => {
+    let live = true;
+    loadProfile(address).then((o) => {
+      if (!live) return;
+      if (o.name) setName(o.name);
+      if (o.bio) setBio(o.bio);
+      setAvatarUrl(o.avatarUrl);
+      setBannerUrl(o.bannerUrl);
+    });
+    return () => {
+      live = false;
+    };
+  }, [address]);
 
   const totalValue = ownedTokens.reduce(
     (sum, t) => sum + (t.listing?.priceEth ?? t.offers[0]?.priceEth ?? 0),
@@ -94,33 +112,44 @@ export function ProfileHeader({
     <header className="animate-rise">
       {/* Banner */}
       <div className="relative h-[160px] overflow-hidden rounded-[10px] border border-border bg-background sm:h-[230px] lg:h-[260px]">
-        <GenerativeArt
-          seed={`banner:${address}`}
-          genre={bannerGenre}
-          size={1200}
-          className="h-full w-full"
-        />
+        {bannerUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={bannerUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <GenerativeArt
+            seed={`banner:${address}`}
+            genre={bannerGenre}
+            size={1200}
+            className="h-full w-full"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/15 to-transparent" aria-hidden />
       </div>
 
-      {/* Identity block.
-          Mobile: avatar sits in normal flow (no overlap, no clipping), name + actions stack below.
-          sm+: avatar overlaps the banner bottom-left, name/actions sit in a row beside it. */}
+      {/* Identity block. The avatar stays in normal flow (pulled up with a
+          negative margin so it overlaps the banner's bottom-left); the name,
+          bio, and actions always sit below it — so nothing can clip or collide
+          at any width, from 360px up. */}
       <div className="relative">
-        <div className="-mt-9 sm:absolute sm:-top-14 sm:left-1 sm:mt-0">
-          <div className="h-[84px] w-[84px] overflow-hidden rounded-full border-4 border-background bg-background sm:h-[110px] sm:w-[110px]">
+        <div className="-mt-10 sm:-mt-[68px]">
+          <div className="h-[84px] w-[84px] overflow-hidden rounded-full border-4 border-background bg-background sm:h-[120px] sm:w-[120px]">
             <div className="h-full w-full overflow-hidden rounded-full ring-1 ring-border-bright">
-              <GenerativeArt
-                seed={`identicon:${address}`}
-                genre={bannerGenre}
-                size={240}
-                className="h-full w-full"
-              />
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <GenerativeArt
+                  seed={`identicon:${address}`}
+                  genre={bannerGenre}
+                  size={240}
+                  className="h-full w-full"
+                />
+              )}
             </div>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-4 sm:mt-16 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <h1 className="display-sm font-brand text-foreground">{name}</h1>
@@ -214,10 +243,22 @@ export function ProfileHeader({
         <EditProfileModal
           initialName={name}
           initialBio={bio}
+          initialAvatarUrl={avatarUrl}
+          initialBannerUrl={bannerUrl}
+          address={address}
+          bannerGenre={bannerGenre}
           onClose={() => setEditing(false)}
-          onSave={({ name: nextName, bio: nextBio }) => {
+          onSave={({ name: nextName, bio: nextBio, avatarUrl: nextAvatar, bannerUrl: nextBanner }) => {
             setName(nextName);
             setBio(nextBio);
+            setAvatarUrl(nextAvatar);
+            setBannerUrl(nextBanner);
+            void saveProfile(address, {
+              name: nextName,
+              bio: nextBio,
+              avatarUrl: nextAvatar,
+              bannerUrl: nextBanner,
+            });
           }}
         />
       )}

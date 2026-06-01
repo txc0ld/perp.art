@@ -1,15 +1,18 @@
 "use client";
 
 /**
- * EditProfileModal - edits the connected user's display name + bio over a near-black
- * scrim. Mirrors the BuyModal pattern: role=dialog/aria-modal, Esc to close, focus
- * trap, body-scroll lock, optimistic "Saved" feedback. On save the edited values are
- * lifted into the header via onSave so the UI updates immediately. Full-width and
- * scrollable on mobile.
+ * EditProfileModal - edits the connected user's avatar, banner, display name + bio
+ * over a near-black scrim. Avatar and banner are uploaded directly to Vercel Blob
+ * (via /api/upload) and the resulting public URLs are returned on save. Mirrors the
+ * BuyModal pattern: role=dialog/aria-modal, Esc to close, focus trap, body-scroll
+ * lock, optimistic "Saved" feedback. Full-width and scrollable on mobile.
  */
 import * as React from "react";
+import { upload } from "@vercel/blob/client";
+import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import type { Genre } from "@/lib/types";
 
 type Phase = "edit" | "saving" | "done";
 
@@ -19,20 +22,33 @@ const BIO_MAX = 240;
 export function EditProfileModal({
   initialName,
   initialBio,
+  initialAvatarUrl,
+  initialBannerUrl,
+  address,
+  bannerGenre,
   onClose,
   onSave,
 }: {
   initialName: string;
   initialBio: string;
+  initialAvatarUrl?: string;
+  initialBannerUrl?: string;
+  address: string;
+  bannerGenre: Genre;
   onClose: () => void;
-  onSave: (next: { name: string; bio: string }) => void;
+  onSave: (next: { name: string; bio: string; avatarUrl?: string; bannerUrl?: string }) => void;
 }) {
   const [phase, setPhase] = React.useState<Phase>("edit");
   const [name, setName] = React.useState(initialName);
   const [bio, setBio] = React.useState(initialBio);
+  const [avatarUrl, setAvatarUrl] = React.useState(initialAvatarUrl);
+  const [bannerUrl, setBannerUrl] = React.useState(initialBannerUrl);
+  const [uploading, setUploading] = React.useState<null | "avatar" | "banner">(null);
+  const [uploadError, setUploadError] = React.useState<string>();
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
 
   const nameError = name.trim().length === 0;
+  const busy = phase === "saving" || uploading !== null;
 
   // Focus the name field on open; return focus to the opener on close.
   React.useEffect(() => {
@@ -74,10 +90,28 @@ export function EditProfileModal({
     };
   }, [onClose]);
 
+  async function pickImage(kind: "avatar" | "banner", file: File) {
+    setUploadError(undefined);
+    setUploading(kind);
+    try {
+      const blob = await upload(file.name || `${kind}.png`, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload",
+        contentType: file.type || "image/png",
+      });
+      if (kind === "avatar") setAvatarUrl(blob.url);
+      else setBannerUrl(blob.url);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message.split("\n")[0] : "Upload failed");
+    } finally {
+      setUploading(null);
+    }
+  }
+
   function save() {
-    if (nameError) return;
+    if (nameError || busy) return;
     setPhase("saving");
-    onSave({ name: name.trim(), bio: bio.trim() });
+    onSave({ name: name.trim(), bio: bio.trim(), avatarUrl, bannerUrl });
     window.setTimeout(() => setPhase("done"), 900);
     window.setTimeout(() => onClose(), 1600);
   }
@@ -87,7 +121,7 @@ export function EditProfileModal({
       className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
       role="presentation"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget && phase !== "saving") onClose();
+        if (e.target === e.currentTarget && !busy) onClose();
       }}
     >
       <div className="absolute inset-0 bg-background/85 backdrop-blur-sm animate-fade" aria-hidden />
@@ -126,7 +160,66 @@ export function EditProfileModal({
             </div>
           ) : (
             <>
-              <div className="flex flex-col gap-1.5">
+              {/* Banner + avatar uploads */}
+              <fieldset className="flex flex-col gap-1.5" disabled={phase === "saving"}>
+                <legend className="font-mono text-[11px] uppercase tracking-wider text-faint">
+                  Banner &amp; avatar
+                </legend>
+                <div className="relative mt-1">
+                  {/* Banner */}
+                  <div className="h-[96px] w-full overflow-hidden rounded-[8px] border border-border bg-background">
+                    {bannerUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={bannerUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <GenerativeArt seed={`banner:${address}`} genre={bannerGenre} size={600} className="h-full w-full" />
+                    )}
+                    <ImageUploadButton
+                      label="Change banner"
+                      busy={uploading === "banner"}
+                      onPick={(f) => pickImage("banner", f)}
+                      className="absolute right-2 top-2"
+                    />
+                  </div>
+                  {/* Avatar overlapping the banner's bottom-left */}
+                  <div className="absolute -bottom-5 left-3">
+                    <div className="relative h-[64px] w-[64px] overflow-hidden rounded-full border-4 border-surface bg-background">
+                      {avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <GenerativeArt seed={`identicon:${address}`} genre={bannerGenre} size={160} className="h-full w-full" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-7 flex items-center gap-2">
+                  <ImageUploadButton
+                    label={avatarUrl ? "Change avatar" : "Upload avatar"}
+                    busy={uploading === "avatar"}
+                    onPick={(f) => pickImage("avatar", f)}
+                  />
+                  {(avatarUrl || bannerUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAvatarUrl(undefined);
+                        setBannerUrl(undefined);
+                      }}
+                      className="rounded-[8px] px-2.5 py-2 font-mono text-[11px] uppercase tracking-wider text-faint transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                    >
+                      Reset to default
+                    </button>
+                  )}
+                </div>
+                {uploadError && (
+                  <p role="alert" className="mt-1 text-[12px] text-error">
+                    {uploadError}
+                  </p>
+                )}
+              </fieldset>
+
+              <div className="mt-5 flex flex-col gap-1.5">
                 <label htmlFor="edit-name" className="font-mono text-[11px] uppercase tracking-wider text-faint">
                   Display name
                 </label>
@@ -187,13 +280,15 @@ export function EditProfileModal({
                   size="md"
                   className="min-h-[44px] sm:min-w-[110px]"
                   onClick={save}
-                  disabled={phase === "saving" || nameError}
+                  disabled={busy || nameError}
                 >
                   {phase === "saving" ? (
                     <span className="inline-flex items-center gap-2">
                       <span className="inline-block h-2 w-2 animate-verify-pulse rounded-full bg-background" aria-hidden />
                       Saving…
                     </span>
+                  ) : uploading ? (
+                    "Uploading…"
                   ) : (
                     "Save changes"
                   )}
@@ -204,5 +299,54 @@ export function EditProfileModal({
         </div>
       </div>
     </div>
+  );
+}
+
+/** A compact file-picker button that uploads an image and reports the chosen File. */
+function ImageUploadButton({
+  label,
+  busy,
+  onPick,
+  className,
+}: {
+  label: string;
+  busy: boolean;
+  onPick: (file: File) => void;
+  className?: string;
+}) {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className={cn(
+          "inline-flex min-h-[36px] items-center gap-1.5 rounded-[8px] border border-border bg-surface/90 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-foreground backdrop-blur-sm transition-colors hover:border-border-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-60",
+          className,
+        )}
+      >
+        {busy ? (
+          <span className="inline-block h-2 w-2 animate-verify-pulse rounded-full bg-accent" aria-hidden />
+        ) : (
+          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden>
+            <path d="M8 10.5V3m0 0L5 6m3-3l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M3 11v1.5A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        )}
+        {busy ? "Uploading…" : label}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+        className="sr-only"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPick(f);
+          e.target.value = "";
+        }}
+      />
+    </>
   );
 }
