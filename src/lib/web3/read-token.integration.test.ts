@@ -16,11 +16,13 @@ describe.runIf(RUN)("on-chain read layer (Base Sepolia)", () => {
   it("reads a minted token's real shards + owner", async () => {
     const { readOnchainToken, readOwnedTokenIds } = await import("./read-token");
     // Token #1 minted in the full-pipeline test (E2E Title), owned by the relayer/minter.
-    const t = await readOnchainToken(84532, BigInt(1));
+    const { getContracts } = await import("./contracts");
+    const flAddr = getContracts(84532).foreverLibrary!;
+    const t = await readOnchainToken(84532, flAddr, BigInt(1));
     expect(t, "token #1 exists").not.toBeNull();
     expect(t!.permanence.onchainProofConfigured).toBe(true);
     expect(t!.permanence.shards.find((s) => s.backend === "onchain")).toBeTruthy();
-    const owned = await readOwnedTokenIds(84532, t!.owner);
+    const owned = await readOwnedTokenIds(84532, flAddr, t!.owner);
     expect(owned.map(String)).toContain("1");
   }, 180_000);
 });

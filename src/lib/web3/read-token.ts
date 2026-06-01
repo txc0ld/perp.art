@@ -3,7 +3,6 @@ import { parseAbiItem, type Hex, type PublicClient } from "viem";
 import type { Token, StorageShard, ShardBackend, PermanenceStatus, ProvenanceEvent, Chain } from "@/lib/types";
 import { resolveShardUrl } from "@/lib/logledger/resolve-url";
 import { serverPublicClient } from "./server-client";
-import { getContracts } from "./contracts";
 import { FOREVER_LIBRARY_ABI } from "./abis";
 
 const BACKEND_BY_ENUM: Record<number, ShardBackend> = {
@@ -30,15 +29,17 @@ export interface RawMint {
   title: string; mediaType: string; royaltyBps: bigint; metadataHash: string;
 }
 export interface RawTokenReads {
-  chainId: number; tokenId: bigint; owner: string; mint: RawMint;
+  chainId: number; tokenId: bigint; contract: string; owner: string; mint: RawMint;
   locked: boolean; selectedShardIndex: bigint; hostingFeeBps: number;
   shards: RawShard[]; provenance: ProvenanceEvent[];
+  editionSize?: number; editionIndex?: number;
 }
 
 /** Pure: map raw on-chain reads into the app's Token shape. Trading/collection/
  *  trait fields with no on-chain source are left neutral (never faked). */
 export function mapMintToToken(raw: RawTokenReads): Token {
   const contentHash = raw.mint.metadataHash;
+  const contractLower = raw.contract.toLowerCase();
   const shards: StorageShard[] = raw.shards.map((s) => {
     const backend = BACKEND_BY_ENUM[s.backend] ?? "cdn";
     const guaranteed = backend === "onchain";
@@ -72,14 +73,14 @@ export function mapMintToToken(raw: RawTokenReads): Token {
     lastVerified: new Date().toISOString(),
   };
   return {
-    id: `${raw.chainId}-${raw.tokenId}`,
+    id: `${raw.chainId}-${contractLower}-${raw.tokenId}`,
     tokenId: Number(raw.tokenId),
     title: raw.mint.title || `Token #${raw.tokenId}`,
-    collectionSlug: "",
+    collectionSlug: contractLower,
     artistHandle: raw.mint.artistName || raw.mint.creator,
     genre: "Generative", // not on-chain; neutral default
     mediaType: raw.mint.mediaType.startsWith("video/") ? "video" : raw.mint.mediaType === "text/html" ? "interactive" : "image",
-    artSeed: `${raw.chainId}-${raw.tokenId}`,
+    artSeed: `${raw.chainId}-${contractLower}-${raw.tokenId}`,
     description: "",
     owner: raw.owner,
     traits: [],
@@ -91,6 +92,8 @@ export function mapMintToToken(raw: RawTokenReads): Token {
     chain: CHAIN_BY_ID[raw.chainId] ?? "base",
     listable: permanence.onchainProofConfigured && permanence.contentHashMatches,
     source: "onchain",
+    editionSize: raw.editionSize,
+    editionIndex: raw.editionIndex,
   };
 }
 
@@ -136,17 +139,22 @@ async function readShards(pub: PublicClient, fl: Hex, tokenId: bigint): Promise<
   return out;
 }
 
-export async function readOnchainProvenance(chainId: number, tokenId: bigint): Promise<ProvenanceEvent[]> {
+export async function readOnchainProvenance(
+  chainId: number,
+  contract: Hex,
+  tokenId: bigint,
+  fromBlock?: bigint,
+): Promise<ProvenanceEvent[]> {
   const pub = serverPublicClient(chainId);
-  const fl = getContracts(chainId).foreverLibrary;
-  if (!pub || !fl) return [];
+  if (!pub) return [];
   const latest = await pub.getBlockNumber();
+  const floor = fromBlock ?? scanStartBlock(chainId, latest);
   const raw: { from?: string; to?: string; blockNumber: bigint }[] = [];
-  let from = scanStartBlock(chainId, latest);
+  let from = floor;
   // Transfer logs are sparse; scan in windows up to latest (cap for safety).
   for (let w = 0; w < MAX_WINDOWS && from <= latest; w++) {
     const to = from + LOG_WINDOW - BigInt(1) > latest ? latest : from + LOG_WINDOW - BigInt(1);
-    const logs = await pub.getLogs({ address: fl as Hex, event: TRANSFER_EVENT, args: { tokenId }, fromBlock: from, toBlock: to });
+    const logs = await pub.getLogs({ address: contract, event: TRANSFER_EVENT, args: { tokenId }, fromBlock: from, toBlock: to });
     for (const l of logs) raw.push({ from: l.args.from, to: l.args.to, blockNumber: l.blockNumber as bigint });
     from = to + BigInt(1);
   }
@@ -174,42 +182,51 @@ export async function readOnchainProvenance(chainId: number, tokenId: bigint): P
   });
 }
 
-export async function readOnchainToken(chainId: number, tokenId: bigint): Promise<Token | null> {
+export async function readOnchainToken(chainId: number, contract: Hex, tokenId: bigint): Promise<Token | null> {
   const pub = serverPublicClient(chainId);
-  const fl = getContracts(chainId).foreverLibrary;
-  if (!pub || !fl) return null;
+  if (!pub) return null;
   let owner: string;
   try {
-    owner = (await pub.readContract({ address: fl as Hex, abi: FOREVER_LIBRARY_ABI, functionName: "ownerOf", args: [tokenId] })) as string;
+    owner = (await pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "ownerOf", args: [tokenId] })) as string;
   } catch {
     return null; // unminted / nonexistent
   }
-  const [mint, locked, selectedShardIndex, hostingFeeBps] = await Promise.all([
-    pub.readContract({ address: fl as Hex, abi: FOREVER_LIBRARY_ABI, functionName: "getMintData", args: [tokenId] }),
-    pub.readContract({ address: fl as Hex, abi: FOREVER_LIBRARY_ABI, functionName: "isLocked", args: [tokenId] }),
-    pub.readContract({ address: fl as Hex, abi: FOREVER_LIBRARY_ABI, functionName: "selectedShardIndex", args: [tokenId] }),
-    pub.readContract({ address: fl as Hex, abi: FOREVER_LIBRARY_ABI, functionName: "hostingFeeBps", args: [tokenId] }),
+  const [mint, locked, selectedShardIndex, hostingFeeBps, editionSizeRaw, editionIndexRaw] = await Promise.all([
+    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "getMintData", args: [tokenId] }),
+    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "isLocked", args: [tokenId] }),
+    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "selectedShardIndex", args: [tokenId] }),
+    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "hostingFeeBps", args: [tokenId] }),
+    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "editionSize", args: [tokenId] }).catch(() => BigInt(0)),
+    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "editionIndex", args: [tokenId] }).catch(() => BigInt(0)),
   ]);
-  const shards = await readShards(pub, fl as Hex, tokenId);
-  const provenance = await readOnchainProvenance(chainId, tokenId);
+  const shards = await readShards(pub, contract, tokenId);
+  const provenance = await readOnchainProvenance(chainId, contract, tokenId);
   const m = mint as RawMint;
+  const es = Number(editionSizeRaw as bigint);
+  const ei = Number(editionIndexRaw as bigint);
   return mapMintToToken({
-    chainId, tokenId, owner, mint: m, locked: locked as boolean,
+    chainId, tokenId, contract, owner, mint: m, locked: locked as boolean,
     selectedShardIndex: selectedShardIndex as bigint, hostingFeeBps: Number(hostingFeeBps),
     shards, provenance,
+    editionSize: es > 0 ? es : undefined,
+    editionIndex: es > 0 ? ei : undefined,
   });
 }
 
-export async function readOwnedTokenIds(chainId: number, owner: string): Promise<bigint[]> {
+export async function readOwnedTokenIds(
+  chainId: number,
+  contract: Hex,
+  owner: string,
+  fromBlock?: bigint,
+): Promise<bigint[]> {
   const pub = serverPublicClient(chainId);
-  const fl = getContracts(chainId).foreverLibrary;
-  if (!pub || !fl) return [];
+  if (!pub) return [];
   const latest = await pub.getBlockNumber();
   const seen = new Set<string>();
-  let from = scanStartBlock(chainId, latest);
+  let from = fromBlock ?? scanStartBlock(chainId, latest);
   for (let w = 0; w < MAX_WINDOWS && from <= latest; w++) {
     const to = from + LOG_WINDOW - BigInt(1) > latest ? latest : from + LOG_WINDOW - BigInt(1);
-    const logs = await pub.getLogs({ address: fl as Hex, event: TRANSFER_EVENT, args: { to: owner as Hex }, fromBlock: from, toBlock: to });
+    const logs = await pub.getLogs({ address: contract, event: TRANSFER_EVENT, args: { to: owner as Hex }, fromBlock: from, toBlock: to });
     for (const l of logs) seen.add((l.args.tokenId as bigint).toString());
     from = to + BigInt(1);
   }
@@ -218,7 +235,7 @@ export async function readOwnedTokenIds(chainId: number, owner: string): Promise
   for (const idStr of seen) {
     const id = BigInt(idStr);
     try {
-      const cur = (await pub.readContract({ address: fl as Hex, abi: FOREVER_LIBRARY_ABI, functionName: "ownerOf", args: [id] })) as string;
+      const cur = (await pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "ownerOf", args: [id] })) as string;
       if (cur.toLowerCase() === owner.toLowerCase()) owned.push(id);
     } catch { /* burned/nonexistent */ }
   }

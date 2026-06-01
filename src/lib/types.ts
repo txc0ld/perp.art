@@ -208,6 +208,9 @@ export interface Token {
   listable: boolean;
   /** Provenance of this record in the UI: live on-chain vs the mock demo layer. */
   source?: "onchain" | "mock";
+  /** Edition info (only for tokens minted via mintEdition). */
+  editionSize?: number;
+  editionIndex?: number;
 }
 
 // ---------------------------------------------------------------------------

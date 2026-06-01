@@ -1,9 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { mapMintToToken, type RawTokenReads } from "./read-token";
 
+const CONTRACT = "0xDeAdBeEf00000000000000000000000000000001";
+const CONTRACT_LOWER = CONTRACT.toLowerCase();
+
 const RAW: RawTokenReads = {
   chainId: 84532,
   tokenId: BigInt(5),
+  contract: CONTRACT,
   owner: "0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38",
   mint: {
     creator: "0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38",
@@ -29,17 +33,30 @@ const RAW: RawTokenReads = {
 };
 
 describe("mapMintToToken", () => {
-  it("maps real on-chain fields", () => {
+  it("maps real on-chain fields with contract-addressed id", () => {
     const t = mapMintToToken(RAW);
     expect(t.tokenId).toBe(5);
-    expect(t.id).toBe("84532-5");
+    expect(t.id).toBe(`84532-${CONTRACT_LOWER}-5`);
+    expect(t.collectionSlug).toBe(CONTRACT_LOWER);
     expect(t.title).toBe("Strata No. 1");
     expect(t.owner).toBe(RAW.owner);
     expect(t.royalty.bps).toBe(750);
-    expect(t.chain).toBe("base"); // 84532 → base
+    expect(t.chain).toBe("base");
     expect(t.permanence.locked).toBe(true);
     expect(t.permanence.selectedShardIndex).toBe(1);
     expect(t.provenance[0].kind).toBe("minted");
+  });
+
+  it("omits editionSize/editionIndex when not set", () => {
+    const t = mapMintToToken(RAW);
+    expect(t.editionSize).toBeUndefined();
+    expect(t.editionIndex).toBeUndefined();
+  });
+
+  it("includes editionSize/editionIndex when set", () => {
+    const t = mapMintToToken({ ...RAW, editionSize: 10, editionIndex: 3 });
+    expect(t.editionSize).toBe(10);
+    expect(t.editionIndex).toBe(3);
   });
 
   it("marks only the STATE shard guaranteed and flags it onchain proof", () => {
