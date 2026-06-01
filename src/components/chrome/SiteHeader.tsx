@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { WalletButton } from "@/components/wallet/WalletButton";
+import { NetworkButton } from "@/components/wallet/NetworkButton";
 import { HeaderSearch } from "./HeaderSearch";
 import { Wordmark } from "./Brand";
 
@@ -99,6 +100,7 @@ export function SiteHeader() {
             </svg>
           </button>
 
+          <NetworkButton />
           <WalletButton />
 
           {/* Mobile nav toggle (primary nav is hidden < lg) */}
