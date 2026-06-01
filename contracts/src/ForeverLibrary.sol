@@ -57,6 +57,7 @@ contract ForeverLibrary is
     error InsufficientStorageFee();
     error UnexpectedPayment();
     error StorageFeeTransferFailed();
+    error InvalidEditionSize();
 
     /*//////////////////////////////////////////////////////////////////////
                                     TYPES
@@ -75,6 +76,9 @@ contract ForeverLibrary is
     /// @dev Max bytes for the on-chain STATE proof. Kept under the EIP-170
     ///      contract-size limit (24,576) that bounds a single SSTORE2 write.
     uint256 public constant MAX_PROOF_BYTES = 24_000;
+
+    /// @dev Maximum tokens in a single edition.
+    uint32 public constant MAX_EDITION_SIZE = 100;
 
     /*//////////////////////////////////////////////////////////////////////
                                     STORAGE
@@ -108,6 +112,16 @@ contract ForeverLibrary is
 
     /// @dev tokenId => block.timestamp deadline for edits.
     mapping(uint256 => uint64) private _editDeadline;
+
+    /*//////////////////////////////////////////////////////////////////////
+                                EDITION STORAGE
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// @dev tokenId => how many tokens are in this edition (0 stored == 1, legacy).
+    mapping(uint256 => uint32) private _editionSize;
+
+    /// @dev tokenId => 1-based position within its edition (0 stored == 1, legacy).
+    mapping(uint256 => uint32) private _editionIndex;
 
     /*//////////////////////////////////////////////////////////////////////
                             HOSTING / STORAGE FEE
@@ -231,6 +245,102 @@ contract ForeverLibrary is
             revert UnexpectedPayment();
         }
 
+        // Write bytes to SSTORE2 once; the same pointer is used for all tokens
+        // in this 1-of-1 "edition".
+        address statePtr = SSTORE2.write(proofData);
+        bytes32 contentHash = keccak256(proofData);
+
+        tokenId = _mintOne(
+            to, artistName, title, mediaType, royaltyBps, metadataHash,
+            hostingFeeBps_, statePtr, contentHash, 1, 1
+        );
+
+        // Forward any artist-paid storage fee to the treasury (interactions last).
+        if (msg.value > 0) {
+            (bool ok, ) = treasury.call{value: msg.value}("");
+            if (!ok) revert StorageFeeTransferFailed();
+        }
+    }
+
+    /// @notice Mint an edition: `editionSize` tokens sharing a single SSTORE2
+    ///         state pointer and content hash. The storage fee is charged ONCE
+    ///         for the whole edition (not per token).
+    /// @param to              recipient / creator of all edition tokens.
+    /// @param artistName      human-readable artist name (provenance).
+    /// @param title           work title (provenance).
+    /// @param mediaType       MIME type of the media (provenance).
+    /// @param royaltyBps      creator royalty in basis points (ERC-2981).
+    /// @param metadataHash    keccak256 of canonical metadata (verification).
+    /// @param proofData       raw low-res canonical bytes shared by all edition
+    ///        tokens; stored via SSTORE2 once, hashed on-chain.
+    /// @param hostingFeeBps_  same semantics as `mint`.
+    /// @param editionSize_    number of tokens in the edition (1..MAX_EDITION_SIZE).
+    /// @return firstTokenId   the token id of the first edition token.
+    function mintEdition(
+        address to,
+        string calldata artistName,
+        string calldata title,
+        string calldata mediaType,
+        uint96 royaltyBps,
+        bytes32 metadataHash,
+        bytes calldata proofData,
+        uint16 hostingFeeBps_,
+        uint32 editionSize_
+    ) external payable nonReentrant returns (uint256 firstTokenId) {
+        if (royaltyBps > _feeDenominator()) revert InvalidRoyalty();
+        if (metadataHash == bytes32(0)) revert EmptyContentHash();
+        if (proofData.length == 0) revert EmptyProof();
+        if (proofData.length > MAX_PROOF_BYTES) revert ProofTooLarge();
+        if (hostingFeeBps_ > MAX_HOSTING_FEE_BPS) revert HostingFeeTooHigh();
+        if (editionSize_ == 0 || editionSize_ > MAX_EDITION_SIZE) revert InvalidEditionSize();
+
+        // Same hosting-model fee rules as mint — charged ONCE for the edition.
+        if (hostingFeeBps_ == 0) {
+            if (msg.value < storageFeeWei) revert InsufficientStorageFee();
+        } else if (msg.value != 0) {
+            revert UnexpectedPayment();
+        }
+
+        // Write the shared proof bytes to SSTORE2 exactly once.
+        address statePtr = SSTORE2.write(proofData);
+        bytes32 contentHash = keccak256(proofData);
+
+        firstTokenId = _nextTokenId; // capture before looping
+
+        for (uint32 i = 0; i < editionSize_; i++) {
+            _mintOne(
+                to, artistName, title, mediaType, royaltyBps, metadataHash,
+                hostingFeeBps_, statePtr, contentHash, editionSize_, i + 1
+            );
+        }
+
+        // Forward any artist-paid storage fee to the treasury (interactions last).
+        if (msg.value > 0) {
+            (bool ok, ) = treasury.call{value: msg.value}("");
+            if (!ok) revert StorageFeeTransferFailed();
+        }
+    }
+
+    /// @dev Internal per-token mint primitive. Writes provenance, royalty, edit
+    ///      window, Shard 0, edition fields, hosting fee, then safe-mints and
+    ///      emits. All edition tokens call this with the same `statePtr` and
+    ///      `contentHash` so `shardURI(id,0)` returns byte-identical results.
+    ///      `storagePaidWei` is emitted in HostingConfigured and is the actual
+    ///      payment only for the token that "carries" the storage fee (first/only
+    ///      token); subsequent edition tokens emit 0.
+    function _mintOne(
+        address to,
+        string memory artistName,
+        string memory title,
+        string memory mediaType,
+        uint96 royaltyBps,
+        bytes32 metadataHash,
+        uint16 hostingFeeBps_,
+        address statePtr,
+        bytes32 contentHash,
+        uint32 edSz,
+        uint32 edIdx
+    ) internal returns (uint256 tokenId) {
         tokenId = _nextTokenId++;
         _hostingFeeBps[tokenId] = hostingFeeBps_;
 
@@ -253,19 +363,20 @@ contract ForeverLibrary is
         // Open the edit window (PRD §7.3).
         _editDeadline[tokenId] = uint64(block.timestamp) + editWindow;
 
-        // MANDATORY on-chain STATE proof shard (Shard 0). The low-res canonical
-        // bytes are written to SSTORE2 (bytes-as-bytecode) so they live in
-        // consensus-guaranteed contract state; the content hash is computed
-        // on-chain (trustless). This is the permanence backstop and the sole
-        // listing-eligibility precondition (PRD §7.2, §7.3, §9.6).
-        _statePointer[tokenId] = SSTORE2.write(proofData);
+        // MANDATORY on-chain STATE proof shard (Shard 0). All edition tokens
+        // share the same SSTORE2 pointer written once by the caller.
+        _statePointer[tokenId] = statePtr;
         _configureShard(
             tokenId,
             0,
             ShardBackend.Onchain,
             "", // Shard 0 URI is derived on-chain in shardURI() from SSTORE2.
-            keccak256(proofData)
+            contentHash
         );
+
+        // Edition fields (stored only when > 1 or > 1 to distinguish legacy).
+        _editionSize[tokenId] = edSz;
+        _editionIndex[tokenId] = edIdx;
 
         _safeMint(to, tokenId);
 
@@ -277,13 +388,7 @@ contract ForeverLibrary is
             uint64(block.timestamp),
             uint64(block.number)
         );
-        emit HostingConfigured(tokenId, hostingFeeBps_, msg.value);
-
-        // Forward any artist-paid storage fee to the treasury (interactions last).
-        if (msg.value > 0) {
-            (bool ok, ) = treasury.call{value: msg.value}("");
-            if (!ok) revert StorageFeeTransferFailed();
-        }
+        emit HostingConfigured(tokenId, hostingFeeBps_, 0);
     }
 
     /*//////////////////////////////////////////////////////////////////////
@@ -393,6 +498,20 @@ contract ForeverLibrary is
     /// @notice Per-token Perpetual hosting fee in bps, read at settlement.
     function hostingFeeBps(uint256 tokenId) external view returns (uint16) {
         return _hostingFeeBps[tokenId];
+    }
+
+    /// @notice The number of tokens in this token's edition.
+    ///         Returns 1 for legacy 1-of-1 tokens minted before editions.
+    function editionSize(uint256 tokenId) external view returns (uint32) {
+        uint32 v = _editionSize[tokenId];
+        return v == 0 ? 1 : v;
+    }
+
+    /// @notice The 1-based position of this token within its edition.
+    ///         Returns 1 for legacy 1-of-1 tokens minted before editions.
+    function editionIndex(uint256 tokenId) external view returns (uint32) {
+        uint32 v = _editionIndex[tokenId];
+        return v == 0 ? 1 : v;
     }
 
     /// @inheritdoc IForeverLibrary

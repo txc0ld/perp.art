@@ -193,4 +193,96 @@ contract ForeverLibraryTest is Test {
             0
         );
     }
+
+    /*//////////////////////////////////////////////////////////////////////
+                            EDITION TESTS
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// mintEdition of size 3 yields 3 contiguous tokens: identical shard0 URI,
+    /// identical content hash, correct editionSize/editionIndex on each.
+    function test_MintEditionSharesStateAndIndexes() public {
+        bytes memory proof = bytes("edition-proof-bytes");
+        uint32 sz = 3;
+        uint256 first = fl.mintEdition(
+            address(this),
+            "Edition Artist",
+            "Edition Work",
+            "image/png",
+            500,
+            keccak256("metadata"),
+            proof,
+            0,   // artist-paid
+            sz
+        );
+
+        string memory uri0 = fl.shardURI(first, 0);
+        bytes32 ch = fl.shardContentHash(first, 0);
+
+        for (uint256 i = 0; i < sz; i++) {
+            uint256 id = first + i;
+            assertEq(fl.ownerOf(id), address(this), "owner");
+            assertTrue(fl.shard0Configured(id), "shard0 configured");
+            assertEq(fl.shardCount(id), 1, "shard count");
+            assertEq(
+                uint8(fl.shardBackend(id, 0)),
+                uint8(IForeverLibrary.ShardBackend.Onchain),
+                "shard0 backend"
+            );
+            // All edition tokens must share the same content hash and data URI.
+            assertEq(fl.shardContentHash(id, 0), keccak256(proof), "content hash");
+            assertEq(fl.shardContentHash(id, 0), ch, "shared content hash");
+            assertEq(
+                keccak256(bytes(fl.shardURI(id, 0))),
+                keccak256(bytes(uri0)),
+                "byte-identical shard0 URI"
+            );
+            // editionSize is 3 for all; editionIndex is 1-based.
+            assertEq(fl.editionSize(id), sz, "editionSize");
+            assertEq(fl.editionIndex(id), uint32(i + 1), "editionIndex");
+        }
+    }
+
+    /// Storage fee is charged ONCE for the whole edition, not per token.
+    function test_MintEditionChargesFeeOnce() public {
+        vm.prank(owner);
+        fl.setStorageFeeWei(0.01 ether);
+
+        vm.deal(address(this), 1 ether);
+        uint256 treasuryBefore = address(fl.treasury()).balance;
+
+        fl.mintEdition{value: 0.01 ether}(
+            address(this),
+            "Artist",
+            "Work",
+            "image/png",
+            500,
+            keccak256("m"),
+            bytes("proof"),
+            0,
+            5  // edition of 5
+        );
+
+        uint256 treasuryAfter = address(fl.treasury()).balance;
+        assertEq(treasuryAfter - treasuryBefore, 0.01 ether, "fee charged once");
+    }
+
+    /// editionSize 0 and 101 must revert with InvalidEditionSize.
+    function test_MintEditionSizeBounds() public {
+        vm.expectRevert(ForeverLibrary.InvalidEditionSize.selector);
+        fl.mintEdition(
+            address(this), "A", "B", "image/png", 500, keccak256("m"), bytes("proof"), 0, 0
+        );
+
+        vm.expectRevert(ForeverLibrary.InvalidEditionSize.selector);
+        fl.mintEdition(
+            address(this), "A", "B", "image/png", 500, keccak256("m"), bytes("proof"), 0, 101
+        );
+    }
+
+    /// A regular mint has editionSize==1 and editionIndex==1.
+    function test_SingleMintIsEditionOfOne() public {
+        uint256 id = _mint();
+        assertEq(fl.editionSize(id), 1, "editionSize defaults to 1");
+        assertEq(fl.editionIndex(id), 1, "editionIndex defaults to 1");
+    }
 }
