@@ -1,45 +1,49 @@
 "use client";
 
 /**
- * DeployContractModal - spins up a new sovereign Forever Library contract over a
- * near-black scrim. Mirrors the BuyModal pattern: role=dialog/aria-modal, Esc to
- * close, focus trap, body-scroll lock. Three phases: review -> deploying ->
- * optimistic success with a fabricated contract address. On success the deployed
- * contract is lifted to the parent via onDeployed so the list updates. Full-width
- * and scrollable on mobile.
+ * DeployContractModal — deploys a new sovereign Forever Library contract via the
+ * connected wallet using the ForeverLibraryFactory. Three phases:
+ *   review → deploying (wallet prompt + on-chain tx) → done (real address).
+ * On success the real deployed address is lifted to the parent via onDeployed.
+ * Full-width and scrollable on mobile. Esc to close, focus trap, body-scroll lock.
  */
 import * as React from "react";
+import { useAccount, useChainId } from "wagmi";
+import { writeContract, waitForTransactionReceipt } from "@wagmi/core";
+import { decodeEventLog } from "viem";
+import { wagmiConfig } from "@/lib/web3/config";
+import { getContracts, chainLabelForId, explorerTx } from "@/lib/web3/contracts";
+import { FACTORY_ABI } from "@/lib/web3/abis";
 import type { Chain } from "@/lib/types";
 import { Button } from "@/components/ui";
-import { getChains, getChainMeta } from "@/lib/mock-data";
-import { shortAddress, bpsToPct, cn } from "@/lib/utils";
+import { shortAddress, cn } from "@/lib/utils";
 
 type Phase = "review" | "deploying" | "done";
-
-/** Forever Library deploys on permanence-native (EVM) chains. */
-const DEPLOY_CHAINS = getChains().filter((c) => c.permanenceNative);
-
-function fabricateAddress(name: string): string {
-  let h = 0x811c9dc5;
-  const s = "deploy:" + name + ":" + Date.now();
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  let out = "0x";
-  let seed = h;
-  for (let i = 0; i < 40; i++) {
-    seed = (Math.imul(seed ^ (seed >>> 13), 0x5bd1e995) + i) >>> 0;
-    out += (seed & 0xf).toString(16);
-  }
-  return out;
-}
 
 export interface DeployedContract {
   name: string;
   chain: Chain;
   royaltyBps: number;
   contractAddress: string;
+}
+
+/** Derive a short ERC-721 symbol from the collection name (≤8 chars, A-Z0-9). */
+function deriveSymbol(name: string): string {
+  return name
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 8) || "COL";
+}
+
+/** Map chainId → the Chain string the rest of the app uses. */
+function chainIdToChain(chainId: number): Chain {
+  switch (chainId) {
+    case 84532: return "ethereum"; // base-sepolia — mapped to "ethereum" (no separate Chain type entry)
+    case 11155111: return "ethereum";
+    case 8453: return "base";
+    case 1: return "ethereum";
+    default: return "ethereum";
+  }
 }
 
 export function DeployContractModal({
@@ -49,14 +53,19 @@ export function DeployContractModal({
   onClose: () => void;
   onDeployed: (contract: DeployedContract) => void;
 }) {
+  const { address } = useAccount();
+  const chainId = useChainId();
+  const contracts = getContracts(chainId);
+
   const [phase, setPhase] = React.useState<Phase>("review");
   const [name, setName] = React.useState("");
-  const [chain, setChain] = React.useState<Chain>("ethereum");
-  const [royaltyPct, setRoyaltyPct] = React.useState(10);
-  const [address, setAddress] = React.useState<string | null>(null);
+  const [deployedAddress, setDeployedAddress] = React.useState<string | null>(null);
+  const [deployError, setDeployError] = React.useState<string | undefined>();
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
 
   const nameError = name.trim().length === 0;
+  const hasFactory = Boolean(contracts.factory);
+  const networkLabel = chainLabelForId(chainId);
 
   React.useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -68,7 +77,7 @@ export function DeployContractModal({
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        if (phase !== "deploying") onClose();
         return;
       }
       if (e.key === "Tab" && dialogRef.current) {
@@ -94,18 +103,51 @@ export function DeployContractModal({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [onClose]);
+  }, [onClose, phase]);
 
-  function deploy() {
-    if (nameError) return;
-    const royaltyBps = Math.round(royaltyPct * 100);
-    const addr = fabricateAddress(name.trim());
-    setAddress(addr);
+  async function deploy() {
+    if (nameError || !hasFactory || !address) return;
+    setDeployError(undefined);
     setPhase("deploying");
-    window.setTimeout(() => {
-      onDeployed({ name: name.trim(), chain, royaltyBps, contractAddress: addr });
+    try {
+      // editWindow: 7 days in seconds (no BigInt literals — ES2017 target)
+      const editWindowSeconds = BigInt(7 * 24 * 3600);
+      const symbol = deriveSymbol(name.trim());
+      const hash = await writeContract(wagmiConfig, {
+        address: contracts.factory!,
+        abi: FACTORY_ABI,
+        functionName: "createCollection",
+        args: [name.trim(), symbol, editWindowSeconds],
+      });
+      const receipt = await waitForTransactionReceipt(wagmiConfig, { hash });
+
+      // Decode CollectionCreated to get the deployed address
+      let newAddr: `0x${string}` | undefined;
+      for (const logItem of receipt.logs) {
+        try {
+          const d = decodeEventLog({ abi: FACTORY_ABI, data: logItem.data, topics: logItem.topics });
+          if (d.eventName === "CollectionCreated") {
+            newAddr = (d.args as { collection: `0x${string}` }).collection;
+            break;
+          }
+        } catch {
+          /* not our event */
+        }
+      }
+      if (!newAddr) throw new Error("CollectionCreated event not found in receipt");
+
+      setDeployedAddress(newAddr);
+      onDeployed({
+        name: name.trim(),
+        chain: chainIdToChain(chainId),
+        royaltyBps: 0, // royalty is per-token at mint time; the collection itself is royalty-agnostic
+        contractAddress: newAddr,
+      });
       setPhase("done");
-    }, 1800);
+    } catch (e) {
+      setDeployError(/denied|rejected/i.test(String(e)) ? "Transaction rejected in wallet." : (e instanceof Error ? e.message.split("\n")[0] : "Deploy failed"));
+      setPhase("review");
+    }
   }
 
   return (
@@ -145,27 +187,26 @@ export function DeployContractModal({
 
         {/* Body */}
         <div className="px-5 py-5">
-          {phase === "done" && address ? (
+          {phase === "done" && deployedAddress ? (
             <div className="animate-fade">
               <div className="flex items-center gap-2.5 rounded-[8px] border border-verify/25 bg-verify/10 px-4 py-3">
                 <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-verify" aria-hidden />
                 <p className="text-[13px] text-foreground">
-                  Deployed. This Forever Library contract is yours outright.
+                  Deployed on {networkLabel}. This Forever Library contract is yours outright.
                 </p>
               </div>
               <dl className="mt-4 space-y-2.5 border-t border-border pt-4">
                 <Line label="Name" value={name.trim()} strong />
-                <Line label="Chain" value={getChainMeta(chain).label} />
-                <Line label="Royalty" value={bpsToPct(Math.round(royaltyPct * 100))} />
+                <Line label="Network" value={networkLabel} />
                 <div className="flex items-baseline justify-between">
                   <span className="font-mono text-[11px] uppercase tracking-wider text-faint">Address</span>
                   <a
-                    href={`${getChainMeta(chain).explorer}/address/${address}`}
+                    href={`${explorerTx(chainId, "").replace(/\/tx\/.*$/, "")}/address/${deployedAddress}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-mono text-[13px] tabular-nums text-accent hover:underline"
                   >
-                    {shortAddress(address)}
+                    {shortAddress(deployedAddress)}
                   </a>
                 </div>
               </dl>
@@ -176,13 +217,33 @@ export function DeployContractModal({
           ) : (
             <>
               <p className="text-[13px] leading-relaxed text-muted">
-                Deploy your own ERC-721 + ERC-2981 Forever Library. Perpetual never
+                Deploy your own ERC-721 + ERC-2981 Forever Library on {networkLabel}. Perpetual never
                 holds the keys. Leave whenever you like and take it fully intact.
               </p>
 
+              {!hasFactory && (
+                <div className="mt-4 rounded-[8px] border border-error/25 bg-error/5 px-4 py-3">
+                  <p className="text-[13px] text-error">
+                    The collection factory is not available on {networkLabel}. Switch to Base Sepolia or Ethereum Sepolia.
+                  </p>
+                </div>
+              )}
+
+              {!address && (
+                <div className="mt-4 rounded-[8px] border border-border bg-surface-2/40 px-4 py-3">
+                  <p className="text-[13px] text-muted">Connect a wallet to deploy.</p>
+                </div>
+              )}
+
+              {deployError && (
+                <div className="mt-4 rounded-[8px] border border-error/25 bg-error/5 px-4 py-3">
+                  <p className="text-[13px] text-error">{deployError}</p>
+                </div>
+              )}
+
               <div className="mt-5 flex flex-col gap-1.5">
                 <label htmlFor="deploy-name" className="font-mono text-[11px] uppercase tracking-wider text-faint">
-                  Contract name
+                  Collection name
                 </label>
                 <input
                   id="deploy-name"
@@ -190,7 +251,7 @@ export function DeployContractModal({
                   type="text"
                   value={name}
                   maxLength={42}
-                  disabled={phase === "deploying"}
+                  disabled={phase === "deploying" || !hasFactory}
                   onChange={(e) => setName(e.target.value)}
                   aria-invalid={nameError}
                   aria-describedby={nameError ? "deploy-name-error" : undefined}
@@ -202,51 +263,15 @@ export function DeployContractModal({
                 />
                 {nameError && (
                   <p id="deploy-name-error" className="text-[12px] text-error">
-                    A contract name is required.
+                    A collection name is required.
                   </p>
                 )}
               </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="deploy-chain" className="font-mono text-[11px] uppercase tracking-wider text-faint">
-                    Chain
-                  </label>
-                  <select
-                    id="deploy-chain"
-                    value={chain}
-                    disabled={phase === "deploying"}
-                    onChange={(e) => setChain(e.target.value as Chain)}
-                    className="h-11 w-full rounded-[8px] border border-border bg-background px-3.5 text-sm text-foreground transition-colors focus-visible:border-border-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-                  >
-                    {DEPLOY_CHAINS.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="deploy-royalty" className="font-mono text-[11px] uppercase tracking-wider text-faint">
-                    Royalty %
-                  </label>
-                  <input
-                    id="deploy-royalty"
-                    type="number"
-                    min={0}
-                    max={20}
-                    step={0.5}
-                    value={royaltyPct}
-                    disabled={phase === "deploying"}
-                    onChange={(e) => setRoyaltyPct(Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
-                    className="h-11 w-full rounded-[8px] border border-border bg-background px-3.5 font-mono text-sm tabular-nums text-foreground transition-colors focus-visible:border-border-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-                  />
-                </div>
-              </div>
-
               <ul className="mt-5 space-y-1.5">
-                <Reassure>Deployed under your wallet. Perpetual cannot freeze or seize it.</Reassure>
-                <Reassure>Royalties enforced at settlement via ERC-2981.</Reassure>
+                <Reassure>Deployed under your wallet — Perpetual cannot freeze or seize it.</Reassure>
+                <Reassure>ERC-721 + ERC-2981. Royalties enforced at settlement.</Reassure>
+                <Reassure>7-day edit window for metadata updates.</Reassure>
               </ul>
 
               <Button
@@ -254,7 +279,7 @@ export function DeployContractModal({
                 size="lg"
                 className="mt-5 min-h-[44px] w-full"
                 onClick={deploy}
-                disabled={phase === "deploying" || nameError}
+                disabled={phase === "deploying" || nameError || !hasFactory || !address}
               >
                 {phase === "deploying" ? (
                   <span className="inline-flex items-center gap-2">
