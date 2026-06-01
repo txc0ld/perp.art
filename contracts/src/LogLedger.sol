@@ -33,6 +33,8 @@ contract LogLedger {
 
     /// @notice Claim authorship of a caller-chosen unique fileId.
     /// @dev    Recommended fileId = keccak256(abi.encode(collection, contentHash, version)).
+    // AUDIT: roadmap — bind fileId to author (derive/verify fileId from the
+    // author + content) so a fileId cannot be front-run/claimed by a non-author.
     function open(bytes32 fileId) external {
         File storage f = files[fileId];
         if (f.author != address(0)) revert AlreadyOpened(); // fileId already claimed.
@@ -51,6 +53,9 @@ contract LogLedger {
     }
 
     /// @notice Finalize: write the verification commitment to state.
+    // AUDIT: roadmap — root is author-asserted; add on-chain root/chunk
+    // validation (verify the Merkle root against the emitted chunk hashes)
+    // rather than trusting the sealer's claimed root/size/chunks.
     function seal(
         bytes32 fileId,
         bytes32 root,

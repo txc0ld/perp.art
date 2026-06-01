@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test, Vm} from "forge-std/Test.sol";
 import {ForeverLibraryFactory} from "../src/ForeverLibraryFactory.sol";
 import {ForeverLibrary} from "../src/ForeverLibrary.sol";
+import {PerpetualDrop} from "../src/PerpetualDrop.sol";
 import {IForeverLibrary} from "../src/interfaces/IForeverLibrary.sol";
 
 contract ForeverLibraryFactoryTest is Test {
@@ -114,5 +115,73 @@ contract ForeverLibraryFactoryTest is Test {
         assertTrue(col0 != col1, "distinct addresses");
         assertTrue(factory.isCollection(col0), "isCollection col0");
         assertTrue(factory.isCollection(col1), "isCollection col1");
+    }
+
+    /*//////////////////////////////////////////////////////////////////////
+                                CREATE DROP
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// createDrop deploys a PerpetualDrop owned by the caller; isDrop true; enumerable.
+    function test_CreateDropDeploysOwnedDrop() public {
+        vm.prank(alice);
+        address d = factory.createDrop("Alice PFP", "APFP", 500, 7000, "ipfs://ph/");
+
+        assertTrue(d != address(0), "non-zero address");
+        assertTrue(factory.isDrop(d), "isDrop");
+        assertEq(factory.dropsCount(), 1, "dropsCount");
+        assertEq(factory.dropAt(0), d, "dropAt(0)");
+
+        PerpetualDrop drop = PerpetualDrop(d);
+        assertEq(drop.owner(), alice, "owner is caller");
+        assertEq(drop.name(), "Alice PFP", "name");
+        assertEq(drop.symbol(), "APFP", "symbol");
+        assertEq(drop.maxSupply(), 7000, "maxSupply");
+
+        (address recv, uint256 amt) = drop.royaltyInfo(1, 10_000);
+        assertEq(recv, alice, "royalty receiver");
+        assertEq(amt, 500, "royalty bps applied");
+    }
+
+    /// createDrop emits DropCreated with the correct fields.
+    function test_EmitsDropCreated() public {
+        vm.prank(alice);
+        vm.recordLogs();
+        address d = factory.createDrop("Alice PFP", "APFP", 500, 7000, "ipfs://ph/");
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 sig = keccak256("DropCreated(address,address,string,string,uint256)");
+        bool found;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == sig) {
+                found = true;
+                assertEq(address(uint160(uint256(logs[i].topics[1]))), d, "event drop");
+                assertEq(address(uint160(uint256(logs[i].topics[2]))), alice, "event owner");
+            }
+        }
+        assertTrue(found, "DropCreated emitted");
+    }
+
+    /// The drop owner can batch-mint into the created drop.
+    function test_MintIntoCreatedDrop() public {
+        vm.prank(alice);
+        address d = factory.createDrop("Alice PFP", "APFP", 500, 7000, "ipfs://ph/");
+
+        PerpetualDrop drop = PerpetualDrop(d);
+        vm.prank(alice);
+        drop.mintBatch(alice, 100);
+        assertEq(drop.totalMinted(), 100);
+        assertEq(drop.ownerOf(1), alice);
+        assertEq(drop.ownerOf(100), alice);
+    }
+
+    /// createCollection and createDrop maintain independent registries.
+    function test_DropsAndCollectionsIndependent() public {
+        vm.prank(alice);
+        factory.createCollection("Coll", "C", EDIT_WINDOW);
+        vm.prank(bob);
+        factory.createDrop("Drop", "D", 500, 100, "ipfs://ph/");
+
+        assertEq(factory.collectionsCount(), 1, "collections count");
+        assertEq(factory.dropsCount(), 1, "drops count");
     }
 }
