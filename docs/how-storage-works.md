@@ -20,6 +20,8 @@ When you mint, Perpetual:
 The result: **five parallel, independently verifiable shards** — all locators and Merkle roots
 recorded on-chain, verifiable by anyone, requiring no trust in Perpetual.
 
+**For editions** (`mintEdition(N, ...)`): the SSTORE2 STATE pointer, LogLedger file, and all off-chain copies are written **once** and shared across all N tokens. Each token is a distinct ERC-721 with its own ownership record, but all share the same permanent storage footprint. Per-token shard-record transactions are still required so each token's on-chain shard descriptors point to the shared copies.
+
 ---
 
 ## The five shards
@@ -212,8 +214,8 @@ directly from chain state.
 
 ## Deployed contracts (testnet)
 
-- **Base Sepolia** — ForeverLibrary `0xfB66D6FDB038FdF335b4068C36d2d9Fef5E4f766` · LogLedger `0x24D3c508A375911eBBF4e2dF7e9587A56d1132e8` · PerpetualSettlement `0xD2d3B1A12CB01f44AaFcD1eb17d86c3C31fE56b9`
-- **Ethereum Sepolia** — ForeverLibrary `0x748e330d28dC1f0d96737E09F1335aE9F9Cb4884` · LogLedger `0x3981BFaaf2a79B8F798DAf82433B9Cf7Da4d4ffe` · PerpetualSettlement `0x7Da4933d772815769b50914eBFfD47fe3c196A0B`
+- **Base Sepolia** — ForeverLibrary `0xCBa91Aa93365638EE2F286390a6102E20bf0e5b5` · ForeverLibraryFactory `0x8e113F2DC3A60f7faF530736681f64EdbA41A992` · LogLedger `0x24D3c508A375911eBBF4e2dF7e9587A56d1132e8` · PerpetualSettlement `0xD2d3B1A12CB01f44AaFcD1eb17d86c3C31fE56b9`
+- **Ethereum Sepolia** — ForeverLibrary `0x9636939A749eeEee8c3801fe8451D39729E0E769d` · ForeverLibraryFactory `0xe5a83e52Ab7A95128fe4ce70a5afD1B0b0B577Fe` · LogLedger `0x3981BFaaf2a79B8F798DAf82433B9Cf7Da4d4ffe` · PerpetualSettlement `0x7Da4933d772815769b50914eBFfD47fe3c196A0B`
 - `.env.local` / Vercel `perp-art` remain the source of truth.
 
 > These are **testnet** deployments and are **unaudited** — do not treat them as
@@ -223,7 +225,8 @@ directly from chain state.
 
 ## Reference
 
-- **ForeverLibrary:** `contracts/src/ForeverLibrary.sol` — ERC-721 + ERC-2981 + SSTORE2 STATE shard.
+- **ForeverLibrary:** `contracts/src/ForeverLibrary.sol` — ERC-721 + ERC-2981 + SSTORE2 STATE shard + `mintEdition`.
+- **ForeverLibraryFactory:** `contracts/src/ForeverLibraryFactory.sol` — deploy and enumerate sovereign collection contracts.
 - **LogLedger:** `contracts/src/LogLedger.sol` — event-log high-res shard with Merkle verification.
 - **Storage route:** `src/app/api/store/route.ts` — hashing + IPFS/Arweave/Irys pinning.
 - **LOG resolver:** `src/app/api/shard/log/[ledger]/[fileId]/route.ts` — reconstruction + verification.

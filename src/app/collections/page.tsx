@@ -31,7 +31,8 @@ export default async function CollectionsPage() {
         <h1 className="display-sm mt-2 font-brand text-foreground">Collections</h1>
         <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
           Bodies of work held for the long term. Each one rendered once, fixed forever, and
-          independently verifiable.
+          independently verifiable. Live collections are sovereign contracts deployed on-chain
+          via ForeverLibraryFactory — each artist owns their contract outright.
         </p>
       </div>
 

@@ -127,11 +127,20 @@ end-to-end on the live site (tryperpetual.art):
   stores a low-res canonical image directly in contract bytecode via **SSTORE2**, written atomically
   at mint and immutable thereafter. Content hash is computed on-chain. A token cannot exist without
   its STATE shard, and `shard0Configured(tokenId)` gates listing eligibility (PRD §7.3, §9.6). The
-  `ShardBackend` enum includes a `Log` variant for the LogLedger shard.
+  `ShardBackend` enum includes a `Log` variant for the LogLedger shard. `mintEdition(N, ...)` mints
+  N ERC-721 copies that share one SSTORE2 STATE pointer, one LOG file, and one off-chain copy;
+  each token carries `editionSize` / `editionIndex` fields and is individually owned and tradeable.
+- **ForeverLibraryFactory** — deploys and enumerates sovereign ForeverLibrary instances.
+  `createCollection(name, symbol, editWindow)` deploys a new `ForeverLibrary` owned by `msg.sender`
+  in one transaction and emits `CollectionCreated(address collection, address owner, ...)` for indexer
+  discovery. `collectionsCount()` / `collectionAt(i)` enumerate all deployed collections. Tokens are
+  addressed as `[chainId]/[contract]/[tokenId]`; the canonical "Default (open) collection" is the
+  ForeverLibrary deployed without the factory.
 - **LogLedger** — a standalone contract that stores full-resolution media in Ethereum **event logs**
   (~8 gas/byte). Only a Merkle root + file size live in contract state. The LOG shard is
   cost-efficient and root-verifiable by anyone; availability is retention-monitored under EIP-4444
-  (nodes may prune historical logs). Backstopped by the STATE shard.
+  (nodes may prune historical logs). Backstopped by the STATE shard. For editions, one LOG file is
+  shared across all N tokens in the edition.
 - **PerpetualSettlement** — Seaport-compatible settlement with **mandatory ERC-2981 royalty
   enforcement** (PRD §8.2) and NFT-for-NFT + criteria barter. Supports a hosting-fee model:
   artists pre-pay a flat storage fee (fee-exempt on resale), or Perpetual hosts and earns ≤1.5%
@@ -154,11 +163,13 @@ end-to-end on the live site (tryperpetual.art):
   — they never trust the backend.
 - **Contracts deployed to Base Sepolia + Ethereum Sepolia.** Verified end-to-end on testnet.
   Still **unaudited**; **no mainnet value**.
+- **Collections and sovereign contracts are live.** `ForeverLibraryFactory.createCollection` deploys artist-owned ForeverLibrary instances on testnet; the factory enumerates all collections via `CollectionCreated` events. Token addressing is `[chainId]/[contract]/[tokenId]`; per-collection pages at `/collections/onchain/[chainId]/[contract]`.
+- **Editions are live.** `mintEdition(N, ...)` mints N ERC-721 tokens sharing one STATE/LOG/off-chain copy. Edition size capped at 10 in the UI (contract allows up to 100).
 - **On-chain read layer is live.** Minted tokens have real pages at
-  `/token/onchain/[chainId]/[tokenId]` (real shards, LOG resolver, provenance, permanence
+  `/token/onchain/[chainId]/[contract]/[tokenId]` (real shards, LOG resolver, provenance, permanence
   panel). A connected wallet's owned works are listed on the profile (`/api/onchain/owned`).
 - **Lite indexer is live.** `/explore` and `/collections` surface real on-chain tokens
-  (scanned from `TokenMinted` events, cached) merged with the mock demo gallery. Live tiles
+  (scanned from `TokenMinted` events across all factory-discovered collections, cached) merged with the mock demo gallery. Live tiles
   are tagged "on-chain". Catalog text-search still covers the mock index only — a known
   lite-indexer limitation; a DB-backed indexer is the remaining stage.
 - **Fixed-price trading is live.** EIP-712 signed ETH listings stored in a Blob orderbook;

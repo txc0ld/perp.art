@@ -28,9 +28,11 @@ https://perpetual-art-tx-build.vercel.app
 - **The decoupling:** because the STATE shard carries permanence on its own, IPFS/CDN costs are
   performance optimizations, not permanence obligations. Permanence is decoupled from operator
   solvency.
+- **Collections (sovereign contracts):** `ForeverLibraryFactory.createCollection(name, symbol)` deploys an artist-owned `ForeverLibrary` in one transaction; the factory emits a `CollectionCreated` event so the indexer discovers every collection. The canonical contract is the "Default (open) collection." Artists can mint multiple distinct 1-of-1s into a collection to build a PFP drop or named series (one at a time for now; batch upload is a planned convenience). Deploying from Profile is a real on-chain deploy.
+- **Editions:** `mintEdition` mints N ERC-721 copies of one artwork that share one SSTORE2 STATE proof, one LogLedger LOG copy, and one IPFS/Arweave/Irys copy (storage written once). Each token is tagged `edition X / N`, individually owned, and tradeable. The mint wizard caps edition size at 10 (contract allows up to 100).
 - **Live on testnet (Base Sepolia + Ethereum Sepolia):** the mint pipeline, on-chain read layer
-  (`/token/onchain/[chainId]/[tokenId]`), lite indexer (explore/collections surface real
-  on-chain tokens merged with the demo gallery), and fixed-price ETH trading
+  (`/token/onchain/[chainId]/[contract]/[tokenId]`; per-collection at `/collections/onchain/[chainId]/[contract]`), lite indexer (explore/collections surface real
+  on-chain tokens from all factory collections merged with the demo gallery), and fixed-price ETH trading
   (EIP-712 listings → PerpetualSettlement on-chain fulfillment) are all live. The mock gallery
   coexists as demo content; catalog text-search still covers the mock index only.
 
@@ -79,9 +81,7 @@ https://perpetual-art-tx-build.vercel.app
 
 ## Sovereignty + rebuildability
 
-- **Sovereign contracts** - artists can deploy and own their own Forever Library instance outright;
-  Perpetual indexes it as a federated index. If you leave, your contract, tokens, provenance, and
-  permanence leave with you.
+- **Sovereign contracts** - artists deploy and own their own `ForeverLibrary` instance outright via `ForeverLibraryFactory.createCollection(name, symbol)` — one transaction, one real on-chain deploy. Perpetual indexes every factory collection as a federated index. If you leave, your contract, tokens, provenance, and permanence leave with you.
 - **Published, rebuildable indexer** - reads only public onchain data and public storage networks;
   the schema is published in [`INDEXER_SPEC.md`](./INDEXER_SPEC.md) so any third party can run an
   equivalent index. The marketplace is not a single point of failure for discovery, just as it is
@@ -95,8 +95,8 @@ https://perpetual-art-tx-build.vercel.app
 
 ## Configuration
 
-- Minting, on-chain read layer, lite indexer, and fixed-price trading are live on testnet. The
+- Minting (including collections and editions), on-chain read layer, lite indexer, and fixed-price trading are live on testnet. The
   mock gallery runs alongside for local development with no configuration required. To wire live
-  infrastructure, every variable (per-chain RPCs, WalletConnect, contracts, the bridge, the
+  infrastructure, every variable (per-chain RPCs, WalletConnect, contracts including ForeverLibraryFactory, the bridge, the
   indexer + database, storage providers, the verification service, ENS) is documented in
   [`.env.example`](../.env.example).

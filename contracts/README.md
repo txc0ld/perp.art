@@ -37,10 +37,11 @@ operator. Everything in this directory is designed to uphold that invariant.
 
 | File | What it is | PRD |
 |---|---|---|
-| `src/interfaces/IForeverLibrary.sol` | Interface for the Forever Library token: ERC-721 + ERC-2981 with the URI-sharding surface the frontend/indexer depend on (mandatory on-chain proof gate, selected shard, lock state, shard accessors, mint/provenance record, events, `ShardBackend` enum). | §7 |
+| `src/interfaces/IForeverLibrary.sol` | Interface for the Forever Library token: ERC-721 + ERC-2981 with the URI-sharding surface the frontend/indexer depend on (mandatory on-chain proof gate, selected shard, lock state, shard accessors, mint/provenance record, `mintEdition`, events, `ShardBackend` enum). | §7 |
 | `src/interfaces/IPerpetualSettlement.sol` | Seaport-compatible settlement interface: signed-order structs, `fulfillOrder`, `cancel`, `getOrderStatus`, counter/nonce replay protection, and the documented ERC-2981 royalty-enforcement guarantee. Covers fixed-price orders **and NFT-for-NFT + criteria barter** (Seaport-native offer/consideration with criteria items). | §8, §12 |
-| `src/ForeverLibrary.sol` | Implementation of `IForeverLibrary`. Immutable provenance on mint, per-token shard config with content-hash recording, **mandatory Shard 0 (SSTORE2 STATE shard)** written atomically at mint, edit windows → immutability, lock, ERC-2981 `royaltyInfo`. Reentrancy-guarded. | §7 |
-| `src/LogLedger.sol` | Standalone contract that stores full-resolution media in Ethereum event logs (~8 gas/byte). Stores Merkle root + file size in contract state; full file is reconstructed from `ChunkWritten` events and Merkle-verified. Deployed to Base Sepolia + Ethereum Sepolia. | §7 |
+| `src/ForeverLibrary.sol` | Implementation of `IForeverLibrary`. Immutable provenance on mint, per-token shard config with content-hash recording, **mandatory Shard 0 (SSTORE2 STATE shard)** written atomically at mint, edit windows → immutability, lock, ERC-2981 `royaltyInfo`. `mintEdition(N, ...)` mints N ERC-721 tokens sharing one SSTORE2 STATE pointer + `editionSize`/`editionIndex` fields (individually owned, individually tradeable). Reentrancy-guarded. | §7 |
+| `src/ForeverLibraryFactory.sol` | Factory that deploys and enumerates sovereign ForeverLibrary collection contracts. `createCollection(name, symbol, editWindow)` deploys a new `ForeverLibrary` owned by `msg.sender` and emits `CollectionCreated(address collection, address owner, string name, string symbol)`. `collectionsCount()` / `collectionAt(i)` enumerate all collections for indexer discovery. **Deployed to Base Sepolia + Ethereum Sepolia.** | §7.5 |
+| `src/LogLedger.sol` | Standalone contract that stores full-resolution media in Ethereum event logs (~8 gas/byte). Stores Merkle root + file size in contract state; full file is reconstructed from `ChunkWritten` events and Merkle-verified. Deployed to Base Sepolia + Ethereum Sepolia. For editions, one LOG file is shared across all N tokens. | §7 |
 | `src/PerpetualSettlement.sol` | Reference implementation sketch of `IPerpetualSettlement`. EIP-712 order hashing, signature verification, nonce/counter cancellation, configurable protocol fee (2.0-2.5%, default 2.25% = 225 bps), and **mandatory ERC-2981 royalty payout enforced in `fulfillOrder`** (reverts if not honored). Supports fixed-price sales and **barter** orders: NFT-for-NFT with optional ETH on either side, and **criteria** items (any token from a collection, optionally with a trait), both expressed natively in the Seaport order model. Non-custodial, reentrancy-guarded. | §8, §12 |
 | `LISTING_ELIGIBILITY.md` | Spec of the PRD §9.6 listing-eligibility gate and how the centralized orderbook enforces it off-chain before accepting a signed listing. | §9.6 |
 | `README.md` | This file. | §6, §18 |
@@ -56,7 +57,8 @@ operator. Everything in this directory is designed to uphold that invariant.
    gates listing eligibility. It is the consensus-guaranteed permanence backstop that
    survives as long as Ethereum (PRD §5.1). The LogLedger **LOG shard** (Shard 1) stores
    the full-resolution media cost-efficiently in event logs with Merkle verification;
-   it is retention-monitored and backstopped by the STATE shard.
+   it is retention-monitored and backstopped by the STATE shard. For editions, the same
+   SSTORE2 pointer and LOG file are shared across all N tokens — storage is written once.
 
 2. **Protocol-level royalty enforcement (PRD §8.2).** `fulfillOrder` computes
    the token's ERC-2981 royalty from its own `royaltyInfo` at fill time and
@@ -84,12 +86,15 @@ are configured per deployment (see `.env.example`).
 
 ## Multi-chain deployment
 
-ForeverLibrary, LogLedger, and `PerpetualSettlement` are **EVM** contracts and deploy to each
+ForeverLibrary, ForeverLibraryFactory, LogLedger, and `PerpetualSettlement` are **EVM** contracts and deploy to each
 supported EVM chain: Ethereum, Base, Polygon, Arbitrum, Optimism, and Zora (permanence-native;
 the mandatory SSTORE2 STATE shard applies on each). The non-EVM networks Perpetual indexes and
 trades (Solana, Tezos, Flow) use their native storage and settlement and are out of scope for
-these EVM contracts. Currently deployed to **Base Sepolia + Ethereum Sepolia** (testnet, unaudited).
-Per-chain deployed addresses (ForeverLibrary, LogLedger, settlement, bridge) are configured via
+these EVM contracts. Currently deployed to **Base Sepolia + Ethereum Sepolia** (testnet, unaudited):
+- **Base Sepolia** — ForeverLibrary `0xCBa91Aa93365638EE2F286390a6102E20bf0e5b5` · Factory `0x8e113F2DC3A60f7faF530736681f64EdbA41A992`
+- **Ethereum Sepolia** — ForeverLibrary `0x9636939A749eeEee8c3801fe8451D39729E0E769d` · Factory `0xe5a83e52Ab7A95128fe4ce70a5afD1B0b0B577Fe`
+
+Per-chain deployed addresses (ForeverLibrary, ForeverLibraryFactory, LogLedger, settlement, bridge) are configured via
 [`.env.example`](../.env.example); never hardcode them.
 
 ## How this maps to the PRD
@@ -98,7 +103,7 @@ Per-chain deployed addresses (ForeverLibrary, LogLedger, settlement, bridge) are
   `src/ForeverLibrary.sol`. URI sharding (§7.2), required behaviors incl. mandatory
   on-chain proof, selected shard, locking, edit windows, content hashing
   (§7.3), provenance record (§7.4), sovereign deployment (§7.5, any artist may
-  deploy their own instance).
+  deploy their own instance via `ForeverLibraryFactory`), editions (`mintEdition`).
 - **PRD §8 - Settlement:** `IPerpetualSettlement.sol` +
   `src/PerpetualSettlement.sol`. Seaport-compatible signed orders (§8.1), royalty
   enforcement (§8.2), protocol fee 2.0-2.5% (§8.4).
@@ -133,16 +138,18 @@ forge test -vv
 forge script script/DeployForeverLibrary.s.sol --rpc-url base_sepolia --account deployer --broadcast --verify
 ```
 
-Status (15 passing tests):
+Status (passing tests — ForeverLibrary, ForeverLibraryFactory, PerpetualSettlement):
 - **`ForeverLibrary`** - mint writes the mandatory on-chain proof, shard config,
-  edit-window + lock immutability, creator gating, ERC-2981 royalty.
+  edit-window + lock immutability, creator gating, ERC-2981 royalty; `mintEdition` mints N
+  tokens sharing one SSTORE2 pointer, correct `editionSize`/`editionIndex` per token.
+- **`ForeverLibraryFactory`** - `createCollection` deploys an FL owned by caller, emits `CollectionCreated`, enumerable (`collectionsCount`/`collectionAt`), mint-into-collection works end to end.
 - **`PerpetualSettlement`** - fixed-price ETH listings end to end: EIP-712 order
   hashing + signature verification, replay protection (counter + per-order
   hash), cancel, the 2.0-2.5% fee band, and **enforced ERC-2981 royalties paid
   out of the sale** (royalty -> receiver, fee -> recipient, remainder -> seller),
   so royalties cannot be bypassed (PRD §8.2).
 
-Fixed-price ETH listings and on-chain fulfillment (royalties + hosting fee) are **live on
+Collections (sovereign contracts via ForeverLibraryFactory), editions (`mintEdition`), and fixed-price ETH listings and on-chain fulfillment (royalties + hosting fee) are **live on
 testnet**. Follow-ups before mainnet value: ERC-20 payment tokens, NFT-for-NFT + criteria
 **barter** and **offers** (the Seaport-compatible surface in
 `src/interfaces/IPerpetualSettlement.sol`), the **cross-chain escrow bridge**,

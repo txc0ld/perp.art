@@ -4,6 +4,8 @@ Thanks for testing **Perpetual**! You'll upload a piece of art and commit it to 
 
 The goal: confirm your artwork really gets stored across **five independent shards** — an on-chain SSTORE2 STATE proof, an on-chain high-res LOG copy, plus IPFS, Arweave, and Irys — and recorded on-chain.
 
+You can also test **collections** (create your own sovereign contract via the Collection step) and **editions** (mint N copies of one artwork that share a single storage footprint).
+
 ---
 
 ## What you'll need
@@ -39,7 +41,9 @@ You need a tiny bit of test ETH for gas (the mint + storage records are a few sm
 2. **Drop your file** onto the upload box, or click to choose one. You should see **your actual artwork** appear as the preview.
 3. Fill in **Artist name** and **Title** (required).
 4. Optional: add a **royalty %**, a **description**, and any **Attributes** (e.g. `Background → Nebula`).
-5. Step through **Royalty → Permanence → Lock → Review**. On Review you'll see your art, details, and the storage shards that will be written.
+5. Step through **Royalty → Permanence → Lock → Collection → Review**.
+   - **Collection step:** choose "Default (open)" to mint into the shared contract, or pick one of your deployed collections, or click "New collection" to deploy a sovereign `ForeverLibrary` contract on-chain (one wallet confirmation). You can also set the **mint type** here: **1-of-1** (single token) or **Edition** (N copies sharing one upload, UI capped at 10).
+6. On Review you'll see your art, details, collection, mint type, and the storage shards that will be written.
 
 ## Step 5 — Mint
 1. Click **Mint onchain**.
@@ -78,4 +82,7 @@ Thank you! 🙏
 ### Notes / known limits
 - File size cap is **4.4 MB** for now (longer videos aren't supported yet).
 - The **Arweave** link can take a couple of minutes to resolve in a browser while the transaction propagates across the network — that's normal; the file is already stored.
+- **Edition size** is capped at 10 in the UI; each token requires its own shard-record wallet confirmation in the recording phase, so an edition of 10 means up to 10 extra confirmations.
+- **New collection** requires one wallet confirmation to deploy the `ForeverLibrary` contract; larger collections cost more gas than the Default open collection.
+- Catalog text-search covers the mock index only — a known lite-indexer limitation.
 - This is a **testnet** — tokens minted here aren't on Ethereum/Base mainnet and have no real value.

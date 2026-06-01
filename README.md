@@ -28,14 +28,19 @@ plus **IPFS, Arweave, and Irys** — backstopped by the STATE shard that lasts a
 > with full provenance. Anyone can re-index the public contracts and storage networks and
 > rebuild the marketplace. That invariant is the product.
 
-The contracts (ForeverLibrary with SSTORE2 + LogLedger + PerpetualSettlement) are **deployed to
-Base Sepolia and Ethereum Sepolia**. The mint pipeline — real uploads, real on-chain storage,
-relayer, and resolver — is **live on tryperpetual.art**. Minted tokens have real live pages at
-`/token/onchain/[chainId]/[tokenId]`; a connected wallet's owned works are listed on the profile;
-explore and collections surface real on-chain tokens merged with the demo gallery; and
-fixed-price ETH trading (EIP-712 signed listings, on-chain fulfillment via PerpetualSettlement)
-is live. The system is verified end-to-end on testnet; it is **unaudited** and **not yet on
-mainnet**. This repository also contains the full production-grade frontend, published
+The contracts (ForeverLibrary with SSTORE2 + LogLedger + PerpetualSettlement + ForeverLibraryFactory)
+are **deployed to Base Sepolia and Ethereum Sepolia**. The mint pipeline — real uploads, real on-chain
+storage, relayer, and resolver — is **live on tryperpetual.art**. Collections are sovereign contracts:
+`ForeverLibraryFactory.createCollection(name, symbol)` deploys an artist-owned `ForeverLibrary` in one
+transaction and emits an event for discovery. Editions (`mintEdition`) mint N ERC-721 copies of one
+artwork that share a single on-chain STATE proof, one LOG shard, and one IPFS/Arweave/Irys copy;
+each token is individually owned and tradeable. Minted tokens have real live pages at
+`/token/onchain/[chainId]/[contract]/[tokenId]`; per-collection pages at
+`/collections/onchain/[chainId]/[contract]`; a connected wallet's owned works are listed on the
+profile; explore and collections surface real on-chain tokens (all factory collections) merged with
+the demo gallery; and fixed-price ETH trading (EIP-712 signed listings, on-chain fulfillment via
+PerpetualSettlement) is live. The system is verified end-to-end on testnet; it is **unaudited** and
+**not yet on mainnet**. This repository also contains the full production-grade frontend, published
 architecture artifacts, and the indexer specification.
 
 ---
@@ -49,7 +54,7 @@ architecture artifacts, and the indexer specification.
 - A dedicated **Rankings** page with time-window, chain, and category filters
 - Token item pages with a sticky buy box, accordion detail sections, and offers / activity
 - Profile with Collected / Created / Activity / Sovereign-contract management
-- A guided **mint** flow with shard configuration, royalty, and optional locking (live on testnet — real uploads, real on-chain SSTORE2 + LogLedger storage)
+- A guided **mint** flow with collection picker (Default / your sovereign contract / create new via ForeverLibraryFactory), mint-type selector (1-of-1 or edition of N, editions share one STATE/LOG/off-chain copy), shard configuration, royalty, and optional locking (live on testnet — real uploads, real on-chain SSTORE2 + LogLedger storage)
 
 **One-stop, multi-chain**
 - **Nine networks** indexed and traded as one marketplace: **Ethereum, Base, Polygon, Arbitrum,
@@ -103,8 +108,8 @@ architecture artifacts, and the indexer specification.
 | UI | React 19, Tailwind CSS v4 |
 | Language | TypeScript (strict) |
 | Type faces | Inter, JetBrains Mono, Plus Jakarta Sans |
-| Data | Mint, on-chain read layer, lite indexer, and fixed-price trading are live on testnet; mock gallery (`src/lib/mock-data.ts`) coexists as demo content |
-| Contracts | ForeverLibrary (ERC-721 + ERC-2981 + SSTORE2 STATE shard + Log enum), LogLedger (event-log high-res shard), PerpetualSettlement (Seaport-compatible, NFT-for-NFT + criteria barter + royalty enforcement) — deployed to Base Sepolia + Ethereum Sepolia, unaudited |
+| Data | Mint, on-chain read layer, lite indexer (all factory collections enumerated), and fixed-price trading are live on testnet; mock gallery (`src/lib/mock-data.ts`) coexists as demo content |
+| Contracts | ForeverLibrary (ERC-721 + ERC-2981 + SSTORE2 STATE shard + Log enum + `mintEdition`), ForeverLibraryFactory (`createCollection` → sovereign FL per artist), LogLedger (event-log high-res shard), PerpetualSettlement (Seaport-compatible, NFT-for-NFT + criteria barter + royalty enforcement) — deployed to Base Sepolia + Ethereum Sepolia, unaudited |
 | Networks | 9 chains: Ethereum, Base, Polygon, Arbitrum, Optimism, Zora (EVM) + Solana, Tezos, Flow |
 
 No external image assets, no UI dependencies beyond the framework. All artwork is generated.
@@ -206,19 +211,23 @@ Live: **https://tryperpetual.art**
 
 ## Status
 
+**Collections and sovereign contracts are live** on testnet. `ForeverLibraryFactory.createCollection(name, symbol)` deploys a new artist-owned `ForeverLibrary` contract in one transaction and emits a `CollectionCreated` event; the factory enumerates every collection. The canonical contract is the "Default (open) collection." Deploying a collection from the Profile page is a real on-chain deploy.
+
+**Editions are live.** `mintEdition` mints N ERC-721 tokens of one artwork that share one on-chain SSTORE2 STATE proof, one LogLedger LOG copy, and one IPFS/Arweave/Irys copy (storage written once); each token is tagged `edition X / N` and is individually owned and tradeable. The mint wizard UI caps edition size at 10 (the contract allows up to 100).
+
 **Minting and storage are live** on testnet (Base Sepolia + Ethereum Sepolia). ForeverLibrary
-(SSTORE2 STATE shard + Log enum), LogLedger, and PerpetualSettlement are deployed and
+(SSTORE2 STATE shard + Log enum + `mintEdition`), ForeverLibraryFactory, LogLedger, and PerpetualSettlement are deployed and
 verified end-to-end: real artist uploads (direct-to-Vercel-Blob, up to ~100 MB), IPFS/Arweave/Irys
 pinning, relayer-published LOG shard, on-chain SSTORE2 STATE shard written at mint, and a
 Merkle-verifying LOG resolver at `/api/shard/log/[ledger]/[fileId]`.
 
 **On-chain read layer is live.** Minted tokens have real live pages at
-`/token/onchain/[chainId]/[tokenId]` (live shards, high-res LOG rendered via the resolver,
-provenance, permanence panel). A connected wallet's owned works are listed on the profile
+`/token/onchain/[chainId]/[contract]/[tokenId]` (live shards, high-res LOG rendered via the resolver,
+provenance, permanence panel); per-collection pages at `/collections/onchain/[chainId]/[contract]`. A connected wallet's owned works are listed on the profile
 (`/api/onchain/owned`).
 
 **Lite indexer is live.** `/explore` and `/collections` surface real on-chain tokens (scanned
-from `TokenMinted` events, cached) merged with the mock demo gallery; live tiles are tagged
+from `TokenMinted` events across all factory collections, cached) merged with the mock demo gallery; live tiles are tagged
 "on-chain". Text-search still covers the mock index only — a known lite-indexer limitation.
 
 **Fixed-price trading is live.** ETH listings are signed via EIP-712 and stored in a Blob

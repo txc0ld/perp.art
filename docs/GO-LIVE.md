@@ -4,15 +4,16 @@ The complete set of objectives to take Perpetual from the current state — mint
 on-chain read layer, lite indexer, and fixed-price ETH trading all live on testnet — to a
 fully live marketplace with real wallet integration, a DB-backed indexer, and mainnet contracts.
 
-**What's already live (testnet):** ForeverLibrary (SSTORE2 STATE shard + Log enum), LogLedger,
+**What's already live (testnet):** ForeverLibrary (SSTORE2 STATE shard + Log enum + `mintEdition`), ForeverLibraryFactory (`createCollection` → sovereign FL per artist, factory-enumerated), LogLedger,
 and PerpetualSettlement are deployed to Base Sepolia + Ethereum Sepolia. The mint pipeline
 (direct-to-Vercel-Blob uploads → IPFS/Arweave/Irys pinning → relayer LOG shard → on-chain
 SSTORE2 STATE shard) is verified end-to-end. A Merkle-verifying LOG resolver
 (`/api/shard/log/[ledger]/[fileId]`) reconstructs and serves the LOG shard from chain events.
+Collections are sovereign contracts; editions share one STATE/LOG/off-chain copy across N tokens.
 
-**Also live (testnet):** the on-chain read layer (`/token/onchain/[chainId]/[tokenId]` — real
+**Also live (testnet):** the on-chain read layer (`/token/onchain/[chainId]/[contract]/[tokenId]` and per-collection `/collections/onchain/[chainId]/[contract]` — real
 shards, LOG resolver, provenance, permanence panel; profile owned-list via `/api/onchain/owned`),
-a lite indexer (explore/collections surface real `TokenMinted` tokens merged with the demo
+a lite indexer (explore/collections surface real `TokenMinted` tokens across all factory-discovered collections merged with the demo
 gallery; `/api/indexer/tokens`), and fixed-price ETH trading (EIP-712 signed listings stored in
 Blob orderbook, on-chain fulfillment via PerpetualSettlement; `/api/orders`).
 
@@ -41,11 +42,11 @@ so almost no component rewrites are needed.
 - [ ] Error tracking (Sentry), analytics, email (Resend), uptime monitoring accounts.
 
 ## 3. Smart contracts - Asset & Provenance (Forever Library)
-- [x] `contracts/ForeverLibrary.sol`: ERC-721 + ERC-2981, URI sharding, `shard0Configured`, `selectedShardIndex`, `isLocked`, `getMintData`, edit windows then immutability, lock, reentrancy guards — **deployed to Base Sepolia + Ethereum Sepolia**.
-- [x] **SSTORE2 STATE shard** (Shard 0): low-res canonical image (image downscale / video poster / SVG cover-card, ≤24 KB) stored as contract bytecode via SSTORE2. Content hash computed on-chain. Mandatory at mint.
-- [x] **LogLedger contract**: full-res media in event logs (~8 gas/byte); Merkle root + size in state; relayer pipeline open → upload → seal — **deployed and live**.
+- [x] `contracts/ForeverLibrary.sol`: ERC-721 + ERC-2981, URI sharding, `shard0Configured`, `selectedShardIndex`, `isLocked`, `getMintData`, edit windows then immutability, lock, reentrancy guards, `mintEdition` (N ERC-721 tokens sharing one STATE/LOG/off-chain copy) — **deployed to Base Sepolia + Ethereum Sepolia**.
+- [x] **SSTORE2 STATE shard** (Shard 0): low-res canonical image (image downscale / video poster / SVG cover-card, ≤24 KB) stored as contract bytecode via SSTORE2. Content hash computed on-chain. Mandatory at mint. For editions, one pointer shared across all N tokens.
+- [x] **LogLedger contract**: full-res media in event logs (~8 gas/byte); Merkle root + size in state; relayer pipeline open → upload → seal — **deployed and live**. For editions, one LOG file shared across N tokens.
 - [x] On-mint immutable provenance + content-hash anchoring + `TokenMinted`/`ShardConfigured`/`ShardsLocked` events.
-- [ ] Sovereign-contract registry so artist-deployed Forever Library instances can be registered/recognized and indexed (PRD 7.5, 17.5).
+- [x] **ForeverLibraryFactory**: `createCollection(name, symbol, editWindow)` deploys an artist-owned `ForeverLibrary`, emits `CollectionCreated`, enumerates via `collectionsCount`/`collectionAt` — **deployed to Base Sepolia + Ethereum Sepolia**. Sovereign-contract registry fulfilled by factory discovery (PRD 7.5, 17.5).
 - [x] Gas-cost validation for full vs low-res onchain proof: STATE shard uses ≤24 KB image downscale / video poster / SVG cover-card (PRD 17.2).
 
 ## 4. Smart contracts - Settlement
@@ -82,7 +83,7 @@ so almost no component rewrites are needed.
 - [ ] Non-EVM wallet adapters (if trading those chains).
 
 ## 9. Indexer (replace read accessors in `src/lib/mock-data.ts`)
-- [x] **Lite indexer live on testnet**: `TokenMinted` event scan → Blob cache → `/api/indexer/tokens`; explore and collections surface real on-chain tokens merged with the demo gallery; live tiles tagged "on-chain". Catalog text-search still covers the mock index only.
+- [x] **Lite indexer live on testnet**: `TokenMinted` event scan across all factory-discovered collections → Blob cache → `/api/indexer/tokens`; explore and collections surface real on-chain tokens merged with the demo gallery; live tiles tagged "on-chain". Catalog text-search still covers the mock index only.
 - [ ] Per-chain event ingestion (mint, shard config, transfers, settlement, swaps) into Postgres (full DB-backed indexer — replaces lite Blob cache).
 - [ ] Implement the published schema + REST endpoints from `docs/INDEXER_SPEC.md` (`/v1/tokens`, `/v1/collections`, `/v1/orders`, `/v1/swaps`, `/v1/search`, `/v1/featured`, rankings/stats).
 - [ ] Reorg/finality handling, backfill from contract genesis, idempotent re-indexing.
@@ -92,7 +93,7 @@ so almost no component rewrites are needed.
 - [ ] Caching (Redis), pagination, rate limits, API keys.
 
 ## 10. Orderbook service
-- [x] **Fixed-price ETH listings live on testnet**: EIP-712 signed orders stored in Blob orderbook; on-chain fulfillment via PerpetualSettlement; List/Buy UI on live token pages (`/api/orders`).
+- [x] **Fixed-price ETH listings live on testnet**: EIP-712 signed orders stored in Blob orderbook; on-chain fulfillment via PerpetualSettlement; List/Buy UI on live token pages (`/api/orders`). Works across all collection contracts.
 - [ ] Offers, NFT-for-NFT token swaps, criteria swaps — remaining order types.
 - [ ] Signature + balance/approval validation; expiry; nonce/counter cancellation sync (full production hardening).
 - [ ] Listing-eligibility gate (shard0 configured + content-hash match + recognized Forever Library contract).
@@ -196,7 +197,7 @@ so almost no component rewrites are needed.
 
 ## Leanest path to "live with real data"
 
-**Mint + storage, on-chain read layer, lite indexer, and fixed-price ETH trading are already
+**Mint + storage, collections (sovereign contracts via ForeverLibraryFactory), editions (shared-storage N-of-N), on-chain read layer, lite indexer, and fixed-price ETH trading are already
 live on testnet.** The remaining path to a mainnet v1:
 **6 (audit + mainnet deploy) -> 8 (wallet/signing) -> 9 (DB-backed indexer) ->
 12 (live verification service)** on Ethereum + Base, same-chain trading only. Multi-chain

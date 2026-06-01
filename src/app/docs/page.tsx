@@ -33,7 +33,7 @@ import { Callout, DefRow, DocSection, Term } from "@/components/docs/DocsKit";
 export const metadata: Metadata = {
   title: "Documentation - Perpetual",
   description:
-    "The definitive guide to how Perpetual works: the five-shard permanence model — a mandatory SSTORE2 STATE shard plus a high-res LOG shard and three permanent off-chain copies — nine supported networks, NFT-for-NFT and criteria swaps, atomic cross-chain settlement, enforced ERC-2981 royalties, ENS identities, the Permanence Score, the Vanish Test, the Certificate of Permanence, sovereign contracts, and a rebuildable, public-data indexer.",
+    "The definitive guide to how Perpetual works: the five-shard permanence model — a mandatory SSTORE2 STATE shard plus a high-res LOG shard and three permanent off-chain copies — sovereign collection contracts (ForeverLibraryFactory), editions (N tokens sharing one storage footprint), nine supported networks, NFT-for-NFT and criteria swaps, atomic cross-chain settlement, enforced ERC-2981 royalties, ENS identities, the Permanence Score, the Vanish Test, the Certificate of Permanence, and a rebuildable, public-data indexer.",
 };
 
 export default function DocsPage() {
@@ -498,14 +498,28 @@ export default function DocsPage() {
               index="09"
               eyebrow="Artist sovereignty"
               title="Deploy and own your contract outright."
-              lede="Artists can deploy their own Forever Library contract instance rather than minting into a shared marketplace contract. They own it outright, and they can leave with it intact."
+              lede="Artists deploy their own Forever Library contract instance via ForeverLibraryFactory rather than minting into a shared marketplace contract. They own it outright, and they can leave with it intact."
             >
+              <p>
+                <Term>ForeverLibraryFactory.createCollection(name, symbol)</Term>{" "}
+                deploys a new <Term>ForeverLibrary</Term> owned by your wallet in
+                one transaction and emits a <Term>CollectionCreated</Term> event
+                so the indexer discovers it automatically. The canonical "Default
+                (open) collection" is the shared ForeverLibrary; sovereign
+                collections are distinct contracts at their own address, addressed
+                as <Term>[chainId]/[contract]/[tokenId]</Term>.
+              </p>
               <p>
                 A sovereign contract is yours. Perpetual indexes it the same way
                 it indexes native mints, as a federated index over independently
                 owned contracts. Nothing about your collection is held hostage by
                 the marketplace: if you leave, your contract, your tokens, their
                 provenance, and their permanence all leave with you, unchanged.
+              </p>
+              <p>
+                PFP drops and named series: create a collection, then mint
+                multiple distinct 1-of-1s into it one at a time. Batch upload is
+                a planned convenience; the contract supports it now.
               </p>
               <p>
                 This is the difference between renting space on a platform and
@@ -577,7 +591,11 @@ export default function DocsPage() {
                     configure permanence. The mandatory <Term>shard 0</Term>{" "}
                     STATE shard (SSTORE2) is auto-configured; the LOG shard plus
                     IPFS, Arweave, and Irys copies are added by default.
-                    Optionally lock the shards for guaranteed immutability.
+                    Choose a collection (Default / your sovereign contract / deploy
+                    a new one) and a mint type (<Term>1-of-1</Term> or{" "}
+                    <Term>Edition</Term> of N — editions share one STATE/LOG/off-chain
+                    copy, each token individually owned). Optionally lock the shards
+                    for guaranteed immutability.
                   </p>
                 </li>
                 <li className="flex gap-4">
