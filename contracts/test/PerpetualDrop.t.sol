@@ -273,6 +273,93 @@ contract PerpetualDropTest is Test {
         assertEq(drop.ownerOf(1), owner, "token intact");
     }
 
+    /// A burn (transfer to address(0)) is hard-reverted in code via the
+    /// _update override (BurnNotSupported), independent of any burn entrypoint.
+    /// This protects the manual ERC-2309 anchor scheme from token resurrection.
+    /// We use a test subclass that exposes a burn routed through _update — the
+    /// exact path a future burn function would take — to prove the guard fires.
+    function test_BurnViaUpdateRevertsBurnNotSupported() public {
+        BurnableDrop b = new BurnableDrop(
+            "Burn", "BRN", owner, ROYALTY_BPS, MAX_SUPPLY, PLACEHOLDER
+        );
+        vm.prank(owner);
+        b.mintBatch(owner, 3);
+
+        // The _update guard rejects to == address(0).
+        vm.expectRevert(PerpetualDrop.BurnNotSupported.selector);
+        b.burn(1);
+
+        // Standard transfer entrypoints also reject zero-address (OZ guards it
+        // first with ERC721InvalidReceiver), so no-burn holds end to end.
+        vm.prank(owner);
+        vm.expectRevert();
+        b.transferFrom(owner, address(0), 2);
+
+        // Token still owned; never resurrectable because it was never burned.
+        assertEq(b.ownerOf(1), owner, "token 1 intact");
+        assertEq(b.ownerOf(2), owner, "token 2 intact");
+    }
+
+    /// Mints and ordinary transfers still work with the no-burn _update guard.
+    function test_MintAndTransferStillWorkWithBurnGuard() public {
+        vm.prank(owner);
+        drop.mintBatch(owner, 2); // mint: from == address(0), must succeed
+
+        vm.prank(owner);
+        drop.transferFrom(owner, buyer, 1); // ordinary transfer must succeed
+        assertEq(drop.ownerOf(1), buyer, "transfer ok");
+        assertEq(drop.ownerOf(2), owner, "other intact");
+    }
+
+    /// Interleaved multi-recipient batches: Alice gets ids 1..5, Bob 6..10.
+    /// ownerOf/balanceOf resolve correctly across both anchor ranges.
+    function test_MintBatchMultipleRecipients() public {
+        address alice = address(0xA11);
+        address bob = address(0xB0B0);
+
+        vm.prank(owner);
+        drop.mintBatch(alice, 5); // ids 1..5
+        vm.prank(owner);
+        drop.mintBatch(bob, 5);   // ids 6..10
+
+        assertEq(drop.totalMinted(), 10, "total");
+        assertEq(drop.balanceOf(alice), 5, "alice balance");
+        assertEq(drop.balanceOf(bob), 5, "bob balance");
+
+        for (uint256 id = 1; id <= 5; id++) {
+            assertEq(drop.ownerOf(id), alice, "alice range");
+        }
+        for (uint256 id = 6; id <= 10; id++) {
+            assertEq(drop.ownerOf(id), bob, "bob range");
+        }
+
+        // A transfer of Bob's first token doesn't disturb Alice's range or
+        // Bob's neighbors (anchor lookup still correct after materialization).
+        vm.prank(bob);
+        drop.transferFrom(bob, alice, 6);
+        assertEq(drop.ownerOf(6), alice, "bob->alice transfer");
+        assertEq(drop.ownerOf(5), alice, "alice boundary intact");
+        assertEq(drop.ownerOf(7), bob, "bob boundary intact");
+        assertEq(drop.balanceOf(alice), 6, "alice +1");
+        assertEq(drop.balanceOf(bob), 4, "bob -1");
+    }
+
+    /// contractURI escapes the baseURI: a baseURI containing a double-quote is
+    /// JSON-escaped in the image field rather than breaking out of the JSON.
+    function test_ContractURIEscapesBaseURI() public {
+        PerpetualDrop evil = new PerpetualDrop(
+            "Evil", "EVL", owner, ROYALTY_BPS, MAX_SUPPLY,
+            'ipfs://x","injected":"pwned'
+        );
+        string memory prefix = "data:application/json;base64,";
+        string memory json =
+            string(Base64.decode(_slice(evil.contractURI(), bytes(prefix).length)));
+        // The raw quote is escaped inside the image string.
+        assertTrue(_contains(json, 'ipfs://x\\",\\"injected\\":\\"pwned'), "baseURI escaped");
+        // No unescaped injected top-level key broke out.
+        assertTrue(!_contains(json, '","injected":"pwned"'), "no injected key");
+    }
+
     /*//////////////////////////////////////////////////////////////////////
                                     HELPERS
     //////////////////////////////////////////////////////////////////////*/
@@ -308,5 +395,25 @@ contract PerpetualDropTest is Test {
             if (ok) return true;
         }
         return false;
+    }
+}
+
+/// @dev Test-only subclass that adds a burn routed through `_update`, exactly
+///      the path a future production burn function would take. PerpetualDrop's
+///      `_update` override must reject it (BurnNotSupported), proving the
+///      no-burn invariant is enforced in code, not just by the absence of a
+///      burn entrypoint.
+contract BurnableDrop is PerpetualDrop {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        address owner_,
+        uint96 royaltyBps,
+        uint256 maxSupply_,
+        string memory placeholderBaseURI_
+    ) PerpetualDrop(name_, symbol_, owner_, royaltyBps, maxSupply_, placeholderBaseURI_) {}
+
+    function burn(uint256 tokenId) external {
+        _update(address(0), tokenId, address(0));
     }
 }

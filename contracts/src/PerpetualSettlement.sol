@@ -107,6 +107,13 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
     ///      market by reporting an absurd royalty.
     uint96 public constant MAX_ROYALTY_BPS = 1000; // 10%
 
+    /// @dev Hard cap on the Perpetual hosting fee honored at settlement: 1.50%,
+    ///      mirroring ForeverLibrary.MAX_HOSTING_FEE_BPS. The fee is read live
+    ///      from the NFT via `hostingFeeBps()`; a hostile or buggy NFT could
+    ///      report an absurd value and brick every sale (RoyaltyExceedsPrice).
+    ///      Clamping (not reverting) keeps sales settling regardless.
+    uint96 public constant MAX_HOSTING_FEE_BPS = 150; // 1.50%
+
     bytes32 public constant ORDER_TYPEHASH = keccak256(
         "Order(address seller,address nft,uint256 tokenId,address paymentToken,uint256 price,uint256 startTime,uint256 endTime,uint256 counter,uint256 salt)"
     );
@@ -192,7 +199,12 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         uint256 protocolFee = (order.price * _protocolFeeBps) / BPS_DENOMINATOR;
         // Perpetual hosting fee: only set on Perpetual-hosted tokens (PRD §7),
         // read from the NFT itself so it follows the token to any marketplace.
-        uint256 hostingFee = (order.price * _hostingFeeBps(order.nft, order.tokenId)) / BPS_DENOMINATOR;
+        // Clamp to MAX_HOSTING_FEE_BPS (mirrors the royalty clamp above): a
+        // hostile/buggy NFT reporting a huge hostingFeeBps must not be able to
+        // brick the sale (RoyaltyExceedsPrice) or over-charge.
+        uint256 hostingFeeBpsClamped = _hostingFeeBps(order.nft, order.tokenId);
+        if (hostingFeeBpsClamped > MAX_HOSTING_FEE_BPS) hostingFeeBpsClamped = MAX_HOSTING_FEE_BPS;
+        uint256 hostingFee = (order.price * hostingFeeBpsClamped) / BPS_DENOMINATOR;
         if (royaltyAmount + protocolFee + hostingFee > order.price) revert RoyaltyExceedsPrice();
         uint256 sellerProceeds = order.price - royaltyAmount - protocolFee - hostingFee;
 

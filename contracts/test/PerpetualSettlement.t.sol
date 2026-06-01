@@ -224,6 +224,34 @@ contract PerpetualSettlementTest is Test {
         assertEq(seller.balance, PRICE - royalty - fee, "seller gets remainder");
     }
 
+    /// A hostile NFT reporting an absurd hostingFeeBps is clamped to
+    /// MAX_HOSTING_FEE_BPS (1.5%) so it cannot brick the sale or over-charge.
+    /// Without the clamp, fee+royalty+hosting would exceed price and revert.
+    function test_HostileHostingFeeClampedToMax() public {
+        HostileHostingFeeNFT evil = new HostileHostingFeeNFT(creator);
+        evil.mintTo(seller, 1);
+        vm.prank(seller);
+        evil.setApprovalForAll(address(exchange), true);
+
+        PerpetualSettlement.Order memory order = PerpetualSettlement.Order({
+            seller: seller, nft: address(evil), tokenId: 1,
+            paymentToken: address(0), price: PRICE, startTime: 0,
+            endTime: block.timestamp + 1 days, counter: 0, salt: 123
+        });
+        bytes memory sig = _sign(order, SELLER_PK);
+
+        vm.deal(buyer, 10 ether);
+        vm.prank(buyer);
+        exchange.fulfillOrder{value: PRICE}(order, sig); // must NOT revert
+
+        uint256 royalty = (PRICE * exchange.MAX_ROYALTY_BPS()) / 10_000; // evil reports price; clamped to 10%
+        uint256 fee = (PRICE * exchange.protocolFeeBps()) / 10_000;
+        uint256 hosting = (PRICE * exchange.MAX_HOSTING_FEE_BPS()) / 10_000; // clamped to 1.5%
+        assertEq(evil.ownerOf(1), buyer, "buyer owns NFT");
+        assertEq(feeRecipient.balance, fee + hosting, "hosting clamped + protocol fee");
+        assertEq(seller.balance, PRICE - royalty - fee - hosting, "seller gets remainder");
+    }
+
     /// price == 0 reverts (ZeroPrice).
     function test_ZeroPriceReverts() public {
         PerpetualSettlement.Order memory order = _order();
@@ -329,6 +357,54 @@ contract HostileRoyaltyNFT {
     }
 
     /// Reports royalty == salePrice (would drain the buyer if not clamped).
+    function royaltyInfo(uint256, uint256 salePrice) external view returns (address, uint256) {
+        return (royaltyReceiver, salePrice);
+    }
+
+    function supportsInterface(bytes4) external pure returns (bool) {
+        return true;
+    }
+}
+
+/// @dev ERC-721 reporting an absurd hostingFeeBps (and royalty == price). Both
+///      must be clamped at settlement, else fee+royalty+hosting > price reverts.
+contract HostileHostingFeeNFT {
+    mapping(uint256 => address) private _owners;
+    mapping(address => mapping(address => bool)) private _approvals;
+    address public royaltyReceiver;
+
+    constructor(address receiver_) {
+        royaltyReceiver = receiver_;
+    }
+
+    function mintTo(address to, uint256 id) external {
+        _owners[id] = to;
+    }
+
+    function ownerOf(uint256 id) external view returns (address) {
+        return _owners[id];
+    }
+
+    function setApprovalForAll(address op, bool ok) external {
+        _approvals[msg.sender][op] = ok;
+    }
+
+    function isApprovedForAll(address o, address op) external view returns (bool) {
+        return _approvals[o][op];
+    }
+
+    function safeTransferFrom(address from, address to, uint256 id) external {
+        require(_owners[id] == from, "not owner");
+        require(_approvals[from][msg.sender] || msg.sender == from, "not approved");
+        _owners[id] = to;
+    }
+
+    /// Reports a hosting fee of 60,000 bps (600%) — absurd; must be clamped.
+    function hostingFeeBps(uint256) external pure returns (uint16) {
+        return 60_000;
+    }
+
+    /// Reports royalty == salePrice (also clamped to 10% at settlement).
     function royaltyInfo(uint256, uint256 salePrice) external view returns (address, uint256) {
         return (royaltyReceiver, salePrice);
     }

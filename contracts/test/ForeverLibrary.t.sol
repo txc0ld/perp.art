@@ -428,6 +428,153 @@ contract ForeverLibraryTest is Test {
         assertTrue(_contains(json, '"image":"ipfs://x\\"'), "image field intact");
     }
 
+    /*//////////////////////////////////////////////////////////////////////
+                STORAGE-FEE REFUND / ROYALTY / METADATA (AUDIT FIXES)
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// Overpaying the storage fee on a single mint forwards exactly the fee to
+    /// the treasury and refunds the excess to the payer.
+    function test_MintRefundsStorageOverpay() public {
+        vm.prank(owner);
+        fl.setStorageFeeWei(0.01 ether);
+        vm.deal(address(this), 1 ether);
+
+        uint256 treasuryBefore = address(fl.treasury()).balance;
+        uint256 payerBefore = address(this).balance;
+
+        // HostingConfigured must report the actual fee charged, not msg.value.
+        vm.expectEmit(true, false, false, true);
+        emit HostingConfigured(1, 0, 0.01 ether);
+        fl.mint{value: 0.05 ether}(
+            address(this), "A", "Overpay", "image/png", 500,
+            keccak256("m"), bytes("proof"), 0
+        );
+
+        assertEq(address(fl.treasury()).balance - treasuryBefore, 0.01 ether, "treasury got exact fee");
+        // Payer spent only the fee; the 0.04 overpayment was refunded.
+        assertEq(payerBefore - address(this).balance, 0.01 ether, "payer refunded overpay");
+    }
+
+    /// Overpaying on an edition forwards exactly the (once-charged) fee and
+    /// refunds the rest.
+    function test_MintEditionRefundsStorageOverpay() public {
+        vm.prank(owner);
+        fl.setStorageFeeWei(0.01 ether);
+        vm.deal(address(this), 1 ether);
+
+        uint256 treasuryBefore = address(fl.treasury()).balance;
+        uint256 payerBefore = address(this).balance;
+
+        fl.mintEdition{value: 0.07 ether}(
+            address(this), "A", "Work", "image/png", 500,
+            keccak256("m"), bytes("proof"), 0, 5
+        );
+
+        assertEq(address(fl.treasury()).balance - treasuryBefore, 0.01 ether, "fee once, exact");
+        assertEq(payerBefore - address(this).balance, 0.01 ether, "edition overpay refunded");
+    }
+
+    /// Paying exactly the fee leaves nothing to refund (no spurious transfer).
+    function test_MintExactFeeNoRefund() public {
+        vm.prank(owner);
+        fl.setStorageFeeWei(0.01 ether);
+        vm.deal(address(this), 1 ether);
+        uint256 payerBefore = address(this).balance;
+        fl.mint{value: 0.01 ether}(
+            address(this), "A", "Exact", "image/png", 500,
+            keccak256("m"), bytes("proof"), 0
+        );
+        assertEq(payerBefore - address(this).balance, 0.01 ether, "no over-refund");
+    }
+
+    /// Royalty above the 10% mint cap reverts (matches the settlement clamp).
+    function test_MintRejectsRoyaltyAboveCap() public {
+        assertEq(fl.MAX_ROYALTY_BPS(), 1000);
+        vm.expectRevert(ForeverLibrary.RoyaltyTooHigh.selector);
+        fl.mint(
+            address(this), "A", "B", "image/png", 1001, // > 10%
+            keccak256("m"), bytes("proof"), 0
+        );
+    }
+
+    /// Royalty exactly at the 10% cap is accepted.
+    function test_MintAcceptsRoyaltyAtCap() public {
+        uint256 id = fl.mint(
+            address(this), "A", "B", "image/png", 1000, // exactly 10%
+            keccak256("m"), bytes("proof"), 0
+        );
+        (, uint256 amount) = fl.royaltyInfo(id, 1 ether);
+        assertEq(amount, (1 ether * 1000) / 10_000);
+    }
+
+    /// mintEdition also enforces the royalty cap.
+    function test_MintEditionRejectsRoyaltyAboveCap() public {
+        vm.expectRevert(ForeverLibrary.RoyaltyTooHigh.selector);
+        fl.mintEdition(
+            address(this), "A", "B", "image/png", 1001,
+            keccak256("m"), bytes("proof"), 0, 2
+        );
+    }
+
+    /// An over-long title is rejected at mint (DoS bound on metadata views).
+    function test_MintRejectsTooLongTitle() public {
+        string memory longTitle = string(new bytes(129)); // > MAX_TITLE_BYTES (128)
+        vm.expectRevert(ForeverLibrary.MetadataTooLong.selector);
+        fl.mint(
+            address(this), "A", longTitle, "image/png", 500,
+            keccak256("m"), bytes("proof"), 0
+        );
+    }
+
+    /// An over-long artistName is rejected at mint.
+    function test_MintRejectsTooLongArtistName() public {
+        string memory longName = string(new bytes(65)); // > MAX_ARTIST_NAME_BYTES (64)
+        vm.expectRevert(ForeverLibrary.MetadataTooLong.selector);
+        fl.mint(
+            address(this), longName, "B", "image/png", 500,
+            keccak256("m"), bytes("proof"), 0
+        );
+    }
+
+    /// An over-long mediaType is rejected at mint (length bound, distinct from
+    /// the charset check).
+    function test_MintRejectsTooLongMediaType() public {
+        // 65 valid-charset bytes ('a' repeated) > MAX_MEDIA_TYPE_BYTES (64).
+        bytes memory mt = new bytes(65);
+        for (uint256 i = 0; i < mt.length; i++) mt[i] = "a";
+        vm.expectRevert(ForeverLibrary.MetadataTooLong.selector);
+        fl.mint(
+            address(this), "A", "B", string(mt), 500,
+            keccak256("m"), bytes("proof"), 0
+        );
+    }
+
+    /// Metadata exactly at the caps is accepted.
+    function test_MintAcceptsMetadataAtCaps() public {
+        string memory title = string(new bytes(128));
+        string memory artist = string(new bytes(64));
+        bytes memory mt = new bytes(64);
+        for (uint256 i = 0; i < mt.length; i++) mt[i] = "a";
+        uint256 id = fl.mint(
+            address(this), artist, title, string(mt), 500,
+            keccak256("m"), bytes("proof"), 0
+        );
+        assertEq(fl.ownerOf(id), address(this));
+    }
+
+    /// mintEdition also bounds metadata length.
+    function test_MintEditionRejectsTooLongTitle() public {
+        string memory longTitle = string(new bytes(129));
+        vm.expectRevert(ForeverLibrary.MetadataTooLong.selector);
+        fl.mintEdition(
+            address(this), "A", longTitle, "image/png", 500,
+            keccak256("m"), bytes("proof"), 0, 2
+        );
+    }
+
+    /// Accept refunds so the refund path can be exercised by this test contract.
+    receive() external payable {}
+
     function _slice(string memory str, uint256 start) internal pure returns (string memory) {
         bytes memory s = bytes(str);
         bytes memory out = new bytes(s.length - start);

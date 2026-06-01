@@ -54,6 +54,7 @@ contract PerpetualDrop is ERC721, ERC2981, Ownable, IERC2309 {
     error BatchTooLarge();
     error ProvenanceNotCommitted();
     error MaxSupplyTooLarge();
+    error BurnNotSupported();
 
     /*//////////////////////////////////////////////////////////////////////
                                     EVENTS
@@ -206,7 +207,7 @@ contract PerpetualDrop is ERC721, ERC2981, Ownable, IERC2309 {
         string memory json = string.concat(
             '{"name":"', LibString.escapeJSON(name()),
             '","description":"A Perpetual folder-permanence collection (IPFS + Arweave folder anchored by an on-chain provenance hash).',
-            '","image":"', _baseTokenURI,
+            '","image":"', LibString.escapeJSON(_baseTokenURI),
             '","seller_fee_basis_points":', LibString.toString(royaltyAmount),
             ',"fee_recipient":"', LibString.toHexStringChecksummed(owner()),
             '"}'
@@ -236,6 +237,25 @@ contract PerpetualDrop is ERC721, ERC2981, Ownable, IERC2309 {
             return coreOwner;
         }
         return address(_sequentialOwnership.lowerLookup(uint96(tokenId)));
+    }
+
+    /// @dev Code-enforce the no-burn invariant. The manual ERC-2309 anchor
+    ///      scheme has no burn bitmap, so a burn would clear the core `_owners`
+    ///      slot while `lowerLookup` keeps resolving the id back to its batch
+    ///      owner — silently resurrecting the "burned" token. Rather than rely
+    ///      on docs + the absence of a burn entrypoint, we hard-revert any
+    ///      transfer to the zero address here. Mints (`from == address(0)`) and
+    ///      ordinary transfers are unaffected; only burns (`to == address(0)`)
+    ///      revert. If burns are ever required, port OZ's `_sequentialBurn`
+    ///      bitmap into `_ownerOf` and remove this guard together.
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        virtual
+        override
+        returns (address)
+    {
+        if (to == address(0)) revert BurnNotSupported();
+        return super._update(to, tokenId, auth);
     }
 
     /*//////////////////////////////////////////////////////////////////////

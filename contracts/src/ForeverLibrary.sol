@@ -60,6 +60,9 @@ contract ForeverLibrary is
     error StorageFeeTransferFailed();
     error InvalidEditionSize();
     error InvalidMediaType();
+    error RoyaltyTooHigh();
+    error MetadataTooLong();
+    error RefundFailed();
 
     /*//////////////////////////////////////////////////////////////////////
                                     TYPES
@@ -81,6 +84,21 @@ contract ForeverLibrary is
 
     /// @dev Maximum tokens in a single edition.
     uint32 public constant MAX_EDITION_SIZE = 100;
+
+    /// @dev Max creator royalty accepted at mint: 1000 bps (10%). Matches the
+    ///      PerpetualSettlement payout clamp (MAX_ROYALTY_BPS) so a royalty set
+    ///      here can always be honored in full at settlement. Royalties above
+    ///      this revert at mint (RoyaltyTooHigh) rather than being silently
+    ///      truncated at sale.
+    uint96 public constant MAX_ROYALTY_BPS = 1000;
+
+    /// @dev Caps (in bytes) on the free-text provenance fields recorded at mint.
+    ///      `tokenURI`/`contractURI` base64+escape these on every view call, so
+    ///      unbounded strings would let an artist gas-brick their own token's
+    ///      metadata reads. Sane upper bounds keep view-call gas bounded.
+    uint256 public constant MAX_TITLE_BYTES = 128;
+    uint256 public constant MAX_ARTIST_NAME_BYTES = 64;
+    uint256 public constant MAX_MEDIA_TYPE_BYTES = 64;
 
     /*//////////////////////////////////////////////////////////////////////
                                     STORAGE
@@ -231,11 +249,13 @@ contract ForeverLibrary is
         bytes calldata proofData,
         uint16 hostingFeeBps_
     ) external payable nonReentrant returns (uint256 tokenId) {
-        if (royaltyBps > _feeDenominator()) revert InvalidRoyalty(); // <= 100%.
+        if (royaltyBps > MAX_ROYALTY_BPS) revert RoyaltyTooHigh(); // <= 10% (settlement clamp).
         if (metadataHash == bytes32(0)) revert EmptyContentHash();
         if (proofData.length == 0) revert EmptyProof();
         if (proofData.length > MAX_PROOF_BYTES) revert ProofTooLarge();
         if (hostingFeeBps_ > MAX_HOSTING_FEE_BPS) revert HostingFeeTooHigh();
+        // Bound free-text provenance so per-view base64+escape stays gas-bounded.
+        _validateMetadataLengths(artistName, title, mediaType);
         // Strict MIME charset so the on-chain `data:<mediaType>;base64,...` URI
         // built in `_stateDataUri` is always well-formed and cannot inject
         // characters that break out of JSON (defense-in-depth with escapeJSON).
@@ -256,16 +276,17 @@ contract ForeverLibrary is
         address statePtr = SSTORE2.write(proofData);
         bytes32 contentHash = keccak256(proofData);
 
+        // Charge exactly the storage fee; any overpayment is refunded below.
+        uint256 fee = hostingFeeBps_ == 0 ? storageFeeWei : 0;
+
         tokenId = _mintOne(
             to, artistName, title, mediaType, royaltyBps, metadataHash,
-            hostingFeeBps_, statePtr, contentHash, 1, 1, msg.value
+            hostingFeeBps_, statePtr, contentHash, 1, 1, fee
         );
 
-        // Forward any artist-paid storage fee to the treasury (interactions last).
-        if (msg.value > 0) {
-            (bool ok, ) = treasury.call{value: msg.value}("");
-            if (!ok) revert StorageFeeTransferFailed();
-        }
+        // Forward exactly the storage fee to the treasury, then refund the
+        // overpayment to the payer (interactions last; nonReentrant guards both).
+        _settleStorageFee(fee);
     }
 
     /// @notice Mint an edition: `editionSize` tokens sharing a single SSTORE2
@@ -293,12 +314,14 @@ contract ForeverLibrary is
         uint16 hostingFeeBps_,
         uint32 editionSize_
     ) external payable nonReentrant returns (uint256 firstTokenId) {
-        if (royaltyBps > _feeDenominator()) revert InvalidRoyalty();
+        if (royaltyBps > MAX_ROYALTY_BPS) revert RoyaltyTooHigh(); // <= 10% (settlement clamp).
         if (metadataHash == bytes32(0)) revert EmptyContentHash();
         if (proofData.length == 0) revert EmptyProof();
         if (proofData.length > MAX_PROOF_BYTES) revert ProofTooLarge();
         if (hostingFeeBps_ > MAX_HOSTING_FEE_BPS) revert HostingFeeTooHigh();
         if (editionSize_ == 0 || editionSize_ > MAX_EDITION_SIZE) revert InvalidEditionSize();
+        // Bound free-text provenance so per-view base64+escape stays gas-bounded.
+        _validateMetadataLengths(artistName, title, mediaType);
         // Strict MIME charset (see mint); keeps every edition token's Shard 0
         // `data:` URI well-formed.
         _validateMediaType(mediaType);
@@ -314,6 +337,9 @@ contract ForeverLibrary is
         address statePtr = SSTORE2.write(proofData);
         bytes32 contentHash = keccak256(proofData);
 
+        // Storage fee is charged ONCE for the whole edition; overpay refunded.
+        uint256 fee = hostingFeeBps_ == 0 ? storageFeeWei : 0;
+
         firstTokenId = _nextTokenId; // capture before looping
 
         for (uint32 i = 0; i < editionSize_; i++) {
@@ -321,14 +347,30 @@ contract ForeverLibrary is
             _mintOne(
                 to, artistName, title, mediaType, royaltyBps, metadataHash,
                 hostingFeeBps_, statePtr, contentHash, editionSize_, i + 1,
-                i == 0 ? msg.value : 0
+                i == 0 ? fee : 0
             );
         }
 
-        // Forward any artist-paid storage fee to the treasury (interactions last).
-        if (msg.value > 0) {
-            (bool ok, ) = treasury.call{value: msg.value}("");
+        // Forward exactly the storage fee to the treasury, then refund the
+        // overpayment to the payer (interactions last; nonReentrant guards both).
+        _settleStorageFee(fee);
+    }
+
+    /// @dev Forward exactly `fee` wei to the treasury and refund any overpayment
+    ///      (`msg.value - fee`) back to the payer. Called as the final action of
+    ///      mint/mintEdition (interactions last; both are nonReentrant). The
+    ///      treasury transfer happens before the refund (CEI ordering); a failed
+    ///      treasury transfer reverts the whole mint, a failed refund reverts so
+    ///      the payer never silently loses the excess.
+    function _settleStorageFee(uint256 fee) internal {
+        if (fee > 0) {
+            (bool ok, ) = treasury.call{value: fee}("");
             if (!ok) revert StorageFeeTransferFailed();
+        }
+        uint256 refund = msg.value - fee; // msg.value >= fee is guaranteed above.
+        if (refund > 0) {
+            (bool ok, ) = payable(msg.sender).call{value: refund}("");
+            if (!ok) revert RefundFailed();
         }
     }
 
@@ -719,6 +761,19 @@ contract ForeverLibrary is
             ";base64,",
             Base64.encode(data)
         );
+    }
+
+    /// @dev Bound the free-text provenance fields so the per-view-call base64 +
+    ///      JSON-escape work in tokenURI/contractURI stays gas-bounded (a hostile
+    ///      or buggy mint can't brick its own metadata reads). Caps are in bytes.
+    function _validateMetadataLengths(
+        string calldata artistName,
+        string calldata title,
+        string calldata mediaType
+    ) internal pure {
+        if (bytes(artistName).length > MAX_ARTIST_NAME_BYTES) revert MetadataTooLong();
+        if (bytes(title).length > MAX_TITLE_BYTES) revert MetadataTooLong();
+        if (bytes(mediaType).length > MAX_MEDIA_TYPE_BYTES) revert MetadataTooLong();
     }
 
     /// @dev Reject an empty `mediaType` or one containing any byte outside the
