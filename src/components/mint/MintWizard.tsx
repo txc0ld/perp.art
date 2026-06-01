@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSwitchChain } from "wagmi";
 import type { Genre, ShardOption } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWallet, connectWallet } from "@/lib/wallet";
@@ -22,6 +23,9 @@ import {
   type MintForm,
   type StepKey,
 } from "./state";
+
+/** Chain we steer an unsupported-network wallet to for a real mint. */
+const ETH_SEPOLIA_ID = 11155111;
 
 const STEP_COPY: Record<StepKey, { title: string; eyebrow: string; blurb: string }> = {
   upload: {
@@ -65,6 +69,7 @@ export function MintWizard({
 }) {
   const wallet = useWallet();
   const onchain = useOnchainMint();
+  const { switchChain, isPending: switching } = useSwitchChain();
   const [form, setForm] = React.useState<MintForm>(() =>
     initialForm(shardOptions, genres),
   );
@@ -112,12 +117,14 @@ export function MintWizard({
       return;
     }
     // Real, multi-shard on-chain mint when a contract is deployed on the
-    // connected chain; otherwise a simulated mint (mainnets have none yet).
+    // connected chain.
     if (onchain.canMintOnchain) {
       await onchain.start(form);
       return;
     }
-    setMinted(true);
+    // No Perpetual contracts on the connected chain (e.g. a mainnet): switch
+    // the wallet to Ethereum Sepolia for a real mint rather than faking one.
+    switchChain?.({ chainId: ETH_SEPOLIA_ID });
   };
 
   const reset = () => {
@@ -247,15 +254,17 @@ export function MintWizard({
                   <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
                     {onchain.canMintOnchain
                       ? `Onchain mint on ${chainLabelForId(onchain.chainId)}`
-                      : "Simulated — switch to Base Sepolia or Ethereum Sepolia for a real mint"}
+                      : "Wrong network — switch to Ethereum Sepolia for a real mint"}
                   </span>
                 )}
-                <Button variant="accent" size="lg" onClick={handleMint}>
+                <Button variant="accent" size="lg" onClick={handleMint} disabled={switching}>
                   {!wallet.connected
                     ? "Connect wallet to mint"
                     : onchain.canMintOnchain
                       ? "Mint onchain"
-                      : "Mint to permanence"}
+                      : switching
+                        ? "Switching network…"
+                        : "Switch to Ethereum Sepolia"}
                   <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" aria-hidden>
                     <path d="M3 8h9m0 0L8 4m4 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
