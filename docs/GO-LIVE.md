@@ -75,15 +75,15 @@ so almost no component rewrites are needed.
 - [ ] Per-chain native currency handling + USD conversion feeds (Coingecko/Chainlink).
 - [ ] Honest per-chain permanence story (Forever Library is EVM-only; document how non-EVM permanence is represented).
 
-## 8. Wallet connect & signing (replace `src/lib/wallet.ts`)
-- [ ] Integrate wagmi + viem + Reown AppKit (or RainbowKit); keep the existing `useWallet()` hook surface so components do not change.
+## 8. Wallet connect & signing (`src/lib/wallet.ts`)
+- [x] **Live**: wagmi + viem + Reown AppKit (WalletConnect) behind the existing `useWallet()` hook surface, so components did not change.
 - [ ] Multi-chain connectors, network switching, account/disconnect, session persistence, mobile deep-links.
 - [ ] EIP-712 typed-data signing for listings/offers/swaps/cancellations; tx submission + status toasts for buys/mints/bridge.
 - [ ] SIWE session for authenticated API calls (watchlists, profiles) if needed.
 - [ ] Non-EVM wallet adapters (if trading those chains).
 
-## 9. Indexer (replace read accessors in `src/lib/mock-data.ts`)
-- [x] **Lite indexer live on testnet**: `TokenMinted` event scan across all factory-discovered collections → Blob cache → `/api/indexer/tokens`; explore and collections surface real on-chain tokens merged with the demo gallery; live tiles tagged "on-chain". Catalog text-search still covers the mock index only.
+## 9. Indexer (`src/lib/web3/indexer.ts` + `drops-indexer.ts`, surfaced via `src/lib/live/catalog.ts`)
+- [x] **Lite indexer live on testnet**: `TokenMinted` event scan across all factory-discovered collections → 60s TTL cache → `/api/indexer/tokens`. Home, explore, and collections surface **only** real on-chain tokens (no mock layer; empty states when the testnet is sparse). Full-text search awaits the DB-backed indexer.
 - [ ] Per-chain event ingestion (mint, shard config, transfers, settlement, swaps) into Postgres (full DB-backed indexer — replaces lite Blob cache).
 - [ ] Implement the published schema + REST endpoints from `docs/INDEXER_SPEC.md` (`/v1/tokens`, `/v1/collections`, `/v1/orders`, `/v1/swaps`, `/v1/search`, `/v1/featured`, rankings/stats).
 - [ ] Reorg/finality handling, backfill from contract genesis, idempotent re-indexing.
@@ -123,7 +123,7 @@ so almost no component rewrites are needed.
 - [ ] (Optional) other name services per chain (SNS, .tez, Flow domains).
 
 ## 14. Frontend live-integration
-- [ ] Swap every `mock-data.ts` accessor for real API calls (signatures map 1:1).
+- [x] **Done**: every surface reads the live on-chain data layer (`src/lib/live/catalog.ts`); the mock layer is deleted.
 - [ ] Real wallet/session state, optimistic UI for trades, real tx/confirmation flows, error/empty/loading states under real latency.
 - [ ] Real-time updates (websockets/polling) for new listings, sales, offers, swap status, bridge progress.
 - [ ] Real Certificate-of-Permanence data; real activity feeds; real owner/holder lists.

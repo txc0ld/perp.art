@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { getLiveCollections } from "@/lib/live/catalog";
 import { GENRES } from "@/lib/catalog-constants";
 import { Section, MonoLabel, EmptyState, ButtonLink } from "@/components/ui";

@@ -25,7 +25,7 @@ export interface MintForm {
   traits: TraitInput[];
 
   // Step 2 - royalty
-  royaltyPct: number; // 0..15
+  royaltyPct: number; // 0..10 (contract caps mint royalty at 10% / 1000 bps)
 
   // Step 3 - permanence shards (which backends are enabled)
   enabledShards: Record<ShardBackend, boolean>;

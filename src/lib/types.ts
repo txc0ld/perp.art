@@ -218,8 +218,8 @@ export interface Token {
   chain: Chain;
   /** Listing-eligibility per PRD §9.6 (derived from permanence). */
   listable: boolean;
-  /** Provenance of this record in the UI: live on-chain vs the mock demo layer. */
-  source?: "onchain" | "mock";
+  /** Provenance of this record in the UI: present and "onchain" for live indexed tokens. */
+  source?: "onchain";
   /** Edition info (only for tokens minted via mintEdition). */
   editionSize?: number;
   editionIndex?: number;

@@ -14,13 +14,13 @@ repository, and records which parts are real code vs. reference scaffold.
 |---|---|---|---|
 | **Asset & Provenance** | Artwork, metadata, ownership, provenance, URI sharding | Fully permanent (Forever Library, the 6 EVM chains) | `contracts/` interfaces + reference impl (scaffold) |
 | **Settlement** | Trades, royalty enforcement, NFT-for-NFT + criteria barter, cross-chain escrow | On-chain (the EVM chains) + escrow bridge for cross-chain swaps | `contracts/PerpetualSettlement.sol` (scaffold) |
-| **Orderbook & Indexer** | Listings, offers, swaps, discovery, search, permanence verification, across 9 chains | Centralized, **rebuildable from public data** | `docs/INDEXER_SPEC.md` + lite live implementation (`/api/indexer/tokens`, `/api/orders`) + `src/lib/mock-data.ts` (demo gallery) |
+| **Orderbook & Indexer** | Listings, offers, swaps, discovery, search, permanence verification, across 9 chains | Centralized, **rebuildable from public data** | `docs/INDEXER_SPEC.md` + the live on-chain indexer (`src/lib/web3/indexer.ts` + `drops-indexer.ts`, surfaced via `src/lib/live/catalog.ts`, `/api/indexer/tokens`, `/api/orders`) — all data read directly from chain |
 | **Frontend** | Web app | Centralized hosting | `src/app/**`, `src/components/**` (production Next.js app) |
 
 ### Multi-chain (one-stop shop)
 
 Perpetual indexes and trades across **nine networks**, presented as a single marketplace.
-Chain metadata is authoritative in `src/lib/mock-data.ts` (`CHAINS` / `getChainMeta` / `getChains`).
+Chain metadata is authoritative in `src/lib/chains.ts` (`CHAINS` / `getChainMeta` / `getChains`).
 
 | Group | Networks | Permanence | Native currency |
 |---|---|---|---|
@@ -65,12 +65,13 @@ on *"This artwork survives even if Perpetual disappears."*
 
 ### Domain model & data layer (complete)
 - `src/lib/types.ts` - the full PRD domain (shards, permanence, provenance, royalty, listings/offers, sovereign contracts).
-- `src/lib/mock-data.ts` - a deterministic, internally-consistent dataset that implements the
-  `docs/INDEXER_SPEC.md` accessor shapes in-memory. Stands in for the indexer + orderbook +
-  verification service so the app is fully functional offline. Swap for live API calls with no
-  component changes.
+- `src/lib/live/catalog.ts` - the live data layer. Aggregates the on-chain indexers
+  (`src/lib/web3/indexer.ts` + `drops-indexer.ts`) across the live/testnet chains and exposes the
+  `docs/INDEXER_SPEC.md` accessor shapes. Reads **only** real indexed data — empty arrays / zeroed
+  stats when there is none — and never throws (degrades to empty). There is no mock layer.
+- `src/lib/chains.ts` - authoritative chain metadata (`CHAINS` / `getChainMeta` / `getChains`).
 - `src/components/art/GenerativeArt.tsx` - deterministic, SSR-safe SVG artwork (no external image
-  assets); every token renders reproducible per-genre generative art.
+  assets); used as the fallback render when a live token's media can't be resolved.
 
 ### Trading & swaps (complete UX over the typed layer)
 
@@ -168,21 +169,21 @@ end-to-end on the live site (tryperpetual.art):
 - **On-chain read layer is live.** Minted tokens have real pages at
   `/token/onchain/[chainId]/[contract]/[tokenId]` (real shards, LOG resolver, provenance, permanence
   panel). A connected wallet's owned works are listed on the profile (`/api/onchain/owned`).
-- **Lite indexer is live.** `/explore` and `/collections` surface real on-chain tokens
-  (scanned from `TokenMinted` events across all factory-discovered collections, cached) merged with the mock demo gallery. Live tiles
-  are tagged "on-chain". Catalog text-search still covers the mock index only — a known
-  lite-indexer limitation; a DB-backed indexer is the remaining stage.
+- **Lite indexer is live.** Every surface (`/`, `/explore`, `/collections`) shows **only** real
+  on-chain tokens — scanned from `TokenMinted` events across all factory-discovered collections
+  and cached (60s TTL). No mock gallery; an empty testnet shows honest empty states. A DB-backed
+  indexer (with full text-search) is the remaining stage.
 - **Fixed-price trading is live.** EIP-712 signed ETH listings stored in a Blob orderbook;
   on-chain fulfillment via `PerpetualSettlement` (royalties + hosting fee enforced). Offers,
-  auctions, NFT-for-NFT barter, and cross-chain swaps remain design targets.
-- **Wallet is mocked** (`src/lib/wallet.ts`). Swap for wagmi/viem; the UI contract is in place.
+  auctions, NFT-for-NFT barter, and cross-chain swaps are honest "coming soon".
+- **Wallet is live** (`src/lib/wallet.ts`) over wagmi + Reown AppKit (WalletConnect).
 - **Community curation** (PRD §11) is surfaced as the featured surface; full Sybil-resistant voting is
   a Phase 2 fast-follow.
 
 These boundaries reflect the PRD's intended phasing (PRD §15): the **core minting + storage
-pipeline**, **on-chain read layer**, **lite indexer**, and **fixed-price trading** are all live
-on testnet. A full DB-backed indexer, real wallet integration (wagmi/viem), security audit, and
-mainnet deployment are the remaining stages.
+pipeline**, **on-chain read layer**, **lite indexer**, **real wallet integration**, and
+**fixed-price trading** are all live on testnet. A full DB-backed indexer, swaps/offers, a
+security audit, and mainnet deployment are the remaining stages.
 
 ---
 

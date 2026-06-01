@@ -81,7 +81,9 @@ export function DropFlow() {
       // A few sample thumbnails from the validated tokens (first 6 images).
       const sample = v.tokens.slice(0, 6).filter((t) => IMAGE_EXT.test(t.imagePath));
       const urls = sample.map((t) => {
-        const part: BlobPart = t.imageBytes as unknown as BlobPart;
+        // Copy into a fresh ArrayBuffer-backed view so the bytes satisfy
+        // BlobPart (ArrayBufferView<ArrayBuffer>) without any unknown cast.
+        const part: BlobPart = new Uint8Array(t.imageBytes);
         return URL.createObjectURL(new Blob([part]));
       });
       setThumbs(urls);
@@ -111,7 +113,7 @@ export function DropFlow() {
     const finalPhase = await drop.start({
       name: name.trim(),
       symbol: deriveSymbol(name.trim()),
-      royaltyBps: Math.round(Math.min(Math.max(royaltyPct, 0), 100) * 100),
+      royaltyBps: Math.round(Math.min(Math.max(royaltyPct, 0), 10) * 100),
       processed: proc.result,
       placeholderBaseURI: proc.result.metadataBaseURI, // placeholder == real folder; reveal re-asserts it
     });
@@ -248,7 +250,7 @@ function ConfigureStage({
           id="drop-royalty"
           type="range"
           min={0}
-          max={15}
+          max={10}
           step={0.5}
           value={royaltyPct}
           onChange={(e) => setRoyaltyPct(Number(e.target.value))}

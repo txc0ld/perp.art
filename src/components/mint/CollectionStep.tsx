@@ -130,7 +130,6 @@ export function CollectionStep({
     }
     void load();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contracts.factory, address, chainId]);
 
   // Deploy a new collection via factory

@@ -18,9 +18,11 @@
  * the active state of the category pills.
  */
 import {
-  getLiveTokens,
+  getLiveTokensSplit,
+  getOpenListings,
+  enrichWithListings,
   getLiveCollections,
-  getLiveMarketStats,
+  computeMarketStats,
 } from "@/lib/live/catalog";
 import { GENRES } from "@/lib/catalog-constants";
 
@@ -49,11 +51,16 @@ export default async function Home({
   const sp = await searchParams;
   const activeGenre = sp.genre;
 
-  const [tokens, collections, stats] = await Promise.all([
-    getLiveTokens(),
+  // One index pass: fetch the tier-split tokens, open listings, and collections
+  // concurrently, then derive both the displayed token list (enriched with
+  // listings) and the market stats from that data — no duplicate indexing.
+  const [split, listings, collections] = await Promise.all([
+    getLiveTokensSplit(),
+    getOpenListings(),
     getLiveCollections(),
-    getLiveMarketStats(),
   ]);
+  const tokens = enrichWithListings(split.all, listings);
+  const stats = computeMarketStats(split.libraryTokens, split.dropTokens, collections);
 
   // Per-collection live page hrefs (serializable, computed on the server).
   const collectionHrefs = Object.fromEntries(

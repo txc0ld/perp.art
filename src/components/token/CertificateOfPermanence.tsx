@@ -91,7 +91,7 @@ function buildSvg(d: CertData): string {
   const BORDER = "#3f3f46";
   const FG = "#ffffff";
   const MUTED = "#a1a1aa";
-  const FAINT = "#71717a";
+  const FAINT = "#8b8b93";
 
   // Shard rows
   const shardStartY = 690;

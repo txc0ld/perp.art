@@ -4,7 +4,7 @@ import * as React from "react";
 import { useMemo, useState } from "react";
 import type { Token } from "@/lib/types";
 import { ArtTile } from "@/components/art/ArtTile";
-import { ButtonLink, SectionHeader } from "@/components/ui";
+import { ButtonLink, SectionHeader, EmptyState } from "@/components/ui";
 import { formatEth } from "@/lib/utils";
 import { SortSelect } from "./SortSelect";
 import { useAccount, useChainId } from "wagmi";
@@ -33,10 +33,13 @@ function OnchainWorks() {
   return (
     <div className="mb-8">
       <h3 className="font-mono text-[11px] uppercase tracking-wider text-faint">Your on-chain works</h3>
-      {loading && <p className="mt-2 text-[13px] text-muted">Reading the chain…</p>}
-      {items && items.length === 0 && !loading && (
-        <p className="mt-2 text-[13px] text-muted">No on-chain works found for this wallet on this network yet.</p>
-      )}
+      <p role="status" aria-live="polite" className="mt-2 text-[13px] text-muted empty:hidden">
+        {loading
+          ? "Reading the chain…"
+          : items && items.length === 0
+            ? "No on-chain works found for this wallet on this network yet."
+            : ""}
+      </p>
       {items && items.length > 0 && (
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {items.map((it) => (
@@ -112,7 +115,11 @@ export function CollectedTab({ tokens, loading }: { tokens: Token[]; loading?: b
         <EmptyState
           title="Nothing collected yet"
           body="Works you acquire appear here, each one anchored onchain and independently verifiable, the day you own it and in twenty years."
-          cta={{ href: "/explore", label: "Explore the catalog" }}
+          action={
+            <ButtonLink href="/explore" variant="secondary" size="md">
+              Explore the catalog
+            </ButtonLink>
+          }
         />
       </div>
     );
@@ -173,24 +180,3 @@ export function TileGridSkeleton() {
   );
 }
 
-export function EmptyState({
-  title,
-  body,
-  cta,
-}: {
-  title: string;
-  body: string;
-  cta?: { href: string; label: string };
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-border bg-surface/40 px-6 py-20 text-center">
-      <p className="text-lg font-medium text-foreground">{title}</p>
-      <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">{body}</p>
-      {cta && (
-        <ButtonLink href={cta.href} variant="secondary" size="md" className="mt-6">
-          {cta.label}
-        </ButtonLink>
-      )}
-    </div>
-  );
-}

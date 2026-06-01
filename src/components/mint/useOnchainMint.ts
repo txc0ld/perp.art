@@ -100,7 +100,8 @@ export function useOnchainMint() {
     setMintedContract(fl);
 
     const originalMime = form.fileMime || form.file.type || "application/octet-stream";
-    const royaltyBps = Math.round(Math.min(Math.max(form.royaltyPct, 0), 100) * 100);
+    // Clamp to the contract's 10% (1000 bps) mint-royalty cap; above it reverts.
+    const royaltyBps = Math.round(Math.min(Math.max(form.royaltyPct, 0), 10) * 100);
     const isEdition = form.mintType === "edition" && form.editionSize > 1;
     const editionSize = isEdition ? Math.max(1, Math.min(10, form.editionSize)) : 1;
 

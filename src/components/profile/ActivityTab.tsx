@@ -3,10 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Token, Chain } from "@/lib/types";
-import { SectionHeader } from "@/components/ui";
+import { SectionHeader, EmptyState } from "@/components/ui";
 import { Identity } from "@/components/identity/Identity";
 import { getChainMeta } from "@/lib/chains";
-import { EmptyState } from "./OwnedTab";
 import { SortSelect } from "./SortSelect";
 import { shortHash, formatEth, relativeTime } from "@/lib/utils";
 

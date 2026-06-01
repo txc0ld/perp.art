@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import type { Token } from "@/lib/types";
 import { ArtTile } from "@/components/art/ArtTile";
-import { SectionHeader } from "@/components/ui";
-import { EmptyState, TileGridSkeleton } from "./OwnedTab";
+import { SectionHeader, EmptyState, ButtonLink } from "@/components/ui";
+import { TileGridSkeleton } from "./OwnedTab";
 import { SortSelect } from "./SortSelect";
 
 type SortKey = "recent" | "price-desc" | "price-asc" | "title";
@@ -49,7 +49,11 @@ export function CreatedTab({ tokens, loading }: { tokens: Token[]; loading?: boo
       <EmptyState
         title="You haven't minted anything yet"
         body="Works you create live here. Mint your first to a sovereign Forever Library contract you own outright, with permanence configured from the first block."
-        cta={{ href: "/mint", label: "Mint your first work" }}
+        action={
+          <ButtonLink href="/mint" variant="secondary" size="md">
+            Mint your first work
+          </ButtonLink>
+        }
       />
     );
   }

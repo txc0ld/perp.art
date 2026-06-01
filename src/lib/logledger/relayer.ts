@@ -118,28 +118,41 @@ export async function publishToLogLedger(params: {
     // lagging RPC replica that hasn't seen the just-mined `open` and spuriously
     // reverts (NotOpened) before sending; an explicit limit avoids the estimate
     // entirely and the tx mines against canonical state.
-    const send = async (functionName: "open" | "upload" | "seal", args: readonly unknown[], gas: bigint) => {
+    // Discriminated union of the three LogLedger writes we issue, each paired
+    // with its exact ABI argument tuple — so the ABI's own type-checking is
+    // preserved (no `any`) while a single helper handles send + receipt.
+    type LedgerWrite =
+      | { fn: "open"; args: readonly [Hex] }
+      | { fn: "upload"; args: readonly [Hex, number, Hex] }
+      | { fn: "seal"; args: readonly [Hex, Hex, bigint, number, CodecValue] };
+
+    const send = async (call: LedgerWrite, gas: bigint) => {
       const hash = await wallet.writeContract({
         address: ledger,
         abi: LOG_LEDGER_ABI,
-        functionName,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        args: args as any,
+        functionName: call.fn,
+        args: call.args,
         gas,
       });
       const receipt = await pub.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") throw new Error(`${functionName} reverted (tx ${hash})`);
+      if (receipt.status !== "success") throw new Error(`${call.fn} reverted (tx ${hash})`);
     };
 
-    if (author === ZERO) await send("open", [fileId], BigInt(120_000));
+    if (author === ZERO) await send({ fn: "open", args: [fileId] }, BigInt(120_000));
 
     for (let i = 0; i < chunks.length; i++) {
       const data = chunks[i];
       // ~16 gas/calldata byte + ~8 gas/log-data byte + overhead.
-      await send("upload", [fileId, i, bytesToHex(data)], BigInt(150_000) + BigInt(60) * BigInt(data.byteLength));
+      await send(
+        { fn: "upload", args: [fileId, i, bytesToHex(data)] },
+        BigInt(150_000) + BigInt(60) * BigInt(data.byteLength),
+      );
     }
 
-    await send("seal", [fileId, root, BigInt(compressed.length), chunks.length, codec], BigInt(200_000));
+    await send(
+      { fn: "seal", args: [fileId, root, BigInt(compressed.length), chunks.length, codec] },
+      BigInt(200_000),
+    );
 
     return {
       ok: true,

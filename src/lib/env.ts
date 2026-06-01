@@ -73,10 +73,6 @@ const SETTLEMENT: Partial<Record<Chain, string | undefined>> = {
   ethereum: process.env.NEXT_PUBLIC_SETTLEMENT_ETHEREUM,
   base: process.env.NEXT_PUBLIC_SETTLEMENT_BASE,
 };
-const ETHFS: Partial<Record<Chain, string | undefined>> = {
-  ethereum: process.env.NEXT_PUBLIC_ETHFS_ETHEREUM,
-  base: process.env.NEXT_PUBLIC_ETHFS_BASE,
-};
 
 function addr(v?: string): string | undefined {
   return v && v !== "0x" ? v : undefined;
@@ -87,9 +83,6 @@ export function getForeverLibraryAddress(chain: Chain): string | undefined {
 }
 export function getSettlementAddress(chain: Chain): string | undefined {
   return addr(SETTLEMENT[chain]);
-}
-export function getEthfsAddress(chain: Chain): string | undefined {
-  return addr(ETHFS[chain]);
 }
 
 /**

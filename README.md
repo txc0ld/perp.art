@@ -37,8 +37,8 @@ artwork that share a single on-chain STATE proof, one LOG shard, and one IPFS/Ar
 each token is individually owned and tradeable. Minted tokens have real live pages at
 `/token/onchain/[chainId]/[contract]/[tokenId]`; per-collection pages at
 `/collections/onchain/[chainId]/[contract]`; a connected wallet's owned works are listed on the
-profile; explore and collections surface real on-chain tokens (all factory collections) merged with
-the demo gallery; and fixed-price ETH trading (EIP-712 signed listings, on-chain fulfillment via
+profile; home, explore, and collections surface real on-chain tokens (all factory collections,
+no mock layer); and fixed-price ETH trading (EIP-712 signed listings, on-chain fulfillment via
 PerpetualSettlement) is live. The system is verified end-to-end on testnet; it is **unaudited** and
 **not yet on mainnet**. This repository also contains the full production-grade frontend, published
 architecture artifacts, and the indexer specification.
@@ -94,7 +94,7 @@ architecture artifacts, and the indexer specification.
 - Deterministic, SSR-safe **generative SVG artwork** (no external image assets)
 - A raw-WebGL ambient field (reduced-motion aware, pauses offscreen, graceful fallback)
 - Working interactions throughout: buy, make offer, edit profile, deploy sovereign contract,
-  copy / share, filters, sorting, and wallet connect (mocked, ready to wire to wagmi/viem)
+  copy / share, filters, sorting, and real wallet connect (wagmi + Reown/WalletConnect)
 - WCAG AA pass: skip link, focus-visible rings, semantic tables / tabs / dialogs, keyboard nav
 - Fully responsive, mobile-optimized to 360px with comfortable tap targets
 
@@ -108,7 +108,7 @@ architecture artifacts, and the indexer specification.
 | UI | React 19, Tailwind CSS v4 |
 | Language | TypeScript (strict) |
 | Type faces | Inter, JetBrains Mono, Plus Jakarta Sans |
-| Data | Mint, on-chain read layer, lite indexer (all factory collections enumerated), and fixed-price trading are live on testnet; mock gallery (`src/lib/mock-data.ts`) coexists as demo content |
+| Data | 100% live/testnet — every surface reads on-chain data via `src/lib/live/catalog.ts` over `src/lib/web3/indexer.ts` (+ `drops-indexer.ts`), which enumerate all factory collections and tokens directly from chain logs (60s TTL cache). No mock layer. Swaps/offers are honest "coming soon". |
 | Contracts | ForeverLibrary (ERC-721 + ERC-2981 + SSTORE2 STATE shard + Log enum + `mintEdition`), ForeverLibraryFactory (`createCollection` → sovereign FL per artist), LogLedger (event-log high-res shard), PerpetualSettlement (Seaport-compatible, NFT-for-NFT + criteria barter + royalty enforcement) — deployed to Base Sepolia + Ethereum Sepolia, unaudited |
 | Networks | 9 chains: Ethereum, Base, Polygon, Arbitrum, Optimism, Zora (EVM) + Solana, Tezos, Flow |
 
@@ -141,8 +141,10 @@ src/
     visual/            WebGL ambient field
   lib/
     types.ts           The full domain model
-    mock-data.ts       Indexer / orderbook / verification stand-in (swap for live APIs)
-    wallet.ts          Mock wallet session (swap for wagmi/viem)
+    chains.ts          Authoritative chain metadata (CHAINS / getChainMeta / getChains)
+    live/catalog.ts    Live data layer — aggregates the on-chain indexers, never throws
+    web3/indexer.ts    On-chain token/collection indexer (+ drops-indexer.ts)
+    wallet.ts          Real wallet session over wagmi + Reown AppKit
 contracts/             Forever Library + settlement interfaces and reference implementations
 docs/                  ARCHITECTURE.md, INDEXER_SPEC.md
 ```
@@ -226,18 +228,18 @@ Merkle-verifying LOG resolver at `/api/shard/log/[ledger]/[fileId]`.
 provenance, permanence panel); per-collection pages at `/collections/onchain/[chainId]/[contract]`. A connected wallet's owned works are listed on the profile
 (`/api/onchain/owned`).
 
-**Lite indexer is live.** `/explore` and `/collections` surface real on-chain tokens (scanned
-from `TokenMinted` events across all factory collections, cached) merged with the mock demo gallery; live tiles are tagged
-"on-chain". Text-search still covers the mock index only — a known lite-indexer limitation.
+**Lite indexer is live.** `/`, `/explore`, and `/collections` surface **only** real on-chain
+tokens (scanned from `TokenMinted` events across all factory collections, 60s TTL cache). There is
+no mock layer; an empty testnet shows honest empty states. Full-text search awaits the DB-backed indexer.
 
 **Fixed-price trading is live.** ETH listings are signed via EIP-712 and stored in a Blob
 orderbook; fulfillment routes through the deployed `PerpetualSettlement` with royalties and
 the hosting fee enforced on-chain. List/Buy UI lives on the live token page (`/api/orders`).
-Offers, auctions, NFT-for-NFT barter, and cross-chain swaps remain design targets.
+Offers, auctions, NFT-for-NFT barter, and cross-chain swaps are honest "coming soon".
 
-The system is **unaudited** and **not on mainnet**. Wiring real wallets (wagmi/viem) and a
-full production indexer (DB-backed) requires no component changes, since the interfaces are
-already in place.
+The system is **unaudited** and **not on mainnet**. Wallets are live (wagmi + Reown/WalletConnect);
+moving to a full production indexer (DB-backed) requires no component changes, since the interfaces
+are already in place.
 
 ---
 

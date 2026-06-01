@@ -92,15 +92,18 @@ export async function getOpenListings(): Promise<Map<string, OpenListing>> {
  * (explore / home / collections) consumes, so listings are populated once here.
  */
 export async function getLiveTokens(): Promise<Token[]> {
-  const [batches, dropBatches, listings] = await Promise.all([
-    Promise.all(LIVE_CHAIN_IDS.map((id) => indexAllTokens(id))),
-    Promise.all(LIVE_CHAIN_IDS.map((id) => indexDropTokens(id))),
-    getOpenListings(),
-  ]);
-  // Library (5-shard) tokens first, then folder-permanence drop tokens.
-  const tokens = [...batches.flat(), ...dropBatches.flat()];
-  if (listings.size === 0) return tokens;
+  const [{ all }, listings] = await Promise.all([getLiveTokensSplit(), getOpenListings()]);
+  return enrichWithListings(all, listings);
+}
 
+/**
+ * PURE. Attach each token's open marketplace listing (`token.listing`) when one
+ * exists in the supplied listings map; tokens with no open order pass through
+ * unchanged. Exported so surfaces that already hold both tokens and listings can
+ * enrich without re-fetching.
+ */
+export function enrichWithListings(tokens: Token[], listings: Map<string, OpenListing>): Token[] {
+  if (listings.size === 0) return tokens;
   return tokens.map((t) => {
     const open = listings.get(t.id);
     if (!open) return t;
@@ -201,25 +204,46 @@ export async function getLiveCollection(contract: string): Promise<Collection | 
   );
 }
 
-export async function getLiveMarketStats(): Promise<LiveMarketStats> {
-  // Fetch the two permanence tiers separately so the per-token permanence
-  // metrics can be scoped to the 5-shard library tier only. Drop tokens are
-  // folder-permanence by design (no STATE shard), so including them in
-  // permanenceIntegrity / onchainProofRate would force both to ~0% even when
-  // every library token is fully verified. Counts (works/collections/shards)
-  // still cover everything.
+/**
+ * The library (5-shard) and drop (folder-permanence) token tiers, fetched once.
+ * Surfaces that need BOTH the flattened token list AND the per-tier split (e.g.
+ * the home page, which renders tokens and also derives market stats) should call
+ * this and pass the split into computeMarketStats — avoiding a second index pass.
+ * Mirrors getLiveTokens ordering: library tokens first, then drop tokens.
+ */
+export async function getLiveTokensSplit(): Promise<{
+  libraryTokens: Token[];
+  dropTokens: Token[];
+  all: Token[];
+}> {
   const [libBatches, dropBatches] = await Promise.all([
     Promise.all(LIVE_CHAIN_IDS.map((id) => indexAllTokens(id))),
     Promise.all(LIVE_CHAIN_IDS.map((id) => indexDropTokens(id))),
   ]);
   const libraryTokens = libBatches.flat();
   const dropTokens = dropBatches.flat();
-  const tokens = [...libraryTokens, ...dropTokens];
+  return { libraryTokens, dropTokens, all: [...libraryTokens, ...dropTokens] };
+}
 
+/**
+ * PURE. Derive the market stats from already-fetched tier-split tokens and
+ * collections — no indexing. The home page (and any caller that already holds
+ * this data) uses this directly so the indexer isn't run a second time.
+ *
+ * Permanence integrity / onchain proof are scoped to the 5-shard library tier
+ * only: drop tokens are folder-permanence by design (no STATE shard), so
+ * including them would force both to ~0% even when every library token is fully
+ * verified. Counts (works / collections / shards) cover all tiers.
+ */
+export function computeMarketStats(
+  libraryTokens: Token[],
+  dropTokens: Token[],
+  collections: Collection[],
+): LiveMarketStats {
+  const tokens = [...libraryTokens, ...dropTokens];
   if (tokens.length === 0) {
     return { works: 0, collections: 0, verifiedShards: 0, permanenceIntegrity: 0, onchainProofRate: 0 };
   }
-  const collections = await getLiveCollections();
 
   // verifiedShards counts every shard across all tiers (folder-permanence shards
   // can be verified too).
@@ -228,8 +252,7 @@ export async function getLiveMarketStats(): Promise<LiveMarketStats> {
     0,
   );
 
-  // Permanence integrity / onchain proof: 5-shard library tier only. Honest 0
-  // when there are no library tokens (never faked to 100).
+  // Honest 0 when there are no library tokens (never faked to 100).
   const withOnchainProof = libraryTokens.filter((t) => t.permanence.onchainProofConfigured).length;
   const onchainProofRate =
     libraryTokens.length === 0 ? 0 : Math.round((withOnchainProof / libraryTokens.length) * 100);
@@ -246,6 +269,21 @@ export async function getLiveMarketStats(): Promise<LiveMarketStats> {
     permanenceIntegrity,
     onchainProofRate,
   };
+}
+
+/**
+ * Market stats for direct callers that don't already hold the token/collection
+ * data. Fetches the tier-split tokens + collections (all 60s-cached) and
+ * delegates to computeMarketStats. Surfaces that already fetched tokens should
+ * call computeMarketStats with their own data instead, to avoid re-indexing.
+ */
+export async function getLiveMarketStats(): Promise<LiveMarketStats> {
+  const { libraryTokens, dropTokens, all } = await getLiveTokensSplit();
+  if (all.length === 0) {
+    return { works: 0, collections: 0, verifiedShards: 0, permanenceIntegrity: 0, onchainProofRate: 0 };
+  }
+  const collections = await getLiveCollections();
+  return computeMarketStats(libraryTokens, dropTokens, collections);
 }
 
 /**

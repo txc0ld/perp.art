@@ -21,9 +21,8 @@ import Link from "next/link";
 import type { Token } from "@/lib/types";
 import { permanenceScore, portfolioPermanence } from "@/lib/permanence";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
-import { MonoLabel } from "@/components/ui";
+import { MonoLabel, EmptyState, ButtonLink } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { EmptyState } from "./OwnedTab";
 
 type Grade = "A+" | "A" | "B" | "C" | "D";
 
@@ -93,7 +92,11 @@ export function PermanenceReport({ tokens, loading }: { tokens: Token[]; loading
       <EmptyState
         title="No works to grade yet"
         body="Once you hold a work, its permanence report appears here: an overall grade, redundant copy count, and a per-work breakdown, each provably durable the day you own it and in twenty years."
-        cta={{ href: "/explore", label: "Explore the catalog" }}
+        action={
+          <ButtonLink href="/explore" variant="secondary" size="md">
+            Explore the catalog
+          </ButtonLink>
+        }
       />
     );
   }

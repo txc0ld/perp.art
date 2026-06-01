@@ -14,7 +14,7 @@
 > **Supported networks (the `chain` field spans all nine).** Permanence-native EVM chains where
 > Forever Library deploys: `ethereum`, `base`, `polygon`, `arbitrum`, `optimism`, `zora`.
 > Indexed + traded with native storage: `solana`, `tezos`, `flow`. Each carries a native currency
-> (ETH / POL / SOL / XTZ / FLOW); see `CHAINS` in `src/lib/mock-data.ts`.
+> (ETH / POL / SOL / XTZ / FLOW); see `CHAINS` in `src/lib/chains.ts`.
 
 ---
 
@@ -199,13 +199,13 @@ GET /v1/featured                                            -> FeaturedEntry[] (
 ```
 
 The `chain` filter on `/v1/tokens` accepts any of the nine supported networks. The `/v1/swaps`
-endpoint returns barter orders (§2.6); a swap with `crossChain: true` settles atomically across
-the escrow bridge, and `criteria=true` filters to open criteria-based requests. Fixed-price ETH
-orders are live via `/api/orders` on testnet. Swap/criteria endpoints are served by the demo
-layer (`getOpenSwaps`, `getCriteriaSwaps`, `getSwapsForToken`, `getSwapsForUser`, `getSwap`
-in `src/lib/mock-data.ts`) — a full production orderbook for swaps is a follow-up stage.
+endpoint describes barter orders (§2.6) — a swap with `crossChain: true` would settle atomically
+across the escrow bridge, and `criteria=true` filters to open criteria-based requests. Fixed-price
+ETH orders are live via `/api/orders` on testnet; swaps/offers are not yet live (the UI presents
+honest "coming soon" surfaces) and a full production swap orderbook is a follow-up stage.
 
-A lite indexer (Blob-cached `TokenMinted` scan) is live on testnet and powers explore/collections
-for real on-chain tokens; `src/lib/mock-data.ts` continues to implement these shapes for the
-demo gallery. Swapping to a full DB-backed indexer that emits this schema requires no frontend
-changes.
+A lite indexer (cached `TokenMinted` scan) is live on testnet and is the **sole** source for
+explore/collections/home — there is no mock layer. It lives in `src/lib/web3/indexer.ts`
+(+ `drops-indexer.ts`) and is surfaced through `src/lib/live/catalog.ts`, which implements these
+accessor shapes over real on-chain data. Swapping to a full DB-backed indexer that emits this
+schema requires no frontend changes.

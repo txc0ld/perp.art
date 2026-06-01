@@ -6,7 +6,8 @@ import { MonoLabel } from "@/components/ui";
 import type { MintForm } from "./state";
 
 const QUICK_PICKS = [5, 7.5, 10];
-const MAX = 15;
+// Contract caps mint royalty at 10% (1000 bps); a higher value would revert.
+const MAX = 10;
 
 export function RoyaltyStep({
   form,
@@ -57,7 +58,7 @@ export function RoyaltyStep({
           />
           <div className="flex justify-between font-mono text-[10px] text-faint">
             <span>0%</span>
-            <span>{MAX}% max</span>
+            <span>{MAX}% max — protocol cap</span>
           </div>
         </div>
 

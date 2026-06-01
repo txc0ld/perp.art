@@ -17,11 +17,11 @@ export type SwapMode = "specific" | "criteria";
 
 export function SwapModal({
   token,
-  defaultMode: _defaultMode,
   onClose,
 }: {
   /** Optional target token. Retained for when the composer returns. */
   token?: Token;
+  /** Retained in the contract for when the composer returns; not read yet. */
   defaultMode?: SwapMode;
   onClose: () => void;
 }) {

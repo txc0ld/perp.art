@@ -6,7 +6,6 @@ import { serverPublicClient } from "./server-client";
 import { getContracts } from "./contracts";
 import {
   readOnchainToken,
-  scanStartBlock,
   LOG_WINDOW,
   MAX_WINDOWS,
   FL_DEPLOY_BLOCK,
@@ -243,17 +242,5 @@ export async function indexedCollections(chainId: number): Promise<Collection[]>
   } catch {
     return [];
   }
-}
-
-/**
- * PURE. Merge live on-chain tokens with mock demo tokens for the explore feed.
- * Live tokens come first. Any mock token missing `source` is tagged "mock".
- * Does not mutate input arrays or objects.
- */
-export function mergeForExplore(live: Token[], mock: Token[]): Token[] {
-  const mockTagged = mock.map((t) =>
-    t.source !== undefined ? t : { ...t, source: "mock" as const },
-  );
-  return [...live, ...mockTagged];
 }
 
