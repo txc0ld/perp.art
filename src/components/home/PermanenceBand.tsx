@@ -7,7 +7,6 @@ import { ButtonLink, StatusGlyph } from "@/components/ui";
 
 interface MarketStats {
   works: number;
-  artists: number;
   collections: number;
   verifiedShards: number;
   permanenceIntegrity: number;

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Collection } from "@/lib/types";
-import { getArtist, getChainMeta } from "@/lib/mock-data";
+import { getChainMeta } from "@/lib/chains";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { VerifiedBadge } from "@/components/ui";
 import { ChainBadge } from "@/components/chain/ChainBadge";
@@ -9,11 +9,12 @@ import { formatEth } from "@/lib/utils";
 
 /**
  * OpenSea-style collection card: a wide GenerativeArt cover, an overlapping
- * circular avatar, name + verified/sovereign glyph, and a mono stats footer
+ * circular avatar, name + sovereign glyph, and a mono stats footer
  * (floor / volume / items). Hairline card, hover lift + border brighten.
  *
- * `href` defaults to `/collections/{slug}`; callers can override it (e.g. live
- * on-chain collections whose slug has no dedicated page yet use `/explore`).
+ * Live collections may have no market yet — floor/volume render as "—" honestly
+ * rather than a fabricated number. `href` defaults to the slug route; callers
+ * pass the live per-collection href (`/collections/onchain/{chainId}/{addr}`).
  */
 export function CollectionCard({
   collection,
@@ -22,9 +23,10 @@ export function CollectionCard({
   collection: Collection;
   href?: string;
 }) {
-  const artist = getArtist(collection.artistHandle);
   const currency = getChainMeta(collection.chain).currency;
   const resolvedHref = href ?? `/collections/${collection.slug}`;
+  const floor = collection.floorEth > 0 ? `${formatEth(collection.floorEth)} ${currency}` : "—";
+  const volume = collection.volumeEth > 0 ? `${formatEth(collection.volumeEth)} ${currency}` : "—";
 
   return (
     <Link
@@ -59,15 +61,15 @@ export function CollectionCard({
       <div className="flex flex-1 flex-col px-4 pb-4 pt-9">
         <div className="flex items-center gap-1.5">
           <h3 className="truncate text-[15px] font-semibold text-foreground">{collection.name}</h3>
-          {(collection.sovereign || artist?.verified) && (
-            <VerifiedBadge size={15} className="shrink-0" label={collection.sovereign ? "Sovereign contract" : "Verified"} />
+          {collection.sovereign && (
+            <VerifiedBadge size={15} className="shrink-0" label="Sovereign contract" />
           )}
         </div>
-        <p className="mt-0.5 truncate text-xs text-muted">{artist?.name ?? collection.artistHandle}</p>
+        <p className="mt-0.5 truncate text-xs text-muted">{collection.sovereign ? "Sovereign collection" : "Open collection"}</p>
 
         <div className="mt-auto grid grid-cols-3 gap-2 pt-4">
-          <Stat label="Floor" value={`${formatEth(collection.floorEth)} ${currency}`} />
-          <Stat label="Volume" value={`${formatEth(collection.volumeEth)} ${currency}`} />
+          <Stat label="Floor" value={floor} />
+          <Stat label="Volume" value={volume} />
           <Stat label="Items" value={String(collection.itemCount)} />
         </div>
       </div>

@@ -7,26 +7,21 @@ import { CollectionCard } from "./CollectionCard";
 
 /**
  * Client browser for the collections index: a category pill row that filters
- * the server-provided collection list, rendered into a dense responsive grid.
- *
- * Live on-chain collection slugs (42-char contract addresses) link to their
- * per-collection page at `/collections/onchain/{liveChainId}/{slug}`.
+ * the server-provided live collection list, rendered into a dense responsive
+ * grid. Each card's href to its live per-collection page is precomputed on the
+ * server and passed in as a serializable slug→href map.
  */
 export function CollectionsBrowser({
   collections,
   genres,
-  liveChainId,
-  liveSlugs = [],
+  hrefs = {},
 }: {
   collections: Collection[];
   genres: Genre[];
-  /** The chainId for live on-chain collections (used to build /collections/onchain/... links). */
-  liveChainId?: number;
-  /** Slugs of live on-chain collections. */
-  liveSlugs?: string[];
+  /** Serializable map of collection slug → live per-collection page href. */
+  hrefs?: Record<string, string>;
 }) {
   const [genre, setGenre] = React.useState<Genre | "all">("all");
-  const liveSet = React.useMemo(() => new Set(liveSlugs), [liveSlugs]);
 
   const results = React.useMemo(
     () => (genre === "all" ? collections : collections.filter((c) => c.genre === genre)),
@@ -55,7 +50,7 @@ export function CollectionsBrowser({
         <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {results.map((c, i) => (
             <div key={c.slug} className="h-full animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
-              <CollectionCard collection={c} href={liveSet.has(c.slug) && liveChainId ? `/collections/onchain/${liveChainId}/${c.slug}` : undefined} />
+              <CollectionCard collection={c} href={hrefs[c.slug]} />
             </div>
           ))}
         </div>

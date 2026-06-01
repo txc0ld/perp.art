@@ -1,6 +1,5 @@
-import Link from "next/link";
-import type { Collection, Artist } from "@/lib/types";
-import { getChainMeta } from "@/lib/mock-data";
+import type { Collection } from "@/lib/types";
+import { getChainMeta } from "@/lib/chains";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { Badge, VerifiedBadge } from "@/components/ui";
 import { CollectionActions } from "./CollectionActions";
@@ -8,15 +7,13 @@ import { CollectionBanner3D } from "./CollectionBanner3D";
 
 /**
  * OpenSea-style collection hero: a wide GenerativeArt banner with a circular
- * avatar overlapping its bottom-left, then name + verified/sovereign + chain
- * badges, artist link, and clamped description.
+ * avatar overlapping its bottom-left, then name + sovereign + chain badges and
+ * a clamped description. Sourced purely from the live Collection record.
  */
 export function CollectionHero({
   collection,
-  artist,
 }: {
   collection: Collection;
-  artist?: Artist;
 }) {
   return (
     <header>
@@ -40,8 +37,8 @@ export function CollectionHero({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <h1 className="display-sm font-brand text-foreground">{collection.name}</h1>
-            {(collection.sovereign || artist?.verified) && (
-              <VerifiedBadge size={20} label={collection.sovereign ? "Sovereign contract" : "Verified"} />
+            {collection.sovereign && (
+              <VerifiedBadge size={20} label="Sovereign contract" />
             )}
           </div>
 
@@ -51,19 +48,7 @@ export function CollectionHero({
             {collection.sovereign && <Badge tone="accent">Sovereign</Badge>}
           </div>
 
-          {artist && (
-            <p className="mt-4 text-sm text-muted">
-              by{" "}
-              <Link
-                href={`/profile/${artist.handle}`}
-                className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-accent"
-              >
-                {artist.name}
-              </Link>
-            </p>
-          )}
-
-          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted line-clamp-3">
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted line-clamp-3">
             {collection.description}
           </p>
         </div>

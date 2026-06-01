@@ -1,6 +1,7 @@
 /**
- * FeaturedWorksGrid - "Notable works" grid of ArtTiles (OpenSea uses 4-5
- * across on desktop). Responsive 2/3/4/5 column grid. Server component.
+ * FeaturedWorksGrid - "Recent works" grid of ArtTiles (OpenSea uses 4-5 across
+ * on desktop). Responsive 2/3/4/5 column grid, fed live tokens. Server
+ * component.
  */
 import Link from "next/link";
 import { ArtTile } from "@/components/art/ArtTile";
@@ -11,8 +12,8 @@ export function FeaturedWorksGrid({ tokens }: { tokens: Token[] }) {
   return (
     <div>
       <SectionHeader
-        eyebrow="Selected by the community"
-        title="Notable works"
+        eyebrow="Live on-chain"
+        title="Recent works"
         action={
           <Link
             href="/explore"

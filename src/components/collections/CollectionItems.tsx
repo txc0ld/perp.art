@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import type { Token } from "@/lib/types";
 import { cn, formatEth, relativeTime } from "@/lib/utils";
-import { getChainMeta } from "@/lib/mock-data";
+import { getChainMeta } from "@/lib/chains";
 import { ArtTile } from "@/components/art/ArtTile";
 import { Identity } from "@/components/identity/Identity";
 

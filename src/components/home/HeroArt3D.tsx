@@ -5,7 +5,7 @@ import { Tilt3D } from "@/components/visual/Tilt3D";
 import { BrandMark } from "@/components/chrome/Brand";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { Badge, StatusGlyph } from "@/components/ui";
-import { getChainMeta } from "@/lib/mock-data";
+import { getChainMeta } from "@/lib/chains";
 import type { Genre, Chain } from "@/lib/types";
 
 /**
@@ -21,11 +21,14 @@ import type { Genre, Chain } from "@/lib/types";
  */
 export function HeroArt3D({
   slug,
+  href,
   coverSeed,
   genre,
   chain,
 }: {
   slug: string;
+  /** Destination for the framed art link (defaults to the slug route). */
+  href?: string;
   coverSeed: string;
   genre: Genre;
   chain: Chain;
@@ -61,7 +64,7 @@ export function HeroArt3D({
         className="relative h-full rounded-none"
       >
         <Link
-          href={`/collections/${slug}`}
+          href={href ?? `/collections/${slug}`}
           className="group/art relative block aspect-[16/11] overflow-hidden bg-background lg:aspect-auto lg:h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-inset"
         >
           <GenerativeArt

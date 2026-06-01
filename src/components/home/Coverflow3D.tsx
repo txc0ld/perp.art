@@ -27,13 +27,26 @@ import { useRouter } from "next/navigation";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { MonoLabel } from "@/components/ui";
 import { cn, formatEth } from "@/lib/utils";
-import { getChainMeta } from "@/lib/mock-data";
+import { getChainMeta } from "@/lib/chains";
 import type { Token } from "@/lib/types";
 
 export interface CoverflowItem {
   token: Token;
   /** Resolved display name for the artist (handle is the fallback). */
   artistName: string;
+}
+
+/**
+ * Derive the token detail href. Live on-chain tokens route to
+ * `/token/onchain/{chainId}/{contract}/{tokenId}`; others to `/token/{id}`.
+ * (Mirrors ArtTile.tokenHref.)
+ */
+function tokenHref(token: Token): string {
+  if (token.source === "onchain") {
+    const parts = token.id.split("-");
+    return `/token/onchain/${parts[0]}/${token.collectionSlug}/${parts[parts.length - 1]}`;
+  }
+  return `/token/${token.id}`;
 }
 
 interface Props {
@@ -152,7 +165,7 @@ export function Coverflow3D({ items, className }: Props) {
           {items.map(({ token, artistName }) => (
             <Link
               key={token.id}
-              href={`/token/${token.id}`}
+              href={tokenHref(token)}
               className="group relative w-[68vw] max-w-[320px] shrink-0 snap-center overflow-hidden rounded-[10px] border border-border bg-surface transition-colors hover:border-border-bright focus-visible:border-accent"
             >
               <div className="aspect-square w-full overflow-hidden">
@@ -225,7 +238,7 @@ export function Coverflow3D({ items, className }: Props) {
                 onClick={() => {
                   if (pointer.current?.moved) return;
                   if (isActive) {
-                    router.push(`/token/${item.token.id}`);
+                    router.push(tokenHref(item.token));
                   } else {
                     go(i);
                   }
@@ -307,7 +320,7 @@ export function Coverflow3D({ items, className }: Props) {
 
         {activeItem && (
           <Link
-            href={`/token/${activeItem.token.id}`}
+            href={tokenHref(activeItem.token)}
             className="group min-w-0 flex-1 text-center transition-opacity hover:opacity-90 focus-visible:opacity-90"
           >
             <SlideCaption token={activeItem.token} artistName={activeItem.artistName} />

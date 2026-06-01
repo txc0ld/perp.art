@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { getCollections, GENRES } from "@/lib/mock-data";
-import { indexedCollections } from "@/lib/web3/indexer";
-import { Section, MonoLabel } from "@/components/ui";
+import Link from "next/link";
+import { getLiveCollections } from "@/lib/live/catalog";
+import { GENRES } from "@/lib/catalog-constants";
+import { Section, MonoLabel, EmptyState, ButtonLink } from "@/components/ui";
 import { CollectionsBrowser } from "@/components/collections/CollectionsBrowser";
 
 export const dynamic = "force-dynamic";
@@ -11,18 +12,27 @@ export const metadata: Metadata = {
   description: "Bodies of permanence-first art, each anchored to immutable storage and independently verifiable.",
 };
 
+/** Map a Token `chain` tag to its numeric chain id (inverse of catalog's CHAIN_BY_ID). */
+const CHAIN_ID_BY_TAG: Record<string, number> = { base: 84532, ethereum: 11155111 };
+
 /**
- * Collections index - OpenSea-style grid of collection cards.
- * Live on-chain collections (Base Sepolia) are prepended to the mock grid.
- * Live collection slugs (e.g. "onchain-84532") have no dedicated page, so their
- * cards link to /explore (the merged catalog) instead of /collections/{slug}.
+ * Collections index — live on-chain collections only (Base/Ethereum Sepolia).
+ * Each card links to its live per-collection page at
+ * `/collections/onchain/{chainId}/{contract}`. Sparse by design: when there are
+ * no collections yet we render an honest EmptyState, never fabricated grids.
  */
 export default async function CollectionsPage() {
-  const liveCollections = await indexedCollections(84532);
-  // Pass serializable slugs (not a function) across the server→client boundary;
-  // the client computes the live cards' href from this list.
-  const liveSlugs = liveCollections.map((c) => c.slug);
-  const collections = [...liveCollections, ...getCollections()];
+  const collections = await getLiveCollections();
+
+  // The browser links each card to its live per-collection page. Collections
+  // carry only a chain tag, so derive the chainId here and pass a serializable
+  // slug→href map across the server→client boundary.
+  const hrefs = Object.fromEntries(
+    collections.map((c) => {
+      const chainId = CHAIN_ID_BY_TAG[c.chain] ?? 84532;
+      return [c.slug, `/collections/onchain/${chainId}/${c.contractAddress}`];
+    }),
+  );
 
   return (
     <Section>
@@ -36,7 +46,21 @@ export default async function CollectionsPage() {
         </p>
       </div>
 
-      <CollectionsBrowser collections={collections} genres={GENRES} liveChainId={84532} liveSlugs={liveSlugs} />
+      {collections.length > 0 ? (
+        <CollectionsBrowser collections={collections} genres={GENRES} hrefs={hrefs} />
+      ) : (
+        <EmptyState
+          eyebrow="The Conservatory"
+          title="No collections yet"
+          body="Deploy one from your profile or mint into the open collection — the first works held here will be yours."
+          action={
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <ButtonLink href="/mint" variant="accent" size="lg">Mint a work</ButtonLink>
+              <ButtonLink href="/profile" variant="secondary" size="lg">Deploy a collection</ButtonLink>
+            </div>
+          }
+        />
+      )}
     </Section>
   );
 }
