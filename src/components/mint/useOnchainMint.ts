@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useAccount, useChainId } from "wagmi";
-import { writeContract, waitForTransactionReceipt } from "@wagmi/core";
+import { readContract, writeContract, waitForTransactionReceipt } from "@wagmi/core";
 import { keccak256, stringToBytes, bytesToHex, decodeEventLog } from "viem";
 import { upload } from "@vercel/blob/client";
 import { wagmiConfig } from "@/lib/web3/config";
@@ -68,6 +68,7 @@ export function useOnchainMint() {
   const [uploadPct, setUploadPct] = React.useState(0);
   const [error, setError] = React.useState<string>();
   const [recordingProgress, setRecordingProgress] = React.useState<RecordingProgress | undefined>();
+  const [recordingWarning, setRecordingWarning] = React.useState<string>();
 
   function reset() {
     setPhase("idle");
@@ -78,6 +79,7 @@ export function useOnchainMint() {
     setUploadPct(0);
     setError(undefined);
     setRecordingProgress(undefined);
+    setRecordingWarning(undefined);
   }
 
   async function start(form: MintForm): Promise<void> {
@@ -192,6 +194,19 @@ export function useOnchainMint() {
 
     // 3) Mint — writes provenance + the SSTORE2 STATE proof (Shard 0).
     setPhase("minting");
+    // Forward the storage fee. The contract requires msg.value >= storageFeeWei
+    // when hostingFeeBps_ == 0 (fee-exempt). Fall back to 0 if the getter is
+    // absent/reverts so the path stays robust regardless of the deployed fee.
+    let feeWei: bigint;
+    try {
+      feeWei = (await readContract(wagmiConfig, {
+        address: fl,
+        abi: FOREVER_LIBRARY_ABI,
+        functionName: "storageFeeWei",
+      })) as bigint;
+    } catch {
+      feeWei = BigInt(0);
+    }
     let mintHash: `0x${string}`;
     let firstTokenId: bigint | undefined;
     try {
@@ -202,7 +217,7 @@ export function useOnchainMint() {
           abi: FOREVER_LIBRARY_ABI,
           functionName: "mintEdition",
           args: [address, form.artistName, form.title, proofMime, BigInt(royaltyBps), metadataHash, proofData, 0, editionSize],
-          value: BigInt(0),
+          value: feeWei,
         });
       } else {
         mintHash = await writeContract(wagmiConfig, {
@@ -210,7 +225,7 @@ export function useOnchainMint() {
           abi: FOREVER_LIBRARY_ABI,
           functionName: "mint",
           args: [address, form.artistName, form.title, proofMime, BigInt(royaltyBps), metadataHash, proofData, 0],
-          value: BigInt(0),
+          value: feeWei,
         });
       }
       setMintTxHash(mintHash);
@@ -255,6 +270,7 @@ export function useOnchainMint() {
 
       setRecordingProgress({ done: 0, total: totalShardTxs });
       let progressDone = 0;
+      let failureCount = 0;
 
       // For each token ID, record LOG shard then off-chain shards.
       for (const tid of tokenIds) {
@@ -262,12 +278,17 @@ export function useOnchainMint() {
         let nextIndex = 1;
         const appended = [stateShard, logShard, ...offchain];
 
+        // configureShard appends positionally — the contract requires
+        // index == shardCount. If a shard tx fails we MUST NOT advance to the
+        // next backend, or it would land at the failed index (wrong backend at
+        // the wrong slot). Returns false to signal the caller to stop recording
+        // further shards for THIS token.
         const recordShard = async (
           shard: ShardRecord,
           backendId: number,
           uri: string,
           shardContentHash: `0x${string}`,
-        ) => {
+        ): Promise<boolean> => {
           try {
             const h = await writeContract(wagmiConfig, {
               address: fl,
@@ -280,32 +301,47 @@ export function useOnchainMint() {
             // Mark recorded on the display record for the first token (representative)
             if (tid === firstTokenId) {
               shard.recorded = true;
+              setShards([...appended]);
             }
             nextIndex++;
             progressDone++;
             setRecordingProgress({ done: progressDone, total: totalShardTxs });
+            return true;
           } catch {
+            failureCount++;
             if (tid === firstTokenId) {
               shard.error = "not recorded onchain";
+              setShards([...appended]);
             }
-          }
-          if (tid === firstTokenId) {
-            setShards([...appended]);
+            return false;
           }
         };
 
         if (log?.sealed && log.uri && log.root) {
-          await recordShard(logShard, SHARD_BACKEND.log, log.uri, log.root);
+          const ok = await recordShard(logShard, SHARD_BACKEND.log, log.uri, log.root);
+          // Stop this token's shard sequence on failure so no backend lands at a
+          // wrong index; move on to the next token.
+          if (!ok) continue;
         }
         for (const shard of offchain) {
           if (!shard.stored || !shard.uri) continue;
           const backendId = SHARD_BACKEND[shard.backend];
-          await recordShard(shard, backendId, shard.uri, contentHash);
+          const ok = await recordShard(shard, backendId, shard.uri, contentHash);
+          if (!ok) break;
         }
 
         if (tid === firstTokenId) {
           setShards([...appended]);
         }
+      }
+
+      // Non-fatal: the mint (incl. the on-chain STATE proof) succeeded on every
+      // token. Only some redundant copies may be missing. Surface a warning the
+      // UI can show without failing the flow.
+      if (progressDone < totalShardTxs) {
+        setRecordingWarning(
+          `Some redundant copies weren't recorded onchain for every edition token (${failureCount} shard ${failureCount === 1 ? "record" : "records"} failed) — the STATE proof is intact on all tokens.`,
+        );
       }
     }
 
@@ -323,6 +359,7 @@ export function useOnchainMint() {
     uploadPct,
     error,
     recordingProgress,
+    recordingWarning,
     chainId,
     canMintOnchain: Boolean(getContracts(chainId).foreverLibrary && address),
   };

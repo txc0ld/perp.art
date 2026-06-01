@@ -17,6 +17,10 @@ const MINTED_EVENT = parseAbiItem(
 );
 
 const MAX_TOKENS = 200;
+// Per-collection cap so one large edition can't exhaust the global budget and
+// starve other collections (e.g. a 100-token edition on the canonical FL hiding
+// every sovereign collection's tokens). Keeps total bounded by MAX_TOKENS too.
+const MAX_TOKENS_PER_COLLECTION = 100;
 
 // ---------------------------------------------------------------------------
 // Module-level TTL cache — avoids unstable_cache (AGENTS.md: Next 16 differs).
@@ -168,10 +172,21 @@ export async function indexAllTokens(chainId: number): Promise<Token[]> {
     for (const col of collections) {
       if (allTokens.length >= MAX_TOKENS) break;
       const ids = await enumerateTokenIdsForContract(pub, col.address, col.createdBlock, latest);
+      let colCount = 0;
       for (const id of ids) {
-        if (allTokens.length >= MAX_TOKENS) break;
+        // Per-collection cap (so every collection contributes) AND the global
+        // cap (so the total stays bounded).
+        if (colCount >= MAX_TOKENS_PER_COLLECTION || allTokens.length >= MAX_TOKENS) break;
         const t = await readOnchainToken(chainId, col.address, id);
-        if (t) allTokens.push(t);
+        if (t) {
+          allTokens.push(t);
+          colCount++;
+        }
+      }
+      if (ids.length > colCount) {
+        console.warn(
+          `[indexer] collection ${col.address} truncated: indexed ${colCount} of ${ids.length} tokens (cap ${MAX_TOKENS_PER_COLLECTION}/collection, ${MAX_TOKENS} global)`,
+        );
       }
     }
 
@@ -197,9 +212,10 @@ export async function indexedCollections(chainId: number): Promise<Collection[]>
     for (const col of collections) {
       const addrLower = col.address.toLowerCase();
       const colTokens = allTokens.filter((t) => t.collectionSlug === addrLower);
-      // Include all collections (even empty — they're real contracts).
-      // Skip empty sovereign ones to keep the list clean.
-      if (colTokens.length === 0 && addrLower !== canonicalFL) continue;
+      // Include ALL collections, even empty ones — a freshly-deployed sovereign
+      // collection is a real contract the artist paid gas for and may have
+      // selected, so the owner should see it even with 0 mints. (The canonical
+      // FL is always included regardless.)
 
       const ownerSet = new Set<string>();
       for (const t of colTokens) ownerSet.add(t.owner.toLowerCase());

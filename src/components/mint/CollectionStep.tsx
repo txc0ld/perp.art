@@ -77,40 +77,50 @@ export function CollectionStep({
           functionName: "collectionsCount",
         }) as bigint;
 
-        const found: OwnCollection[] = [];
-        // Enumerate all collections, keep those owned by the connected wallet
-        for (let i = BigInt(0); i < count; i++) {
-          const colAddr = await readContract(wagmiConfig, {
-            address: contracts.factory!,
-            abi: FACTORY_ABI,
-            functionName: "collectionAt",
-            args: [i],
-          }) as `0x${string}`;
+        // Collect all collection indices first, then read every collection in
+        // parallel (was a serial collectionAt → owner+name chain that blocked
+        // the picker). Owner-filter stays client-side.
+        const indices: bigint[] = [];
+        for (let i = BigInt(0); i < count; i++) indices.push(i);
 
-          // Read owner + name from the collection FL contract
-          let owner: string;
-          let colName: string;
-          try {
-            [owner, colName] = await Promise.all([
-              readContract(wagmiConfig, {
-                address: colAddr,
-                abi: FOREVER_LIBRARY_ABI,
-                functionName: "owner",
-              }) as Promise<string>,
-              readContract(wagmiConfig, {
-                address: colAddr,
-                abi: FOREVER_LIBRARY_ABI,
-                functionName: "name",
-              }) as Promise<string>,
-            ]);
-          } catch {
-            continue;
-          }
+        const colAddrs = await Promise.all(
+          indices.map((i) =>
+            readContract(wagmiConfig, {
+              address: contracts.factory!,
+              abi: FACTORY_ABI,
+              functionName: "collectionAt",
+              args: [i],
+            }) as Promise<`0x${string}`>,
+          ),
+        );
 
-          if (owner.toLowerCase() === address!.toLowerCase()) {
-            found.push({ address: colAddr, name: colName });
-          }
-        }
+        const details = await Promise.all(
+          colAddrs.map(async (colAddr) => {
+            try {
+              const [owner, colName] = await Promise.all([
+                readContract(wagmiConfig, {
+                  address: colAddr,
+                  abi: FOREVER_LIBRARY_ABI,
+                  functionName: "owner",
+                }) as Promise<string>,
+                readContract(wagmiConfig, {
+                  address: colAddr,
+                  abi: FOREVER_LIBRARY_ABI,
+                  functionName: "name",
+                }) as Promise<string>,
+              ]);
+              return { address: colAddr, owner, name: colName };
+            } catch {
+              return null;
+            }
+          }),
+        );
+
+        // Keep those owned by the connected wallet.
+        const found: OwnCollection[] = details
+          .filter((d): d is { address: `0x${string}`; owner: string; name: string } => d !== null)
+          .filter((d) => d.owner.toLowerCase() === address!.toLowerCase())
+          .map((d) => ({ address: d.address, name: d.name }));
         if (!cancelled) setCollections(found);
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message.split("\n")[0] : "Could not load collections");

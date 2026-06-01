@@ -191,26 +191,36 @@ export async function readOnchainToken(chainId: number, contract: Hex, tokenId: 
   } catch {
     return null; // unminted / nonexistent
   }
-  const [mint, locked, selectedShardIndex, hostingFeeBps, editionSizeRaw, editionIndexRaw] = await Promise.all([
-    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "getMintData", args: [tokenId] }),
-    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "isLocked", args: [tokenId] }),
-    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "selectedShardIndex", args: [tokenId] }),
-    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "hostingFeeBps", args: [tokenId] }),
-    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "editionSize", args: [tokenId] }).catch(() => BigInt(0)),
-    pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "editionIndex", args: [tokenId] }).catch(() => BigInt(0)),
-  ]);
-  const shards = await readShards(pub, contract, tokenId);
-  const provenance = await readOnchainProvenance(chainId, contract, tokenId);
-  const m = mint as RawMint;
-  const es = Number(editionSizeRaw as bigint);
-  const ei = Number(editionIndexRaw as bigint);
-  return mapMintToToken({
-    chainId, tokenId, contract, owner, mint: m, locked: locked as boolean,
-    selectedShardIndex: selectedShardIndex as bigint, hostingFeeBps: Number(hostingFeeBps),
-    shards, provenance,
-    editionSize: es > 0 ? es : undefined,
-    editionIndex: es > 0 ? ei : undefined,
-  });
+  // Read replicas can lag: a token may have `ownerOf` resolved on one node but
+  // `getMintData`/etc not yet on another. Guard the whole read so one lagging
+  // token is skipped (return null) instead of rejecting the Promise.all and
+  // dropping the ENTIRE collection's feed.
+  try {
+    const [mint, locked, selectedShardIndex, hostingFeeBps, editionSizeRaw, editionIndexRaw] = await Promise.all([
+      pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "getMintData", args: [tokenId] }),
+      pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "isLocked", args: [tokenId] }),
+      pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "selectedShardIndex", args: [tokenId] }),
+      pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "hostingFeeBps", args: [tokenId] }),
+      pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "editionSize", args: [tokenId] }).catch(() => BigInt(0)),
+      pub.readContract({ address: contract, abi: FOREVER_LIBRARY_ABI, functionName: "editionIndex", args: [tokenId] }).catch(() => BigInt(0)),
+    ]);
+    const shards = await readShards(pub, contract, tokenId);
+    const provenance = await readOnchainProvenance(chainId, contract, tokenId);
+    const m = mint as RawMint;
+    // The on-chain views coerce 0→1, so `es` is always ≥1. A plain 1-of-1 must
+    // NOT report editionSize: 1 — only expose edition fields when es > 1.
+    const es = Number(editionSizeRaw as bigint);
+    const ei = Number(editionIndexRaw as bigint);
+    return mapMintToToken({
+      chainId, tokenId, contract, owner, mint: m, locked: locked as boolean,
+      selectedShardIndex: selectedShardIndex as bigint, hostingFeeBps: Number(hostingFeeBps),
+      shards, provenance,
+      editionSize: es > 1 ? es : undefined,
+      editionIndex: es > 1 ? ei : undefined,
+    });
+  } catch {
+    return null; // lagging replica / transient RPC failure — skip this token, keep the feed
+  }
 }
 
 export async function readOwnedTokenIds(

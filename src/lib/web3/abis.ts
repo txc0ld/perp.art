@@ -36,6 +36,13 @@ export const FOREVER_LIBRARY_ABI = [
   },
   {
     type: "function",
+    name: "storageFeeWei",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "editionSize",
     stateMutability: "view",
     inputs: [{ name: "tokenId", type: "uint256" }],
