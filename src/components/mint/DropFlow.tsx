@@ -15,7 +15,7 @@
 import * as React from "react";
 import { useChainId } from "wagmi";
 import { unzipSync } from "fflate";
-import { Button, MonoLabel, Badge, Surface } from "@/components/ui";
+import { Button, ButtonLink, MonoLabel, Badge, Surface } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useWallet, connectWallet } from "@/lib/wallet";
 import { getContracts, chainLabelForId, explorerTx } from "@/lib/web3/contracts";
@@ -244,7 +244,7 @@ function ConfigureStage({
 
       <div className="space-y-2">
         <label htmlFor="drop-royalty" className="font-mono text-[11px] uppercase tracking-wider text-faint">
-          Royalty — {royaltyPct.toFixed(1)}%
+          Royalty — {royaltyPct % 1 === 0 ? royaltyPct.toFixed(0) : royaltyPct.toFixed(1)}%
         </label>
         <input
           id="drop-royalty"
@@ -548,9 +548,9 @@ function DoneStage({ drop, chainId, onReset }: { drop: DropMintHook; chainId: nu
       {addr && <p className="mt-4 break-all font-mono text-[11px] text-faint">{addr}</p>}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         {collectionHref && (
-          <a href={collectionHref} className="inline-flex h-12 items-center rounded-[8px] bg-accent px-6 text-[15px] font-medium text-background transition-colors hover:bg-accent-dim">
+          <ButtonLink href={collectionHref} variant="accent" size="lg">
             View collection
-          </a>
+          </ButtonLink>
         )}
         {drop.createTx && (
           <a href={explorerTx(chainId, drop.createTx)} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-muted underline-offset-2 hover:text-foreground hover:underline">

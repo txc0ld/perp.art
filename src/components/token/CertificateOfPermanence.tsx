@@ -5,7 +5,7 @@
  * actually want to keep. Carries the title, artist (ENS/name), token id,
  * content hash, the shard list with backends, mint date, the permanence grade,
  * the fixed-point brand mark, and the line "This artwork survives even if
- * perpetual.art disappears."
+ * Perpetual disappears."
  *
  * One SVG string serves both the on-page preview and the download (serialized
  * to a Blob, saved as certificate-{tokenId}.svg). Generated on the client so
@@ -175,7 +175,7 @@ function buildSvg(d: CertData): string {
 
   <!-- Sealed statement -->
   <line x1="72" y1="${H - 168}" x2="${W - 72}" y2="${H - 168}" stroke="${BORDER}" stroke-width="1"/>
-  <text x="72" y="${H - 124}" font-family="'Inter', sans-serif" font-size="18" font-weight="500" fill="${FG}">This artwork survives even if perpetual.art disappears.</text>
+  <text x="72" y="${H - 124}" font-family="'Inter', sans-serif" font-size="18" font-weight="500" fill="${FG}">This artwork survives even if Perpetual disappears.</text>
   <text x="72" y="${H - 96}" font-family="'JetBrains Mono', monospace" font-size="11" letter-spacing="0.5" fill="${FAINT}">Backed by an onchain proof on ${esc(
     d.chain,
   )}, independently verifiable by anyone.</text>

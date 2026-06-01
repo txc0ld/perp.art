@@ -461,14 +461,14 @@ export function TradePanel({ chainId, tokenId, nft, owner }: TradePanelProps) {
 
       {/* Error */}
       {error && (
-        <p className="rounded-[6px] border border-border bg-surface-2 px-3 py-2 font-mono text-[12px] text-muted">
+        <p role="alert" className="rounded-[6px] border border-error/30 bg-error/5 px-3 py-2 font-mono text-[12px] text-error">
           {error}
         </p>
       )}
 
       {/* Success */}
       {success && !error && (
-        <p className="rounded-[6px] border border-accent/30 bg-accent/5 px-3 py-2 font-mono text-[12px] text-accent">
+        <p role="status" className="rounded-[6px] border border-accent/30 bg-accent/5 px-3 py-2 font-mono text-[12px] text-accent">
           {success}
         </p>
       )}

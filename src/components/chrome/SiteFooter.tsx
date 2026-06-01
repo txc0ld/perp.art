@@ -52,7 +52,7 @@ export function SiteFooter() {
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
               Art, engineered to outlast everything. Every artwork is provably permanent,
-              and it survives even if perpetual.art disappears.
+              and it survives even if Perpetual disappears.
             </p>
           </div>
 

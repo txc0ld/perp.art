@@ -5,6 +5,7 @@
  */
 import type { ProvenanceEvent } from "@/lib/types";
 import { shortHash, formatEth, relativeTime, cn } from "@/lib/utils";
+import { explorerTx } from "@/lib/web3/contracts";
 import { Identity } from "@/components/identity/Identity";
 
 const KIND_LABEL: Record<ProvenanceEvent["kind"], string> = {
@@ -16,7 +17,7 @@ const KIND_LABEL: Record<ProvenanceEvent["kind"], string> = {
   transfer: "Transfer",
 };
 
-export function ProvenanceTimeline({ events }: { events: ProvenanceEvent[] }) {
+export function ProvenanceTimeline({ events, chainId }: { events: ProvenanceEvent[]; chainId?: number }) {
   return (
     <div>
       <ol className="space-y-0">
@@ -70,7 +71,7 @@ export function ProvenanceTimeline({ events }: { events: ProvenanceEvent[] }) {
                   )}
                   {e.txHash && (
                     <a
-                      href={`https://etherscan.io/tx/${e.txHash}`}
+                      href={explorerTx(chainId, e.txHash)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-faint underline-offset-2 transition-colors hover:text-accent hover:underline"

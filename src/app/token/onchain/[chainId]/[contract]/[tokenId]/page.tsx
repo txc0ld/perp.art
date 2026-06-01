@@ -155,7 +155,7 @@ export default async function OnchainTokenPage(
             title="On-chain history"
             description="Every transfer of this token, read directly from the chain."
           />
-          <ProvenanceTimeline events={token.provenance} />
+          <ProvenanceTimeline events={token.provenance} chainId={Number(chainId)} />
         </div>
       )}
 
@@ -170,7 +170,7 @@ export default async function OnchainTokenPage(
         <EmptyState
           eyebrow="Coming soon"
           title="Offers aren't live yet"
-          body="Buying and selling work today through listings in the trade panel above. Collector offers are on the way."
+          body="Buy and sell work today through listings in the trade panel above. Collector offers are on the way."
         />
       </div>
 

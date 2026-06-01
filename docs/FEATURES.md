@@ -28,13 +28,14 @@ https://perpetual-art-tx-build.vercel.app
 - **The decoupling:** because the STATE shard carries permanence on its own, IPFS/CDN costs are
   performance optimizations, not permanence obligations. Permanence is decoupled from operator
   solvency.
-- **Collections (sovereign contracts):** `ForeverLibraryFactory.createCollection(name, symbol)` deploys an artist-owned `ForeverLibrary` in one transaction; the factory emits a `CollectionCreated` event so the indexer discovers every collection. The canonical contract is the "Default (open) collection." Artists can mint multiple distinct 1-of-1s into a collection to build a PFP drop or named series (one at a time for now; batch upload is a planned convenience). Deploying from Profile is a real on-chain deploy.
+- **Collections (sovereign contracts):** `ForeverLibraryFactory.createCollection(name, symbol)` deploys an artist-owned `ForeverLibrary` in one transaction; the factory emits a `CollectionCreated` event so the indexer discovers every collection. The canonical contract is the "Default (open) collection." Artists can mint distinct 1-of-1s into a collection one at a time to build a named series, or use the **Collection drop** path (ZIP of art + metadata, validated in-browser, batch-minted) for bulk PFP / generative sets under the lighter folder-permanence tier. Deploying from Profile is a real on-chain deploy.
 - **Editions:** `mintEdition` mints N ERC-721 copies of one artwork that share one SSTORE2 STATE proof, one LogLedger LOG copy, and one IPFS/Arweave/Irys copy (storage written once). Each token is tagged `edition X / N`, individually owned, and tradeable. The mint wizard caps edition size at 10 (contract allows up to 100).
 - **Live on testnet (Base Sepolia + Ethereum Sepolia):** the mint pipeline, on-chain read layer
   (`/token/onchain/[chainId]/[contract]/[tokenId]`; per-collection at `/collections/onchain/[chainId]/[contract]`), lite indexer (explore/collections surface real
-  on-chain tokens from all factory collections merged with the demo gallery), and fixed-price ETH trading
-  (EIP-712 listings → PerpetualSettlement on-chain fulfillment) are all live. The mock gallery
-  coexists as demo content; catalog text-search still covers the mock index only.
+  on-chain tokens from all factory collections), and fixed-price ETH trading
+  (EIP-712 listings → PerpetualSettlement on-chain fulfillment) are all live. Every surface reads
+  100% live on-chain data — there is no mock catalog; on a sparse testnet, surfaces honestly show
+  their empty states. Catalog text-search covers the live token set.
 
 ## Multi-chain (one-stop shop)
 
@@ -47,16 +48,15 @@ https://perpetual-art-tx-build.vercel.app
 
 ## Trading
 
-- **Gasless listings + offers** - signed orders, settled onchain only when filled; valid onchain
-  even if the orderbook is down.
+- **Gasless fixed-price listings** - signed EIP-712 orders, settled onchain only when filled; valid
+  onchain even if the orderbook is down. **Live.**
+- **Collector offers** - signed, gasless bids the holder can accept on their own terms. **Coming
+  soon** — the token page and profile surface an honest coming-soon state, not fabricated bids.
 - **NFT-for-NFT swaps** - barter your token(s) for theirs, with optional ETH on either side to
-  balance value.
-- **Criteria swaps** - offer against a collection or trait rather than a specific token; the
-  counterparty picks which qualifying token fills it.
-- **Swaps desk** (`/swaps`) - browse open swaps, accept / decline / counter incoming and outgoing
-  proposals. Per-token swap interest and a profile Swaps tab.
+  balance value, including criteria swaps against a collection or trait and a swaps desk
+  (`/swaps`). **Coming soon** — presented as an honest coming-soon state, not a fabricated composer.
 - **Enforced royalties** - ERC-2981, checked at settlement; a sale that does not honor the royalty
-  is rejected by the contract, not by the interface.
+  is rejected by the contract, not by the interface. Capped at 10% (protocol bound).
 
 ## Cross-chain settlement
 
@@ -64,6 +64,7 @@ https://perpetual-art-tx-build.vercel.app
   chain A, release on chain B, rollback on failure. No half-settled state.
 - A flat **bridge fee** is shown at the point of trade, alongside the protocol fee and royalty,
   before you confirm.
+- Ships with swaps — **coming soon**.
 
 ## Identity, scoring, and proof
 
@@ -95,8 +96,8 @@ https://perpetual-art-tx-build.vercel.app
 
 ## Configuration
 
-- Minting (including collections and editions), on-chain read layer, lite indexer, and fixed-price trading are live on testnet. The
-  mock gallery runs alongside for local development with no configuration required. To wire live
+- Minting (including collections and editions), on-chain read layer, lite indexer, and fixed-price trading are live on testnet.
+  Every surface reads live on-chain data — no mock catalog. To wire live
   infrastructure, every variable (per-chain RPCs, WalletConnect, contracts including ForeverLibraryFactory, the bridge, the
   indexer + database, storage providers, the verification service, ENS) is documented in
   [`.env.example`](../.env.example).
