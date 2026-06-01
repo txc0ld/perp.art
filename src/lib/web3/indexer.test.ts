@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mergeForExplore } from "./indexer";
+import { mergeForExplore, FACTORY_DEPLOY_BLOCK } from "./indexer";
 import type { Token } from "@/lib/types";
 
 // Minimal fake Token — cast to Token to avoid filling every field.
@@ -62,5 +62,14 @@ describe("mergeForExplore", () => {
     const live = [fakeToken("live-onchain", { source: "onchain" })];
     const result = mergeForExplore(live, []);
     expect(result[0].source).toBe("onchain");
+  });
+});
+
+describe("FACTORY_DEPLOY_BLOCK", () => {
+  it("has entries for the two test chains", () => {
+    expect(typeof FACTORY_DEPLOY_BLOCK[84532]).toBe("bigint");
+    expect(typeof FACTORY_DEPLOY_BLOCK[11155111]).toBe("bigint");
+    expect(FACTORY_DEPLOY_BLOCK[84532]).toBe(BigInt(42258356));
+    expect(FACTORY_DEPLOY_BLOCK[11155111]).toBe(BigInt(10965404));
   });
 });

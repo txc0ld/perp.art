@@ -4,8 +4,13 @@ import { parseAbiItem } from "viem";
 import type { Token, Collection } from "@/lib/types";
 import { serverPublicClient } from "./server-client";
 import { getContracts } from "./contracts";
-import { FOREVER_LIBRARY_ABI } from "./abis";
-import { readOnchainToken, scanStartBlock, LOG_WINDOW, MAX_WINDOWS } from "./read-token";
+import {
+  readOnchainToken,
+  scanStartBlock,
+  LOG_WINDOW,
+  MAX_WINDOWS,
+  FL_DEPLOY_BLOCK,
+} from "./read-token";
 
 const MINTED_EVENT = parseAbiItem(
   "event TokenMinted(uint256 indexed tokenId, address indexed creator, bytes32 metadataHash, uint96 royaltyBps, uint64 timestamp, uint64 blockNumber)",
@@ -17,28 +22,112 @@ const MAX_TOKENS = 200;
 // Module-level TTL cache — avoids unstable_cache (AGENTS.md: Next 16 differs).
 // ---------------------------------------------------------------------------
 const cache = new Map<number, { at: number; tokens: Token[] }>();
+const collCache = new Map<number, { at: number; cols: CollectionInfo[] }>();
 const TTL_MS = 60_000;
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export const FACTORY_DEPLOY_BLOCK: Record<number, bigint> = {
+  84532: BigInt(42258356),
+  11155111: BigInt(10965404),
+};
+
+export interface CollectionInfo {
+  address: Hex;
+  owner: Hex;
+  name: string;
+  createdBlock: bigint;
+}
+
+// ---------------------------------------------------------------------------
+// indexCollections
+// ---------------------------------------------------------------------------
+
+export async function indexCollections(chainId: number): Promise<CollectionInfo[]> {
+  const cached = collCache.get(chainId);
+  if (cached && Date.now() - cached.at < TTL_MS) return cached.cols;
+
+  try {
+    const pub = serverPublicClient(chainId);
+    const contracts = getContracts(chainId);
+    if (!pub) return [];
+
+    const COLLECTION_CREATED = parseAbiItem(
+      "event CollectionCreated(address indexed collection, address indexed owner, string name, string symbol)",
+    );
+
+    const sovereign: CollectionInfo[] = [];
+
+    if (contracts.factory) {
+      const factory = contracts.factory;
+      const factoryFloor = FACTORY_DEPLOY_BLOCK[chainId] ?? BigInt(0);
+      const latest = await pub.getBlockNumber();
+      let from = factoryFloor;
+      for (let w = 0; w < MAX_WINDOWS && from <= latest; w++) {
+        const rawTo = from + LOG_WINDOW - BigInt(1);
+        const to = rawTo > latest ? latest : rawTo;
+        try {
+          const logs = await pub.getLogs({
+            address: factory,
+            event: COLLECTION_CREATED,
+            fromBlock: from,
+            toBlock: to,
+          });
+          for (const l of logs) {
+            if (l.args.collection && l.args.owner && l.args.name !== undefined) {
+              sovereign.push({
+                address: l.args.collection as Hex,
+                owner: l.args.owner as Hex,
+                name: l.args.name as string,
+                createdBlock: l.blockNumber as bigint,
+              });
+            }
+          }
+        } catch { /* window failure is non-fatal */ }
+        from = to + BigInt(1);
+      }
+    }
+
+    // Prepend canonical FL as the "Default (open)" collection
+    const result: CollectionInfo[] = [];
+    if (contracts.foreverLibrary) {
+      result.push({
+        address: contracts.foreverLibrary,
+        owner: "0x0000000000000000000000000000000000000000" as Hex,
+        name: "Default (open)",
+        createdBlock: FL_DEPLOY_BLOCK[chainId] ?? BigInt(0),
+      });
+    }
+    result.push(...sovereign);
+
+    collCache.set(chainId, { at: Date.now(), cols: result });
+    return result;
+  } catch {
+    return [];
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-/** Scan TokenMinted logs for a chain and return deduplicated, sorted tokenIds. */
-async function enumerateTokenIds(chainId: number): Promise<bigint[]> {
-  const pub = serverPublicClient(chainId);
-  const fl = getContracts(chainId).foreverLibrary;
-  if (!pub || !fl) return [];
-
-  const latest = await pub.getBlockNumber();
-  let from = scanStartBlock(chainId, latest);
+/** Scan TokenMinted logs for a specific contract and return deduplicated, sorted tokenIds. */
+async function enumerateTokenIdsForContract(
+  pub: NonNullable<ReturnType<typeof serverPublicClient>>,
+  contractAddr: Hex,
+  fromBlock: bigint,
+  latest: bigint,
+): Promise<bigint[]> {
   const seen = new Set<string>();
-
+  let from = fromBlock;
   for (let w = 0; w < MAX_WINDOWS && from <= latest; w++) {
     const rawTo = from + LOG_WINDOW - BigInt(1);
     const to = rawTo > latest ? latest : rawTo;
     try {
       const logs = await pub.getLogs({
-        address: fl as Hex,
+        address: contractAddr,
         event: MINTED_EVENT,
         fromBlock: from,
         toBlock: to,
@@ -48,15 +137,10 @@ async function enumerateTokenIds(chainId: number): Promise<bigint[]> {
           seen.add((l.args.tokenId as bigint).toString());
         }
       }
-    } catch {
-      // A single window failure is not fatal — continue scanning.
-    }
+    } catch { /* non-fatal */ }
     from = to + BigInt(1);
   }
-
-  const ids = [...seen].map((s) => BigInt(s));
-  ids.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  return ids.slice(0, MAX_TOKENS);
+  return [...seen].map((s) => BigInt(s)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +148,7 @@ async function enumerateTokenIds(chainId: number): Promise<bigint[]> {
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch all on-chain tokens for a chain, with a 60 s TTL cache.
+ * Fetch all on-chain tokens across all collections for a chain, with a 60 s TTL cache.
  * Never throws — returns [] on any RPC failure so pages never 500.
  */
 export async function indexAllTokens(chainId: number): Promise<Token[]> {
@@ -74,52 +158,72 @@ export async function indexAllTokens(chainId: number): Promise<Token[]> {
   }
 
   try {
-    const tokenIds = await enumerateTokenIds(chainId);
-    const results = await Promise.all(
-      tokenIds.map((id) => readOnchainToken(chainId, id)),
-    );
-    const tokens = results.filter((t): t is Token => t !== null);
-    cache.set(chainId, { at: Date.now(), tokens });
-    return tokens;
+    const pub = serverPublicClient(chainId);
+    if (!pub) return [];
+
+    const collections = await indexCollections(chainId);
+    const latest = await pub.getBlockNumber();
+    const allTokens: Token[] = [];
+
+    for (const col of collections) {
+      if (allTokens.length >= MAX_TOKENS) break;
+      const ids = await enumerateTokenIdsForContract(pub, col.address, col.createdBlock, latest);
+      for (const id of ids) {
+        if (allTokens.length >= MAX_TOKENS) break;
+        const t = await readOnchainToken(chainId, col.address, id);
+        if (t) allTokens.push(t);
+      }
+    }
+
+    cache.set(chainId, { at: Date.now(), tokens: allTokens });
+    return allTokens;
   } catch {
     return [];
   }
 }
 
 /**
- * Build a synthetic Collection record from the live on-chain tokens.
+ * Build Collection records from the live on-chain collections and tokens.
  * Never throws — returns [] on any failure.
  */
 export async function indexedCollections(chainId: number): Promise<Collection[]> {
   try {
-    const tokens = await indexAllTokens(chainId);
-    if (!tokens.length) return [];
+    const collections = await indexCollections(chainId);
+    const allTokens = await indexAllTokens(chainId);
+    const chain = chainId === 84532 ? "base" : chainId === 11155111 ? "ethereum" : "base" as const;
+    const canonicalFL = (getContracts(chainId).foreverLibrary ?? "").toLowerCase();
 
-    const chain = chainId === 84532 ? "base" : chainId === 11155111 ? "ethereum" : "base";
-    const genre = tokens[0].genre;
-    const contractAddress = getContracts(chainId).foreverLibrary ?? "";
+    const result: Collection[] = [];
+    for (const col of collections) {
+      const addrLower = col.address.toLowerCase();
+      const colTokens = allTokens.filter((t) => t.collectionSlug === addrLower);
+      // Include all collections (even empty — they're real contracts).
+      // Skip empty sovereign ones to keep the list clean.
+      if (colTokens.length === 0 && addrLower !== canonicalFL) continue;
 
-    const ownerSet = new Set<string>();
-    for (const t of tokens) ownerSet.add(t.owner.toLowerCase());
+      const ownerSet = new Set<string>();
+      for (const t of colTokens) ownerSet.add(t.owner.toLowerCase());
 
-    const collection: Collection = {
-      slug: `onchain-${chainId}`,
-      name: "On-chain · Perpetual",
-      artistHandle: "perpetual",
-      genre,
-      description: "Live on-chain works minted on Perpetual.",
-      contractAddress,
-      chain,
-      sovereign: false,
-      coverSeed: `onchain-${chainId}`,
-      floorEth: 0,
-      volumeEth: 0,
-      itemCount: tokens.length,
-      ownerCount: ownerSet.size,
-      royaltyBps: 0,
-    };
-
-    return [collection];
+      result.push({
+        slug: addrLower,
+        name: col.name,
+        artistHandle: "perpetual",
+        genre: colTokens[0]?.genre ?? "Generative",
+        description: addrLower !== canonicalFL
+          ? `Sovereign collection at ${col.address}`
+          : "Live on-chain works minted on Perpetual.",
+        contractAddress: col.address,
+        chain,
+        sovereign: addrLower !== canonicalFL,
+        coverSeed: addrLower,
+        floorEth: 0,
+        volumeEth: 0,
+        itemCount: colTokens.length,
+        ownerCount: ownerSet.size,
+        royaltyBps: 0,
+      });
+    }
+    return result;
   } catch {
     return [];
   }
@@ -136,3 +240,4 @@ export function mergeForExplore(live: Token[], mock: Token[]): Token[] {
   );
   return [...live, ...mockTagged];
 }
+
