@@ -44,6 +44,15 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
   const currency = getChainMeta(token.chain).currency;
   const isOnchain = token.source === "onchain";
 
+  // Real thumbnail for live tokens: prefer a light direct gateway shard
+  // (IPFS/Arweave/Irys), then the LOG resolver, then the STATE proof. Falls back
+  // to generative art when nothing resolves or the media isn't a still image.
+  const shards = token.permanence.shards;
+  const pickShard = (b: string) => shards.find((s) => s.backend === b && s.sourceUrl);
+  const mediaShard =
+    pickShard("ipfs") ?? pickShard("arweave") ?? pickShard("irys") ?? pickShard("log") ?? shards.find((s) => s.index === 0 && s.sourceUrl);
+  const thumbUrl = token.mediaType === "image" ? mediaShard?.sourceUrl : undefined;
+
   return (
     <Link
       href={tokenHref(token)}
@@ -56,12 +65,23 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
         className="flex flex-col overflow-hidden rounded-[10px] border border-border bg-surface transition-[border-color,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-border-bright hover:shadow-[0_22px_60px_-30px_rgba(0,0,0,0.95)]"
       >
         <div className="relative aspect-square overflow-hidden bg-background">
-          <GenerativeArt
-            seed={token.artSeed}
-            genre={token.genre}
-            size={priority ? 800 : 600}
-            className="h-full w-full"
-          />
+          {thumbUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={thumbUrl}
+              alt={`${token.title} by ${artistLabel}`}
+              loading={priority ? undefined : "lazy"}
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <GenerativeArt
+              seed={token.artSeed}
+              genre={token.genre}
+              size={priority ? 800 : 600}
+              className="h-full w-full"
+            />
+          )}
 
           {/* permanence indicator */}
           <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-2 py-1 backdrop-blur-md transition-colors duration-300 group-hover:border-accent/40">

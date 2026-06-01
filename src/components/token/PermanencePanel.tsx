@@ -270,7 +270,7 @@ export function PermanencePanel({ token }: { token: Token }) {
           This artwork survives even if Perpetual disappears.
         </p>
         <p className="mt-2 text-[12px] leading-relaxed text-muted">
-          <span className="text-accent">STATE</span> is the consensus-guaranteed backstop
+          <span className="text-accent">STATE</span>{" "}is the consensus-guaranteed backstop
           (in contract state, can&apos;t be pruned) and the only shard that qualifies a
           token for listing. <span className="text-foreground">LOG</span> is the
           cost-efficient high-resolution copy — root-verifiable, availability monitored,
