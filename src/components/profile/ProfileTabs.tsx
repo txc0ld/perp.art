@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import type { Artist, Collection, Genre, Token } from "@/lib/types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Collection, Token } from "@/lib/types";
 import { useWallet, connectWallet } from "@/lib/wallet";
 import { Button, Surface } from "@/components/ui";
 import { ProfileHeader } from "./ProfileHeader";
@@ -15,67 +15,76 @@ import { WalletNfts } from "./WalletNfts";
 
 type TabId = "collected" | "wallet" | "permanence" | "created" | "activity" | "swaps" | "contracts";
 
+/** Fetch helper: returns the parsed body or a fallback on any failure. */
+async function safeJson<T>(url: string, signal: AbortSignal, fallback: T): Promise<T> {
+  try {
+    const r = await fetch(url, { signal, cache: "no-store" });
+    if (!r.ok) return fallback;
+    return (await r.json()) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 /**
- * ProfileTabs (OpenSea-style profile shell) - client shell for the connected user.
- * Owned tokens depend on the connected wallet, so all data is passed in as plain
- * props by the server page and resolved here against live wallet state.
+ * ProfileTabs (OpenSea-style profile shell) — the client shell for the CONNECTED
+ * wallet. Everything is keyed to the connected address: owned + created works,
+ * sovereign collections, joined date, and ENS are fetched live through the /api
+ * endpoints (the live catalog is server-only). Not connected → a clean connect
+ * prompt. No mock identity or holdings.
  */
-export function ProfileTabs({
-  allTokens,
-  previewAddress,
-  creator,
-  creatorTokens,
-  creatorCollections,
-  bannerGenre,
-}: {
-  allTokens: Token[];
-  /** Fallback owner address for a calm preview when no wallet is connected. */
-  previewAddress: string;
-  /** Demo creator identity (first artist) drives Created + Sovereign tabs. */
-  creator: Artist;
-  creatorTokens: Token[];
-  creatorCollections: Collection[];
-  /** Genre keying the banner + avatar identicon visuals. */
-  bannerGenre: Genre;
-}) {
+export function ProfileTabs() {
   const wallet = useWallet();
+  const address = wallet.connected ? wallet.address : null;
   const [tab, setTab] = useState<TabId>("collected");
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  const connected = wallet.connected && wallet.address;
-  const activeAddress = connected ? wallet.address! : previewAddress;
+  const [owned, setOwned] = useState<Token[] | null>(null);
+  const [created, setCreated] = useState<Token[] | null>(null);
+  const [collections, setCollections] = useState<Collection[] | null>(null);
 
-  const ownedTokens = useMemo(
-    () => allTokens.filter((t) => t.owner.toLowerCase() === activeAddress.toLowerCase()),
-    [allTokens, activeAddress],
-  );
+  // Load the connected wallet's live holdings/creations/contracts. State is only
+  // ever written inside the async resolutions (guarded by the abort signal), so
+  // an address change cancels the in-flight fetches and the next ones overwrite.
+  useEffect(() => {
+    if (!address) return;
+    const ac = new AbortController();
+    const q = `address=${encodeURIComponent(address)}`;
+    void safeJson<{ tokens: Token[] }>(`/api/onchain/owned-tokens?${q}`, ac.signal, { tokens: [] })
+      .then((d) => { if (!ac.signal.aborted) setOwned(d.tokens ?? []); });
+    void safeJson<{ tokens: Token[] }>(`/api/onchain/created?${q}`, ac.signal, { tokens: [] })
+      .then((d) => { if (!ac.signal.aborted) setCreated(d.tokens ?? []); });
+    void safeJson<{ collections: Collection[] }>(`/api/onchain/collections?${q}`, ac.signal, { collections: [] })
+      .then((d) => { if (!ac.signal.aborted) setCollections(d.collections ?? []); });
+    return () => ac.abort();
+  }, [address]);
+
+  const ownedTokens = useMemo(() => owned ?? [], [owned]);
+  const createdTokens = useMemo(() => created ?? [], [created]);
+  const ownedLoading = owned === null;
+  const createdLoading = created === null;
 
   // Activity spans both held and created works.
   const activityTokens = useMemo(() => {
     const map = new Map<string, Token>();
-    for (const t of [...ownedTokens, ...creatorTokens]) map.set(t.id, t);
+    for (const t of [...ownedTokens, ...createdTokens]) map.set(t.id, t);
     return [...map.values()];
-  }, [ownedTokens, creatorTokens]);
+  }, [ownedTokens, createdTokens]);
 
   const collectionsHeld = useMemo(
     () => new Set(ownedTokens.map((t) => t.collectionSlug)).size,
     [ownedTokens],
   );
 
-  if (!connected) {
-    return (
-      <DisconnectedState
-        onConnect={() => connectWallet()}
-        previewCount={ownedTokens.length}
-      />
-    );
+  if (!address) {
+    return <DisconnectedState onConnect={() => connectWallet()} />;
   }
 
   const tabs: Array<{ id: TabId; label: string; count?: number }> = [
-    { id: "collected", label: "Collected", count: ownedTokens.length },
+    { id: "collected", label: "Collected", count: ownedLoading ? undefined : ownedTokens.length },
     { id: "wallet", label: "Wallet" },
     { id: "permanence", label: "Permanence" },
-    { id: "created", label: "Created", count: creatorTokens.length },
+    { id: "created", label: "Created", count: createdLoading ? undefined : createdTokens.length },
     { id: "activity", label: "Activity" },
     { id: "swaps", label: "Swaps" },
     { id: "contracts", label: "Sovereign Contracts" },
@@ -98,15 +107,9 @@ export function ProfileTabs({
   return (
     <div className="flex flex-col gap-10">
       <ProfileHeader
-        address={wallet.address!}
-        handle={creator.handle}
-        name={creator.name}
-        joinedAt={creator.joinedAt}
-        verified={creator.verified}
-        sovereign={creator.sovereign}
-        bannerGenre={bannerGenre}
+        address={address}
         ownedTokens={ownedTokens}
-        createdCount={creatorTokens.length}
+        createdCount={createdTokens.length}
         collectionsCount={collectionsHeld}
       />
 
@@ -172,29 +175,21 @@ export function ProfileTabs({
         tabIndex={0}
         className="min-h-[40vh] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        {tab === "collected" && (
-          <CollectedTab tokens={ownedTokens} preview={!wallet.connected} />
-        )}
-        {tab === "wallet" && <WalletNfts address={wallet.address!} />}
-        {tab === "permanence" && <PermanenceReport tokens={ownedTokens} />}
-        {tab === "created" && <CreatedTab tokens={creatorTokens} />}
-        {tab === "activity" && <ActivityTab tokens={activityTokens} />}
-        {tab === "swaps" && <ProfileSwaps address={activeAddress} />}
+        {tab === "collected" && <CollectedTab tokens={ownedTokens} loading={ownedLoading} />}
+        {tab === "wallet" && <WalletNfts address={address} />}
+        {tab === "permanence" && <PermanenceReport tokens={ownedTokens} loading={ownedLoading} />}
+        {tab === "created" && <CreatedTab tokens={createdTokens} loading={createdLoading} />}
+        {tab === "activity" && <ActivityTab tokens={activityTokens} loading={ownedLoading || createdLoading} />}
+        {tab === "swaps" && <ProfileSwaps address={address} />}
         {tab === "contracts" && (
-          <SovereignContracts collections={creatorCollections} />
+          <SovereignContracts collections={collections ?? []} loading={collections === null} />
         )}
       </div>
     </div>
   );
 }
 
-function DisconnectedState({
-  onConnect,
-  previewCount,
-}: {
-  onConnect: () => void;
-  previewCount: number;
-}) {
+function DisconnectedState({ onConnect }: { onConnect: () => void }) {
   return (
     <div className="flex min-h-[55vh] items-center justify-center">
       <Surface className="w-full max-w-md px-8 py-12 text-center">
@@ -206,7 +201,7 @@ function DisconnectedState({
           </svg>
         </div>
         <h1 className="mt-6 text-xl font-medium text-foreground">
-          Connect a wallet to see your collection
+          Connect your wallet to view your profile
         </h1>
         <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted">
           Your collected works, creations, activity, and sovereign contracts all
@@ -216,11 +211,6 @@ function DisconnectedState({
         <Button variant="accent" size="lg" className="mt-7 w-full" onClick={onConnect}>
           Connect wallet
         </Button>
-        {previewCount > 0 && (
-          <p className="mt-4 font-mono text-[11px] uppercase tracking-wider text-faint">
-            {previewCount} works in the sample collection
-          </p>
-        )}
       </Surface>
     </div>
   );

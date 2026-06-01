@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Collection, Chain } from "@/lib/types";
 import { Surface, Button, Badge, MonoLabel, Divider } from "@/components/ui";
-import { getChainMeta } from "@/lib/mock-data";
+import { getChainMeta } from "@/lib/chains";
 import { shortAddress, bpsToPct } from "@/lib/utils";
 import { DeployContractModal, type DeployedContract } from "./DeployContractModal";
 
@@ -39,8 +39,10 @@ function fromCollection(c: Collection): ContractView {
  */
 export function SovereignContracts({
   collections,
+  loading,
 }: {
   collections: Collection[];
+  loading?: boolean;
 }) {
   const [deployed, setDeployed] = useState<ContractView[]>([]);
   const [deploying, setDeploying] = useState(false);
@@ -78,7 +80,13 @@ export function SovereignContracts({
         </p>
       </div>
 
-      {contracts.length === 0 ? (
+      {loading && contracts.length === 0 ? (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2" role="status" aria-label="Loading contracts">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="h-52 animate-pulse rounded-[10px] border border-border bg-surface" />
+          ))}
+        </div>
+      ) : contracts.length === 0 ? (
         <Surface className="px-6 py-10 text-center">
           <p className="text-sm text-muted">
             No sovereign contract yet. Deploy one to own your collection outright,

@@ -16,16 +16,16 @@ function OnchainWorks() {
   const { address } = useAccount();
   const chainId = useChainId();
   const [items, setItems] = React.useState<OwnedItem[] | null>(null);
-  const [loading, setLoading] = React.useState(false);
+  // Loading is derived: connected but the read hasn't resolved yet.
+  const loading = !!address && items === null;
 
   React.useEffect(() => {
-    if (!address) { setItems(null); return; }
+    if (!address) return;
     const controller = new AbortController();
-    setLoading(true);
     fetch(`/api/onchain/owned?chainId=${chainId}&owner=${address}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : { items: [] }))
-      .then((d) => { setItems(d.items ?? []); setLoading(false); })
-      .catch((err) => { if (err.name !== "AbortError") { setItems([]); setLoading(false); } });
+      .then((d) => { if (!controller.signal.aborted) setItems(d.items ?? []); })
+      .catch((err) => { if (err.name !== "AbortError") setItems([]); });
     return () => controller.abort();
   }, [address, chainId]);
 
@@ -79,7 +79,7 @@ function priceOf(t: Token): number {
  * control, then a dense responsive ArtTile grid of works held by the connected
  * wallet. Calm empty state when none.
  */
-export function CollectedTab({ tokens, preview }: { tokens: Token[]; preview?: boolean }) {
+export function CollectedTab({ tokens, loading }: { tokens: Token[]; loading?: boolean }) {
   const [sort, setSort] = useState<SortKey>("recent");
 
   const sorted = useMemo(() => {
@@ -95,6 +95,15 @@ export function CollectedTab({ tokens, preview }: { tokens: Token[]; preview?: b
         return list; // dataset order stands in for recency
     }
   }, [tokens, sort]);
+
+  if (loading) {
+    return (
+      <div>
+        <OnchainWorks />
+        <TileGridSkeleton />
+      </div>
+    );
+  }
 
   if (tokens.length === 0) {
     return (
@@ -125,7 +134,6 @@ export function CollectedTab({ tokens, preview }: { tokens: Token[]; preview?: b
           <>
             <span className="whitespace-nowrap">Est. value {formatEth(estValue)} ETH-eq</span>
             <span className="text-faint"> · approx, holdings span multiple chains</span>
-            {preview ? " · preview, sample collection" : ""}
           </>
         }
         action={
@@ -140,6 +148,27 @@ export function CollectedTab({ tokens, preview }: { tokens: Token[]; preview?: b
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Shared loading placeholder for the Collected / Created tile grids. */
+export function TileGridSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading works"
+      className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 lg:gap-5"
+    >
+      {Array.from({ length: 10 }).map((_, i) => (
+        <div key={i} className="animate-pulse overflow-hidden rounded-[10px] border border-border bg-surface">
+          <div className="aspect-square bg-surface-2" />
+          <div className="space-y-2 p-3">
+            <div className="h-3 w-3/4 rounded bg-surface-2" />
+            <div className="h-3 w-1/2 rounded bg-surface-2" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

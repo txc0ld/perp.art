@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Token, Chain } from "@/lib/types";
 import { SectionHeader } from "@/components/ui";
 import { Identity } from "@/components/identity/Identity";
-import { getChainMeta } from "@/lib/mock-data";
+import { getChainMeta } from "@/lib/chains";
 import { EmptyState } from "./OwnedTab";
 import { SortSelect } from "./SortSelect";
 import { shortHash, formatEth, relativeTime } from "@/lib/utils";
@@ -51,7 +51,7 @@ function explorerTx(chain: Chain, hash: string) {
  * semantic <table> (sr-only caption, th scope) inside an overflow-x-auto scroller
  * so it reflows on mobile. Derived rows are memoized off the tokens + sort.
  */
-export function ActivityTab({ tokens }: { tokens: Token[] }) {
+export function ActivityTab({ tokens, loading }: { tokens: Token[]; loading?: boolean }) {
   const [sort, setSort] = useState<SortKey>("recent");
 
   const visible = useMemo<ActivityRow[]>(() => {
@@ -92,6 +92,20 @@ export function ActivityTab({ tokens }: { tokens: Token[] }) {
     });
     return rows.slice(0, 60);
   }, [tokens, sort]);
+
+  if (loading) {
+    return (
+      <div role="status" aria-label="Loading activity" className="overflow-hidden rounded-[10px] border border-border">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 border-b border-border bg-surface px-3 py-4 last:border-b-0">
+            <div className="h-5 w-16 animate-pulse rounded-full bg-surface-2" />
+            <div className="h-3 w-32 animate-pulse rounded bg-surface-2" />
+            <div className="ml-auto h-3 w-20 animate-pulse rounded bg-surface-2" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (visible.length === 0) {
     return (

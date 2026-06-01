@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Genre, Token } from "@/lib/types";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
-import { Button, VerifiedBadge } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { shortAddress, formatEth, relativeTime } from "@/lib/utils";
-import { resolveEns } from "@/lib/mock-data";
+import { displayName } from "@/lib/ens";
+import { useEnsName } from "@/lib/use-ens";
 import { loadProfile, saveProfile } from "@/lib/profile-store";
 import { EditProfileModal } from "./EditProfileModal";
 
@@ -23,47 +24,72 @@ import { EditProfileModal } from "./EditProfileModal";
  */
 export function ProfileHeader({
   address,
-  handle,
-  name: initialName,
-  joinedAt,
-  verified,
-  sovereign,
-  bannerGenre,
   ownedTokens,
   createdCount,
   collectionsCount,
 }: {
   address: string;
-  handle: string;
-  name: string;
-  joinedAt?: string;
-  verified?: boolean;
-  sovereign?: boolean;
-  bannerGenre: Genre;
   ownedTokens: Token[];
   createdCount: number;
   collectionsCount: number;
 }) {
-  const [name, setName] = useState(initialName);
-  const [bio, setBio] = useState(
-    "Permanence-first works, hash-anchored onchain and kept across independent shards.",
-  );
+  // The display name follows a strict precedence: server profile override →
+  // real ENS name → short address. Until either resolves we show the short
+  // address (never a fabricated handle).
+  const ens = useEnsName(address);
+  const [profileName, setProfileName] = useState<string | undefined>(undefined);
+  const [bio, setBio] = useState<string | undefined>(undefined);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const [bannerUrl, setBannerUrl] = useState<string | undefined>(undefined);
+  const [joinedAt, setJoinedAt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [editing, setEditing] = useState(false);
+
+  // The banner/avatar identicon is keyed by the genre the wallet holds most, so
+  // it is deterministic per wallet without any fabricated identity.
+  const bannerGenre: Genre = useMemo(() => {
+    const counts = new Map<Genre, number>();
+    for (const t of ownedTokens) counts.set(t.genre, (counts.get(t.genre) ?? 0) + 1);
+    let best: Genre = "Abstract";
+    let bestN = 0;
+    for (const [g, n] of counts) {
+      if (n > bestN) {
+        best = g;
+        bestN = n;
+      }
+    }
+    return best;
+  }, [ownedTokens]);
+
+  const name = profileName ?? displayName(address, ens);
 
   // Hydrate server-stored profile overrides (name/bio/avatar/banner) for this address.
   useEffect(() => {
     let live = true;
     loadProfile(address).then((o) => {
       if (!live) return;
-      if (o.name) setName(o.name);
-      if (o.bio) setBio(o.bio);
+      setProfileName(o.name || undefined);
+      setBio(o.bio || undefined);
       setAvatarUrl(o.avatarUrl);
       setBannerUrl(o.bannerUrl);
     });
+    return () => {
+      live = false;
+    };
+  }, [address]);
+
+  // Real "joined" = first on-chain activity for this wallet. Omitted when null.
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/profile/joined?address=${encodeURIComponent(address)}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { joinedAt: null }))
+      .then((d: { joinedAt: string | null }) => {
+        if (live) setJoinedAt(d.joinedAt ?? null);
+      })
+      .catch(() => {
+        if (live) setJoinedAt(null);
+      });
     return () => {
       live = false;
     };
@@ -101,12 +127,13 @@ export function ProfileHeader({
   const stats: Array<{ label: string; value: string }> = [
     { label: "Items", value: String(ownedTokens.length) },
     { label: "Created", value: String(createdCount) },
-    { label: "Est. value (approx)", value: `${formatEth(totalValue)} ETH-eq` },
+    { label: "Est. value (approx)", value: totalValue > 0 ? `${formatEth(totalValue)} ETH-eq` : "—" },
     { label: "Collections", value: String(collectionsCount) },
   ];
 
-  const showMark = verified || sovereign;
-  const ens = resolveEns(address);
+  // Show the ENS chip only when a real name resolved AND it isn't already what
+  // the heading shows (i.e. there's a server override name in front of it).
+  const showEnsChip = !!ens && name !== ens;
 
   return (
     <header className="animate-rise">
@@ -153,15 +180,12 @@ export function ProfileHeader({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <h1 className="display-sm font-brand text-foreground">{name}</h1>
-              {showMark && (
-                <VerifiedBadge size={20} label={sovereign ? "Sovereign creator" : "Verified"} />
-              )}
             </div>
 
             {bio && <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">{bio}</p>}
 
             <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-              {ens && (
+              {showEnsChip && (
                 <span
                   className="inline-flex items-center gap-1.5 font-sans text-sm font-medium text-foreground"
                   title={`Primary ENS name for ${address}`}
@@ -170,7 +194,6 @@ export function ProfileHeader({
                   {ens}
                 </span>
               )}
-              <span className="font-mono text-sm text-muted">@{handle}</span>
               <button
                 type="button"
                 onClick={copyAddress}
@@ -242,14 +265,14 @@ export function ProfileHeader({
       {editing && (
         <EditProfileModal
           initialName={name}
-          initialBio={bio}
+          initialBio={bio ?? ""}
           initialAvatarUrl={avatarUrl}
           initialBannerUrl={bannerUrl}
           address={address}
           bannerGenre={bannerGenre}
           onClose={() => setEditing(false)}
           onSave={({ name: nextName, bio: nextBio, avatarUrl: nextAvatar, bannerUrl: nextBanner }) => {
-            setName(nextName);
+            setProfileName(nextName);
             setBio(nextBio);
             setAvatarUrl(nextAvatar);
             setBannerUrl(nextBanner);

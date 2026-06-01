@@ -19,7 +19,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import type { Token } from "@/lib/types";
-import { permanenceScore, portfolioPermanence } from "@/lib/mock-data";
+import { permanenceScore, portfolioPermanence } from "@/lib/permanence";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { MonoLabel } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -55,7 +55,7 @@ function GradePill({ grade, className }: { grade: Grade; className?: string }) {
   );
 }
 
-export function PermanenceReport({ tokens }: { tokens: Token[] }) {
+export function PermanenceReport({ tokens, loading }: { tokens: Token[]; loading?: boolean }) {
   const report = useMemo(() => {
     const summary = portfolioPermanence(tokens);
     const rows = tokens
@@ -77,6 +77,16 @@ export function PermanenceReport({ tokens }: { tokens: Token[] }) {
 
     return { summary, rows, fullyPermanent, totalVerifiedShards, permanentPct };
   }, [tokens]);
+
+  if (loading) {
+    return (
+      <div role="status" aria-label="Computing permanence report" className="flex flex-col gap-6">
+        <div className="h-40 animate-pulse rounded-[10px] border border-border bg-surface" />
+        <div className="h-16 animate-pulse rounded-[10px] border border-border bg-surface" />
+        <div className="h-48 animate-pulse rounded-[10px] border border-border bg-surface" />
+      </div>
+    );
+  }
 
   if (tokens.length === 0) {
     return (

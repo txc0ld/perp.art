@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { Token } from "@/lib/types";
 import { ArtTile } from "@/components/art/ArtTile";
 import { SectionHeader } from "@/components/ui";
-import { EmptyState } from "./OwnedTab";
+import { EmptyState, TileGridSkeleton } from "./OwnedTab";
 import { SortSelect } from "./SortSelect";
 
 type SortKey = "recent" | "price-desc" | "price-asc" | "title";
@@ -21,11 +21,11 @@ function priceOf(t: Token): number {
 }
 
 /**
- * Created tab (design prompt §4.5) - works the user authored. In the demo dataset
- * the connected user is treated as the first artist, so this shows their minted works.
- * Shared SectionHeader carries the count + a sort control passed as `action`.
+ * Created tab (design prompt §4.5) - works authored by the connected wallet
+ * (creator = the ERC-2981 royalty receiver, from the live catalog). Shared
+ * SectionHeader carries the count + a sort control passed as `action`.
  */
-export function CreatedTab({ tokens }: { tokens: Token[] }) {
+export function CreatedTab({ tokens, loading }: { tokens: Token[]; loading?: boolean }) {
   const [sort, setSort] = useState<SortKey>("recent");
 
   const sorted = useMemo(() => {
@@ -42,12 +42,14 @@ export function CreatedTab({ tokens }: { tokens: Token[] }) {
     }
   }, [tokens, sort]);
 
+  if (loading) return <TileGridSkeleton />;
+
   if (tokens.length === 0) {
     return (
       <EmptyState
-        title="Nothing minted yet"
-        body="Works you create live here. Mint to a sovereign Forever Library contract you own outright, with permanence configured from the first block."
-        cta={{ href: "/mint", label: "Mint a work" }}
+        title="You haven't minted anything yet"
+        body="Works you create live here. Mint your first to a sovereign Forever Library contract you own outright, with permanence configured from the first block."
+        cta={{ href: "/mint", label: "Mint your first work" }}
       />
     );
   }

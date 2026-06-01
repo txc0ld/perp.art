@@ -10,7 +10,7 @@ import "server-only";
  */
 import { formatEther } from "viem";
 import type { Token, Collection, Chain } from "@/lib/types";
-import { indexAllTokens, indexedCollections } from "@/lib/web3/indexer";
+import { indexAllTokens, indexedCollections, indexCollections } from "@/lib/web3/indexer";
 import { getContracts } from "@/lib/web3/contracts";
 import { listAllOpenOrders } from "@/lib/web3/orderbook";
 
@@ -148,6 +148,38 @@ export async function getLiveTokensByCreator(address: string): Promise<Token[]> 
 export async function getLiveCollections(): Promise<Collection[]> {
   const batches = await Promise.all(LIVE_CHAIN_IDS.map((id) => indexedCollections(id)));
   return batches.flat();
+}
+
+/**
+ * Live sovereign collections deployed by an address (the on-chain factory
+ * `CollectionCreated.owner`). The rich Collection record (item/owner counts,
+ * chain) is sourced from indexedCollections; the deployer address comes from
+ * indexCollections (CollectionInfo carries `owner`, the domain Collection does
+ * not). Returns only sovereign contracts the address actually deployed — the
+ * canonical Forever Library (owner 0x0) is never attributed to anyone.
+ * Never throws: degrades to [].
+ */
+export async function getLiveCollectionsByOwner(address: string): Promise<Collection[]> {
+  const a = address.toLowerCase();
+  try {
+    const [infoBatches, collections] = await Promise.all([
+      Promise.all(LIVE_CHAIN_IDS.map((id) => indexCollections(id))),
+      getLiveCollections(),
+    ]);
+    const ownedSlugs = new Set<string>();
+    for (const infos of infoBatches) {
+      for (const info of infos) {
+        if (info.owner.toLowerCase() === a) {
+          ownedSlugs.add(info.address.toLowerCase());
+        }
+      }
+    }
+    return collections.filter(
+      (c) => c.sovereign && ownedSlugs.has(c.contractAddress.toLowerCase()),
+    );
+  } catch {
+    return [];
+  }
 }
 
 export async function getLiveCollection(contract: string): Promise<Collection | undefined> {
