@@ -252,7 +252,7 @@ contract ForeverLibrary is
 
         tokenId = _mintOne(
             to, artistName, title, mediaType, royaltyBps, metadataHash,
-            hostingFeeBps_, statePtr, contentHash, 1, 1
+            hostingFeeBps_, statePtr, contentHash, 1, 1, msg.value
         );
 
         // Forward any artist-paid storage fee to the treasury (interactions last).
@@ -308,9 +308,11 @@ contract ForeverLibrary is
         firstTokenId = _nextTokenId; // capture before looping
 
         for (uint32 i = 0; i < editionSize_; i++) {
+            // The whole edition's storage fee is attributed to the first token.
             _mintOne(
                 to, artistName, title, mediaType, royaltyBps, metadataHash,
-                hostingFeeBps_, statePtr, contentHash, editionSize_, i + 1
+                hostingFeeBps_, statePtr, contentHash, editionSize_, i + 1,
+                i == 0 ? msg.value : 0
             );
         }
 
@@ -326,8 +328,9 @@ contract ForeverLibrary is
     ///      emits. All edition tokens call this with the same `statePtr` and
     ///      `contentHash` so `shardURI(id,0)` returns byte-identical results.
     ///      `storagePaidWei` is emitted in HostingConfigured and is the actual
-    ///      payment only for the token that "carries" the storage fee (first/only
-    ///      token); subsequent edition tokens emit 0.
+    ///      payment attributed to the token that "carries" the storage fee
+    ///      (the single mint, or an edition's first token); other edition tokens
+    ///      pass 0 since the fee is charged once for the whole edition.
     function _mintOne(
         address to,
         string memory artistName,
@@ -339,7 +342,8 @@ contract ForeverLibrary is
         address statePtr,
         bytes32 contentHash,
         uint32 edSz,
-        uint32 edIdx
+        uint32 edIdx,
+        uint256 storagePaidWei
     ) internal returns (uint256 tokenId) {
         tokenId = _nextTokenId++;
         _hostingFeeBps[tokenId] = hostingFeeBps_;
@@ -388,7 +392,7 @@ contract ForeverLibrary is
             uint64(block.timestamp),
             uint64(block.number)
         );
-        emit HostingConfigured(tokenId, hostingFeeBps_, 0);
+        emit HostingConfigured(tokenId, hostingFeeBps_, storagePaidWei);
     }
 
     /*//////////////////////////////////////////////////////////////////////

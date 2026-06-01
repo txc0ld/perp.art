@@ -10,8 +10,23 @@ contract ForeverLibraryTest is Test {
     address internal owner = address(0xA11CE);
     uint64 internal constant EDIT_WINDOW = 7 days;
 
+    event HostingConfigured(uint256 indexed tokenId, uint16 hostingFeeBps, uint256 storagePaidWei);
+
     function setUp() public {
         fl = new ForeverLibrary("Perpetual", "PERP", owner, EDIT_WINDOW);
+    }
+
+    /// HostingConfigured reports the actual storage fee paid (artist-paid mint).
+    function test_HostingConfiguredReportsStoragePaid() public {
+        vm.prank(owner);
+        fl.setStorageFeeWei(0.001 ether);
+        vm.deal(address(this), 1 ether);
+        vm.expectEmit(true, false, false, true);
+        emit HostingConfigured(1, 0, 0.001 ether); // fresh contract → first token id is 1
+        fl.mint{value: 0.001 ether}(
+            address(this), "A", "Paid", "image/png", 500,
+            keccak256("m"), bytes("proof"), 0
+        );
     }
 
     /// Accept safeMint into this test contract (ERC-721 receiver).
