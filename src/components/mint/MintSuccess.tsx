@@ -51,6 +51,7 @@ export function MintSuccess({
   chainId,
   tokenId,
   shards,
+  contract,
 }: {
   form: MintForm;
   shardOptions: ShardOption[];
@@ -60,6 +61,8 @@ export function MintSuccess({
   chainId?: number;
   tokenId?: string;
   shards?: ShardRecord[];
+  /** Contract address of the collection this token was minted into. */
+  contract?: string;
 }) {
   const seed = previewSeed(form);
   const artifacts = React.useMemo(() => deriveTokenArtifacts(form), [form]);
@@ -211,9 +214,9 @@ export function MintSuccess({
                 <div className="flex items-center justify-between gap-4 py-2.5">
                   <MonoLabel className="text-faint">Transaction</MonoLabel>
                   <div className="flex items-center gap-4">
-                    {tokenId && chainId && (
+                    {tokenId && chainId && contract && (
                       <a
-                        href={`/token/onchain/${chainId}/${tokenId}`}
+                        href={`/token/onchain/${chainId}/${contract}/${tokenId}`}
                         className="font-mono text-[11px] uppercase tracking-wider text-accent underline-offset-2 hover:underline"
                       >
                         View your token →

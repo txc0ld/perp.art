@@ -85,7 +85,7 @@ describe.runIf(RUN)("PerpetualSettlement order flow (on-chain Base Sepolia)", ()
       // -----------------------------------------------------------------
       // Find a token owned by the relayer on Base Sepolia.
       // -----------------------------------------------------------------
-      const ownedIds = await readOwnedTokenIds(CHAIN_ID, relayerAddr);
+      const ownedIds = await readOwnedTokenIds(CHAIN_ID, flAddr!, relayerAddr);
       if (ownedIds.length === 0) {
         // Relayer owns no FL tokens — skip rather than fail.
         expect(

@@ -10,7 +10,7 @@ import { SortSelect } from "./SortSelect";
 import { useAccount, useChainId } from "wagmi";
 import Link from "next/link";
 
-type OwnedItem = { id: string; tokenId: number; title: string; chainId: number; image: string | null };
+type OwnedItem = { id: string; tokenId: number; title: string; chainId: number; contract: string; image: string | null };
 
 function OnchainWorks() {
   const { address } = useAccount();
@@ -42,7 +42,7 @@ function OnchainWorks() {
           {items.map((it) => (
             <Link
               key={it.id}
-              href={`/token/onchain/${it.chainId}/${it.tokenId}`}
+              href={`/token/onchain/${it.chainId}/${it.contract}/${it.tokenId}`}
               className="group overflow-hidden rounded-[8px] border border-border bg-surface-2 transition-colors hover:border-border-bright"
             >
               {it.image && (

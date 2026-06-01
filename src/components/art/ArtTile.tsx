@@ -11,12 +11,20 @@ import { Tilt3D } from "@/components/visual/Tilt3D";
 
 /**
  * Derive the token detail href. Live on-chain tokens use
- * `/token/onchain/{chainId}/{tokenId}`; mock tokens use `/token/{id}`.
+ * `/token/onchain/{chainId}/{contract}/{tokenId}`; mock tokens use `/token/{id}`.
+ *
+ * For onchain tokens, token.collectionSlug is the lowercased contract address
+ * and token.id is `${chainId}-${contract}-${tokenId}`.
  */
 function tokenHref(token: Token): string {
   if (token.source === "onchain") {
-    const chainId = token.chain === "base" ? 84532 : 11155111;
-    return `/token/onchain/${chainId}/${token.tokenId}`;
+    // id = "${chainId}-${contract}-${tokenId}"
+    // contract is 42 chars (0x + 40 hex) and won't contain extra dashes.
+    const parts = token.id.split("-");
+    const chainId = parts[0];
+    const tokenIdPart = parts[parts.length - 1];
+    const contract = token.collectionSlug; // already lowercased contract address
+    return `/token/onchain/${chainId}/${contract}/${tokenIdPart}`;
   }
   return `/token/${token.id}`;
 }

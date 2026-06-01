@@ -8,22 +8,24 @@ import { TradePanel } from "@/components/token/TradePanel";
 import { MediaPreview } from "@/components/mint/MediaPreview";
 import { Section } from "@/components/ui";
 import { shortAddress } from "@/lib/utils";
-import { getContracts } from "@/lib/web3/contracts";
+import type { Hex } from "viem";
 
 export const dynamic = "force-dynamic";
 
-async function load(chainId: string, tokenId: string) {
+const CONTRACT_RE = /^0x[0-9a-fA-F]{40}$/;
+
+async function load(chainId: string, contract: string, tokenId: string) {
   const c = Number(chainId);
   const id = /^\d+$/.test(tokenId) ? BigInt(tokenId) : null;
-  if (!Number.isInteger(c) || id === null) return null;
-  return readOnchainToken(c, id);
+  if (!Number.isInteger(c) || id === null || !CONTRACT_RE.test(contract)) return null;
+  return readOnchainToken(c, contract as Hex, id);
 }
 
 export async function generateMetadata(
-  { params }: { params: Promise<{ chainId: string; tokenId: string }> },
+  { params }: { params: Promise<{ chainId: string; contract: string; tokenId: string }> },
 ): Promise<Metadata> {
-  const { chainId, tokenId } = await params;
-  const token = await load(chainId, tokenId);
+  const { chainId, contract, tokenId } = await params;
+  const token = await load(chainId, contract, tokenId);
   if (!token) return { title: "Token not found · Perpetual" };
   return {
     title: `${token.title} · Perpetual`,
@@ -32,28 +34,28 @@ export async function generateMetadata(
 }
 
 export default async function OnchainTokenPage(
-  { params }: { params: Promise<{ chainId: string; tokenId: string }> },
+  { params }: { params: Promise<{ chainId: string; contract: string; tokenId: string }> },
 ) {
-  const { chainId, tokenId } = await params;
-  const token = await load(chainId, tokenId);
+  const { chainId, contract, tokenId } = await params;
+  if (!CONTRACT_RE.test(contract)) notFound();
+
+  const token = await load(chainId, contract, tokenId);
   if (!token) notFound();
 
   const chainIdNum = Number(chainId);
-  const { foreverLibrary: fl } = getContracts(chainIdNum);
 
-  // STATE shard (index 0) is the on-chain data URI; use it as the display image.
-  // LOG shard (backend "log") is the high-res copy — prefer it when present.
   const stateShard = token.permanence.shards.find((s) => s.index === 0);
   const logShard = token.permanence.shards.find((s) => s.backend === "log");
   const displayUrl = logShard?.sourceUrl ?? stateShard?.sourceUrl;
 
-  // Derive a MIME type from the token's mediaType field.
   const mime =
     token.mediaType === "video"
       ? "video/mp4"
       : token.mediaType === "interactive"
       ? "text/html"
       : "image/png";
+
+  const isEdition = token.editionSize !== undefined && token.editionSize > 1;
 
   return (
     <Section>
@@ -74,11 +76,14 @@ export default async function OnchainTokenPage(
           )}
         </div>
 
-        {/* Right: header + permanence panels */}
+        {/* Right: header + panels */}
         <div className="space-y-4">
           <header>
             <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
               On-chain · token #{token.tokenId}
+              {isEdition && (
+                <> · Edition {token.editionIndex}/{token.editionSize}</>
+              )}
             </span>
             <h1 className="mt-1 font-brand text-[28px] font-semibold tracking-[-0.01em] text-foreground">
               {token.title}
@@ -87,14 +92,12 @@ export default async function OnchainTokenPage(
               by {token.artistHandle} · owner {shortAddress(token.owner)}
             </p>
           </header>
-          {fl && (
-            <TradePanel
-              chainId={chainIdNum}
-              tokenId={token.tokenId}
-              nft={fl}
-              owner={token.owner as `0x${string}`}
-            />
-          )}
+          <TradePanel
+            chainId={chainIdNum}
+            tokenId={token.tokenId}
+            nft={contract as Hex}
+            owner={token.owner as Hex}
+          />
           <PermanencePanel token={token} />
           <CertificateOfPermanence token={token} />
         </div>

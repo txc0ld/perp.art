@@ -5,7 +5,7 @@ import type { Genre, ShardOption } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWallet, connectWallet } from "@/lib/wallet";
 import { useOnchainMint, type ShardRecord } from "./useOnchainMint";
-import { chainLabelForId } from "@/lib/web3/contracts";
+import { chainLabelForId, getContracts } from "@/lib/web3/contracts";
 import { Button, MonoLabel, Surface } from "@/components/ui";
 import { Stepper } from "./Stepper";
 import { UploadStep } from "./UploadStep";
@@ -163,6 +163,7 @@ export function MintWizard({
             chainId={onchain.chainId}
             tokenId={onchain.tokenId}
             shards={onchain.shards.length ? onchain.shards : undefined}
+            contract={onchain.chainId ? getContracts(onchain.chainId).foreverLibrary : undefined}
           />
         ) : busy ? (
           <div className="space-y-7">
