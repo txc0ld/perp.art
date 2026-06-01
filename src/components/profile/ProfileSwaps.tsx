@@ -1,32 +1,17 @@
-"use client";
-
 /**
- * ProfileSwaps - the connected user's incoming + outgoing swaps. Resolved against
- * the live wallet address so the lists track whichever account is connected.
+ * ProfileSwaps — the profile Swaps tab. The swaps mechanism isn't live yet, so
+ * this shows an honest coming-soon state instead of fabricated incoming/outgoing
+ * barter. Keeps the `address` prop so the tab wiring is unchanged for when swaps
+ * ship (address is intentionally unused for now).
  */
-import { useMemo } from "react";
-import { getSwapsForUser } from "@/lib/mock-data";
-import { SwapList } from "@/components/swap/SwapList";
+import { EmptyState } from "@/components/ui";
 
-export function ProfileSwaps({ address }: { address: string }) {
-  const { incoming, outgoing } = useMemo(() => getSwapsForUser(address), [address]);
-
+export function ProfileSwaps({ address: _address }: { address: string }) {
   return (
-    <div className="flex flex-col gap-10">
-      <SwapList
-        swaps={incoming}
-        variant="incoming"
-        heading="Incoming"
-        emptyTitle="No incoming swaps"
-        emptyBody="When a collector proposes a barter for one of your works, it lands here to accept, decline, or counter."
-      />
-      <SwapList
-        swaps={outgoing}
-        variant="outgoing"
-        heading="Outgoing"
-        emptyTitle="No outgoing swaps"
-        emptyBody="Swaps you propose from any token page appear here while they wait on the counterparty."
-      />
-    </div>
+    <EmptyState
+      eyebrow="Coming soon"
+      title="Swaps are coming soon"
+      body="Incoming and outgoing barter for your works will live here — accept, decline, or counter NFT-for-NFT trades with optional ETH balancing and cross-chain settlement. The mechanism is in build and not yet live."
+    />
   );
 }

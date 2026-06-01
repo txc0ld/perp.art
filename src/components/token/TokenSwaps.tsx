@@ -1,37 +1,18 @@
 /**
- * TokenSwaps - the swaps section on the token page. Lists active swap interest in
- * this token (getSwapsForToken passed as a prop from the server page) and offers a
- * prominent "Propose a swap" CTA. Server component shell; interactivity lives in
- * the SwapList / ProposeSwapButton client components.
+ * TokenSwaps — the swaps section on the token page. The swaps mechanism isn't
+ * live yet, so rather than show fabricated barter interest this renders an honest
+ * "coming soon" note. Keeps the `token`/`swaps` props so the token page wiring is
+ * unchanged for when swaps ship (swaps is intentionally unused for now).
  */
 import type { SwapOrder, Token } from "@/lib/types";
-import { SwapList } from "@/components/swap/SwapList";
-import { ProposeSwapButton } from "@/components/swap/ProposeSwapButton";
+import { EmptyState } from "@/components/ui";
 
-export function TokenSwaps({ token, swaps }: { token: Token; swaps: SwapOrder[] }) {
-  const active = swaps.filter((s) => s.status === "open" || s.status === "countered");
-
+export function TokenSwaps({ token: _token, swaps: _swaps }: { token: Token; swaps: SwapOrder[] }) {
   return (
-    <div className="flex flex-col gap-5">
-      <SwapList
-        swaps={active}
-        variant="open"
-        heading="Open swap interest"
-        emptyTitle="No open swaps for this work yet"
-        emptyBody="Be the first to barter. Offer a piece from your collection, balance with ETH if needed, even across chains."
-        action={
-          <ProposeSwapButton token={token} variant="accent" size="sm">
-            Propose a swap
-          </ProposeSwapButton>
-        }
-      />
-      {active.length > 0 && (
-        <div>
-          <ProposeSwapButton token={token} variant="accent" size="lg" className="w-full sm:w-auto">
-            Propose a swap for this work
-          </ProposeSwapButton>
-        </div>
-      )}
-    </div>
+    <EmptyState
+      eyebrow="Coming soon"
+      title="Swaps are coming soon"
+      body="Soon you'll be able to barter for this work — offer a piece from your collection, balance with ETH if needed, even across chains. The mechanism is in build and not yet live."
+    />
   );
 }

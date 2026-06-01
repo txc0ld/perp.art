@@ -1,66 +1,66 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import type { Genre, Chain } from "@/lib/types";
-import type { CollectionRanking, RankWindow } from "@/lib/mock-data";
-import { getChainMeta, getChains } from "@/lib/mock-data";
-import { cn, formatEth } from "@/lib/utils";
+import type { Collection, Genre, Chain } from "@/lib/types";
+import { getChainMeta, getChains } from "@/lib/chains";
+import { cn } from "@/lib/utils";
 import { GenerativeArt } from "@/components/art/GenerativeArt";
 import { VerifiedBadge } from "@/components/ui";
-import { PctChange } from "./PctChange";
-
-const WINDOWS: RankWindow[] = ["1h", "6h", "24h", "7d", "30d"];
-const WINDOW_LABEL: Record<RankWindow, string> = {
-  "1h": "1H", "6h": "6H", "24h": "24H", "7d": "7D", "30d": "30D",
-};
 
 type ChainFilter = "all" | Chain;
-type SortKey = "rank" | "floorEth" | "topOfferEth" | "changePct" | "volumeEth" | "salesCount";
+type SortKey = "rank" | "itemCount" | "ownerCount";
 type SortDir = "asc" | "desc";
 
+/** Map a Token `chain` tag to its numeric chain id (inverse of catalog's CHAIN_BY_ID). */
+const CHAIN_ID_BY_TAG: Record<string, number> = { base: 84532, ethereum: 11155111 };
+
 /**
- * OpenSea-style rankings table. Receives precomputed rows for every time window
- * as props (all data access stays on the server) and toggles window / category /
- * chain on the client. Each row is a single focusable link to the collection
- * detail page; columns are sortable. A11y: semantic table with sr-only caption,
- * colgroup for stable widths, aria-sort on the active column.
+ * Live collections table. Live/testnet has effectively zero trading volume, so a
+ * volume-ranked leaderboard would be meaningless. Instead this ranks the real
+ * on-chain collections by item count (then owners), and renders floor/volume
+ * honestly as "—" rather than fabricating numbers. Receives the precomputed
+ * collections + slug→href map as props (all data access stays on the server) and
+ * only toggles chain / category filters and sort on the client.
  */
-export function RankingsTable({
-  data,
+export function StatsCollectionsTable({
+  collections,
   genres,
+  hrefs,
 }: {
-  data: Record<RankWindow, CollectionRanking[]>;
+  collections: Collection[];
   genres: Genre[];
+  hrefs: Record<string, string>;
 }) {
-  const [window, setWindow] = React.useState<RankWindow>("24h");
   const [genre, setGenre] = React.useState<Genre | "all">("all");
   const [chain, setChain] = React.useState<ChainFilter>("all");
-  const [sortKey, setSortKey] = React.useState<SortKey>("volumeEth");
+  const [sortKey, setSortKey] = React.useState<SortKey>("itemCount");
   const [sortDir, setSortDir] = React.useState<SortDir>("desc");
 
+  // Only show chain pills for chains that actually have a collection.
+  const presentChains = React.useMemo(() => {
+    const set = new Set(collections.map((c) => c.chain));
+    return getChains().filter((m) => set.has(m.id));
+  }, [collections]);
+
   const rows = React.useMemo(() => {
-    const filtered = data[window].filter((r) => {
-      if (genre !== "all" && r.collection.genre !== genre) return false;
-      if (chain !== "all" && r.collection.chain !== chain) return false;
+    const filtered = collections.filter((c) => {
+      if (genre !== "all" && c.genre !== genre) return false;
+      if (chain !== "all" && c.chain !== chain) return false;
       return true;
     });
-    // Stable rank by volume (the canonical ranking) is assigned first.
+    // Canonical rank by item count (descending), assigned first.
     const ranked = [...filtered]
-      .sort((a, b) => b.volumeEth - a.volumeEth)
-      .map((r, i) => ({ ...r, rank: i + 1 }));
+      .sort((a, b) => b.itemCount - a.itemCount || b.ownerCount - a.ownerCount)
+      .map((c, i) => ({ collection: c, rank: i + 1 }));
 
     const dir = sortDir === "asc" ? 1 : -1;
     return [...ranked].sort((a, b) => {
-      // Rank sorts ascending visually means 1..N; treat as numeric.
-      const av = a[sortKey];
-      const bv = b[sortKey];
+      const av = sortKey === "rank" ? a.rank : a.collection[sortKey];
+      const bv = sortKey === "rank" ? b.rank : b.collection[sortKey];
       return (av - bv) * dir;
     });
-  }, [data, window, genre, chain, sortKey, sortDir]);
+  }, [collections, genre, chain, sortKey, sortDir]);
 
-  // Toggle: clicking the active column flips direction; a new column gets its
-  // sensible default (rank asc, everything else desc).
   function requestSort(key: SortKey) {
     setSortKey((prevKey) => {
       if (prevKey === key) {
@@ -79,32 +79,20 @@ export function RankingsTable({
     <div>
       {/* Controls */}
       <div className="flex flex-col gap-4 border-b border-border pb-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        {presentChains.length > 1 && (
           <div
             className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            role="group"
-            aria-label="Time window"
-          >
-            {WINDOWS.map((w) => (
-              <Pill key={w} active={window === w} onClick={() => setWindow(w)}>
-                {WINDOW_LABEL[w]}
-              </Pill>
-            ))}
-          </div>
-          <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
-          <div
-            className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:ml-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="group"
             aria-label="Chain"
           >
             <Pill active={chain === "all"} onClick={() => setChain("all")}>All chains</Pill>
-            {getChains().map((m) => (
+            {presentChains.map((m) => (
               <Pill key={m.id} active={chain === m.id} onClick={() => setChain(m.id)}>
                 {m.short}
               </Pill>
             ))}
           </div>
-        </div>
+        )}
 
         <div
           className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -122,16 +110,16 @@ export function RankingsTable({
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[560px] border-collapse">
           <caption className="sr-only">
-            Collections ranked by {WINDOW_LABEL[window]} trading volume. Use the column
-            headers to sort, and the filters above to narrow by chain and category.
+            Live on-chain collections ranked by item count. Floor and volume are shown
+            as &ldquo;—&rdquo; where there is no trading activity yet. Use the column
+            headers to sort and the filters above to narrow by chain and category.
           </caption>
           <colgroup>
             <col className="w-[52px]" />
             <col />
-            <col className="w-[120px]" />
-            <col className="w-[120px]" />
             <col className="w-[112px]" />
-            <col className="w-[128px]" />
+            <col className="w-[112px]" />
+            <col className="w-[112px]" />
             <col className="w-[96px]" />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-background/90 backdrop-blur-md">
@@ -148,59 +136,36 @@ export function RankingsTable({
               </SortableTh>
               <Th scope="col" className="text-left">Collection</Th>
               <SortableTh
-                active={sortKey === "floorEth"}
+                active={sortKey === "itemCount"}
                 dir={sortDir}
-                ariaSort={ariaSortFor("floorEth")}
-                onClick={() => requestSort("floorEth")}
+                ariaSort={ariaSortFor("itemCount")}
+                onClick={() => requestSort("itemCount")}
               >
-                Floor
+                Items
               </SortableTh>
               <SortableTh
                 className="hidden sm:table-cell"
-                active={sortKey === "topOfferEth"}
+                active={sortKey === "ownerCount"}
                 dir={sortDir}
-                ariaSort={ariaSortFor("topOfferEth")}
-                onClick={() => requestSort("topOfferEth")}
+                ariaSort={ariaSortFor("ownerCount")}
+                onClick={() => requestSort("ownerCount")}
               >
-                Top offer
+                Owners
               </SortableTh>
-              <SortableTh
-                active={sortKey === "changePct"}
-                dir={sortDir}
-                ariaSort={ariaSortFor("changePct")}
-                onClick={() => requestSort("changePct")}
-              >
-                {WINDOW_LABEL[window]} %
-              </SortableTh>
-              <SortableTh
-                active={sortKey === "volumeEth"}
-                dir={sortDir}
-                ariaSort={ariaSortFor("volumeEth")}
-                onClick={() => requestSort("volumeEth")}
-              >
-                Volume
-              </SortableTh>
-              <SortableTh
-                className="hidden md:table-cell"
-                active={sortKey === "salesCount"}
-                dir={sortDir}
-                ariaSort={ariaSortFor("salesCount")}
-                onClick={() => requestSort("salesCount")}
-              >
-                Sales
-              </SortableTh>
+              <Th scope="col" className="text-right">Floor</Th>
+              <Th scope="col" className="hidden md:table-cell text-right">Volume</Th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <Row key={r.collection.slug} row={r} window={window} />
+              <Row key={r.collection.slug} collection={r.collection} rank={r.rank} href={hrefs[r.collection.slug]} />
             ))}
           </tbody>
         </table>
 
         {rows.length === 0 && (
           <p className="py-16 text-center text-sm text-muted">
-            No collections match these filters. Try a wider time window or category.
+            No collections match these filters. Try a wider category or chain.
           </p>
         )}
       </div>
@@ -208,22 +173,21 @@ export function RankingsTable({
   );
 }
 
-function Row({ row, window }: { row: CollectionRanking; window: RankWindow }) {
-  const c = row.collection;
+function Row({ collection, rank, href }: { collection: Collection; rank: number; href?: string }) {
+  const c = collection;
   const meta = getChainMeta(c.chain);
   const chainLabel = meta.short;
-  const cur = meta.currency;
-  const label =
-    `Rank ${row.rank}: ${c.name} on ${chainLabel}. Floor ${formatEth(row.floorEth)} ${cur}, ` +
-    `${WINDOW_LABEL[window]} volume ${formatEth(row.volumeEth)} ${cur}.`;
+  const chainId = CHAIN_ID_BY_TAG[c.chain] ?? 84532;
+  const target = href ?? `/collections/onchain/${chainId}/${c.contractAddress}`;
+  const label = `Rank ${rank}: ${c.name} on ${chainLabel}. ${c.itemCount} items, ${c.ownerCount} owners.`;
   return (
     <tr className="group border-b border-border transition-colors hover:bg-surface focus-within:bg-surface">
       <td className="h-[68px] pl-2 text-left font-mono text-sm tabular-nums text-faint">
-        {row.rank}
+        {rank}
       </td>
       <td>
-        <Link
-          href={`/collections/${c.slug}`}
+        <a
+          href={target}
           aria-label={label}
           className="flex items-center gap-3 py-3 pr-4 rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
@@ -241,15 +205,13 @@ function Row({ row, window }: { row: CollectionRanking; window: RankWindow }) {
               {chainLabel}
             </span>
           </span>
-        </Link>
+        </a>
       </td>
-      <Td>{formatEth(row.floorEth)} {cur}</Td>
-      <Td className="hidden sm:table-cell">{formatEth(row.topOfferEth)} {cur}</Td>
-      <td className="py-4 pr-4 text-right">
-        <PctChange value={row.changePct} className="justify-end" />
-      </td>
-      <Td className="text-foreground">{formatEth(row.volumeEth)} {cur}</Td>
-      <Td className="hidden md:table-cell">{row.salesCount.toLocaleString()}</Td>
+      <Td className="text-foreground">{c.itemCount.toLocaleString()}</Td>
+      <Td className="hidden sm:table-cell">{c.ownerCount.toLocaleString()}</Td>
+      {/* No live trading yet — render honestly rather than fabricate. */}
+      <Td className="text-faint">—</Td>
+      <Td className="hidden md:table-cell text-faint">—</Td>
     </tr>
   );
 }
@@ -267,7 +229,7 @@ function Th({
     <th
       scope={scope}
       className={cn(
-        "py-3 pr-4 font-mono text-[10px] font-semibold uppercase tracking-wider",
+        "py-3 pr-4 font-mono text-[10px] font-semibold uppercase tracking-wider text-right",
         className,
       )}
     >
