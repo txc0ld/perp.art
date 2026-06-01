@@ -26,7 +26,8 @@ import {
   MonoLabel,
   StatusGlyph,
 } from "@/components/ui";
-import { getMarketStats, getChains } from "@/lib/mock-data";
+import { getChains } from "@/lib/chains";
+import { getLiveMarketStats } from "@/lib/live/catalog";
 import { DocsNav } from "@/components/docs/DocsNav";
 import { Callout, DefRow, DocSection, Term } from "@/components/docs/DocsKit";
 
@@ -36,8 +37,8 @@ export const metadata: Metadata = {
     "The definitive guide to how Perpetual works: the five-shard permanence model — a mandatory SSTORE2 STATE shard plus a high-res LOG shard and three permanent off-chain copies — sovereign collection contracts (ForeverLibraryFactory), editions (N tokens sharing one storage footprint), nine supported networks, NFT-for-NFT and criteria swaps, atomic cross-chain settlement, enforced ERC-2981 royalties, ENS identities, the Permanence Score, the Vanish Test, the Certificate of Permanence, and a rebuildable, public-data indexer.",
 };
 
-export default function DocsPage() {
-  const stats = getMarketStats();
+export default async function DocsPage() {
+  const stats = await getLiveMarketStats();
   const chains = getChains();
 
   const statStrip: Array<{ value: string; label: string }> = [
@@ -504,8 +505,9 @@ export default function DocsPage() {
                 <Term>ForeverLibraryFactory.createCollection(name, symbol)</Term>{" "}
                 deploys a new <Term>ForeverLibrary</Term> owned by your wallet in
                 one transaction and emits a <Term>CollectionCreated</Term> event
-                so the indexer discovers it automatically. The canonical "Default
-                (open) collection" is the shared ForeverLibrary; sovereign
+                so the indexer discovers it automatically. The canonical
+                &ldquo;Default (open) collection&rdquo; is the shared
+                ForeverLibrary; sovereign
                 collections are distinct contracts at their own address, addressed
                 as <Term>[chainId]/[contract]/[tokenId]</Term>.
               </p>

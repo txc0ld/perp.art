@@ -8,21 +8,28 @@ import { useEffect, useState } from "react";
 import { resolveEnsName } from "@/lib/ens";
 
 export function useEnsName(address?: string): string | null {
-  const [name, setName] = useState<string | null>(null);
+  // Track the resolution keyed by address. Resetting during render when the
+  // address changes avoids a synchronous setState inside the effect (which the
+  // effect then only uses for the async resolution result).
+  const [resolved, setResolved] = useState<{ address?: string; name: string | null }>({
+    address,
+    name: null,
+  });
+
+  if (resolved.address !== address) {
+    setResolved({ address, name: null });
+  }
 
   useEffect(() => {
-    if (!address) {
-      setName(null);
-      return;
-    }
+    if (!address) return;
     let active = true;
-    resolveEnsName(address).then((resolved) => {
-      if (active) setName(resolved);
+    resolveEnsName(address).then((name) => {
+      if (active) setResolved({ address, name });
     });
     return () => {
       active = false;
     };
   }, [address]);
 
-  return name;
+  return resolved.address === address ? resolved.name : null;
 }

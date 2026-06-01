@@ -1,5 +1,5 @@
 import type { Chain } from "@/lib/types";
-import { getChainMeta } from "@/lib/mock-data";
+import { getChainMeta } from "@/lib/chains";
 import { cn } from "@/lib/utils";
 
 /**

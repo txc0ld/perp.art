@@ -2,7 +2,7 @@
 
 /**
  * ProposeSwapButton - opens the SwapModal. With a `token`, it proposes against
- * that specific target (BuyPanel / token page / TokenSwaps). Without a token, it
+ * that specific target (BuyPanel / token page). Without a token, it
  * opens in criteria mode as a generic "Create swap" entry point (Swaps desk).
  */
 import * as React from "react";

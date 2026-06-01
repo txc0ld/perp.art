@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SHARD_OPTIONS, GENRES } from "@/lib/mock-data";
+import { SHARD_OPTIONS, GENRES } from "@/lib/catalog-constants";
 import { MintWizard } from "@/components/mint/MintWizard";
 
 export const metadata: Metadata = {

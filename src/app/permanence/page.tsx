@@ -30,7 +30,7 @@ import {
   StatusGlyph,
   Surface,
 } from "@/components/ui";
-import { getMarketStats } from "@/lib/mock-data";
+import { getLiveMarketStats } from "@/lib/live/catalog";
 
 import { ProblemSection } from "@/components/permanence/ProblemSection";
 import { ShardDiagram } from "@/components/permanence/ShardDiagram";
@@ -44,8 +44,8 @@ export const metadata: Metadata = {
     "How Perpetual keeps every artwork provably permanent, independent of Perpetual itself. A mandatory onchain proof shard, a read-only verification service anyone can reproduce, and a published indexer schema, documented in full.",
 };
 
-export default function PermanencePage() {
-  const stats = getMarketStats();
+export default async function PermanencePage() {
+  const stats = await getLiveMarketStats();
 
   return (
     <>

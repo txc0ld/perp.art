@@ -93,8 +93,8 @@ export function getEthfsAddress(chain: Chain): string | undefined {
 }
 
 /**
- * Is a live backend wired up? When false, the app runs on the deterministic
- * mock layer (src/lib/mock-data.ts). Flip the data layer on this.
+ * Is a remote indexer backend configured? True when a non-default indexer URL
+ * is set. The site otherwise reads on-chain/testnet data directly.
  */
 export function isLiveBackend(): boolean {
   const url = publicEnv.indexerUrl;

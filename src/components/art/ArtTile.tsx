@@ -3,8 +3,8 @@
 import Link from "next/link";
 import type { Token } from "@/lib/types";
 import { GenerativeArt } from "./GenerativeArt";
-import { getArtist, getChainMeta } from "@/lib/mock-data";
-import { formatEth } from "@/lib/utils";
+import { getChainMeta } from "@/lib/chains";
+import { formatEth, shortAddress } from "@/lib/utils";
 import { StatusGlyph } from "@/components/ui";
 import { ChainBadge } from "@/components/chain/ChainBadge";
 import { Tilt3D } from "@/components/visual/Tilt3D";
@@ -35,7 +35,10 @@ function tokenHref(token: Token): string {
  * Keeps the signature permanence indicator and the hover "Buy now" bar.
  */
 export function ArtTile({ token, priority = false }: { token: Token; priority?: boolean }) {
-  const artist = getArtist(token.artistHandle);
+  // Live tokens carry the on-chain artist name (or creator address) in
+  // token.artistHandle; fall back to the short royalty receiver if empty. No
+  // per-tile ENS lookup — grids render many tiles and N mainnet calls are slow.
+  const artistLabel = token.artistHandle || shortAddress(token.royalty.receiver);
   const verifiedShards = token.permanence.shards.filter((s) => s.status === "verified").length;
   const lastSale = [...token.provenance].find((e) => e.kind === "sale")?.priceEth;
   const currency = getChainMeta(token.chain).currency;
@@ -44,7 +47,7 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
   return (
     <Link
       href={tokenHref(token)}
-      aria-label={`${token.title} by ${artist?.name ?? token.artistHandle}${token.listing ? `, listed for ${formatEth(token.listing.priceEth)} ${currency}` : ""}`}
+      aria-label={`${token.title} by ${artistLabel}${token.listing ? `, listed for ${formatEth(token.listing.priceEth)} ${currency}` : ""}`}
       className="block rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <Tilt3D
@@ -95,7 +98,7 @@ export function ArtTile({ token, priority = false }: { token: Token; priority?: 
 
         <div className="flex flex-col gap-1 p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="truncate text-[13px] text-muted">{artist?.name ?? token.artistHandle}</p>
+            <p className="truncate text-[13px] text-muted">{artistLabel}</p>
             <ChainBadge chain={token.chain} className="shrink-0 px-1.5 py-0 text-[9px]" />
           </div>
           <p className="truncate text-sm font-semibold text-foreground">{token.title}</p>

@@ -1,7 +1,7 @@
 /**
  * Cross-chain trading metadata — the chains Perpetual trades across, their
  * display tokens, explorers, and the flat cross-chain bridge fee. Real,
- * non-fabricated configuration extracted from the former mock-data layer.
+ * non-fabricated configuration.
  */
 import type { Chain } from "./types";
 

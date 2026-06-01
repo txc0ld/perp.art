@@ -81,7 +81,22 @@ type Phase =
 export function TradePanel({ chainId, tokenId, nft, owner }: TradePanelProps) {
   const { address, chainId: walletChainId } = useAccount();
 
-  const [listing, setListing] = React.useState<SignedOrder | null | undefined>(undefined); // undefined = loading
+  const fetchKey = `${chainId}-${nft}-${tokenId}`;
+  // The listing is keyed by its fetch params; when they change we reset to the
+  // loading sentinel during render (not in an effect), so the effect can stay
+  // free of a synchronous setState.
+  const [listingState, setListingState] = React.useState<{
+    key: string;
+    value: SignedOrder | null | undefined;
+  }>({ key: fetchKey, value: undefined }); // value undefined = loading
+  if (listingState.key !== fetchKey) {
+    setListingState({ key: fetchKey, value: undefined });
+  }
+  const listing = listingState.key === fetchKey ? listingState.value : undefined;
+  const setListing = React.useCallback(
+    (value: SignedOrder | null | undefined) => setListingState({ key: fetchKey, value }),
+    [fetchKey],
+  );
   const [priceInput, setPriceInput] = React.useState("");
   const [phase, setPhase] = React.useState<Phase>("idle");
   const [error, setError] = React.useState<string | null>(null);
@@ -98,32 +113,40 @@ export function TradePanel({ chainId, tokenId, nft, owner }: TradePanelProps) {
   // Fetch active listing
   // ------------------------------------------------------------------
 
+  // Resolve the active listing for the given params. Pure async (no synchronous
+  // setState): every state update lands after the first `await`, so this is safe
+  // to call from both an effect and event handlers without cascading renders.
+  const resolveListing = React.useCallback(async (): Promise<SignedOrder | null> => {
+    const res = await fetch(
+      `/api/orders?chainId=${chainId}&nft=${nft}&tokenId=${tokenId}`,
+      { cache: "no-store" },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { orders: SerializedSignedOrder[] };
+    if (data.orders && data.orders.length > 0) return deserializeOrder(data.orders[0]);
+    return null;
+  }, [chainId, nft, tokenId]);
+
+  // Re-fetch on demand (after listing / cancelling). Shows the loading sentinel,
+  // then commits the result. Safe in handlers — they may setState synchronously.
   const fetchListing = React.useCallback(async () => {
     setListing(undefined); // loading
     setError(null);
-    try {
-      const res = await fetch(
-        `/api/orders?chainId=${chainId}&nft=${nft}&tokenId=${tokenId}`,
-        { cache: "no-store" },
-      );
-      if (!res.ok) {
-        setListing(null);
-        return;
-      }
-      const data = (await res.json()) as { orders: SerializedSignedOrder[] };
-      if (data.orders && data.orders.length > 0) {
-        setListing(deserializeOrder(data.orders[0]));
-      } else {
-        setListing(null);
-      }
-    } catch {
-      setListing(null);
-    }
-  }, [chainId, nft, tokenId]);
+    setListing(await resolveListing());
+  }, [resolveListing, setListing]);
 
   React.useEffect(() => {
-    fetchListing();
-  }, [fetchListing]);
+    // The loading reset already happened during render (listingState is keyed by
+    // the fetch params). Resolve asynchronously; the first setState lands after
+    // the awaited fetch, so the effect never setStates synchronously.
+    let active = true;
+    void resolveListing().then((result) => {
+      if (active) setListing(result);
+    });
+    return () => {
+      active = false;
+    };
+  }, [resolveListing, setListing]);
 
   // ------------------------------------------------------------------
   // List for sale
