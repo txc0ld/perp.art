@@ -292,7 +292,7 @@ function ConfigureStage({
             if (f) onPickFile(f);
           }}
         />
-        {previewError && <p className="mt-2 text-[12px] text-error">{previewError}</p>}
+        {previewError && <p className="mt-2 text-[12px] text-error" role="alert">{previewError}</p>}
       </div>
     </div>
   );
@@ -404,11 +404,18 @@ function ProcessingStage({
         )}
         <p className="text-sm text-foreground">{label}</p>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2"
+        role="progressbar"
+        aria-valuenow={Math.round(pct)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Drop processing progress"
+      >
         <div className="h-full rounded-full bg-accent transition-all duration-300" style={{ width: `${Math.max(2, pct)}%` }} />
       </div>
       {error && (
-        <div className="rounded-[8px] border border-error/30 bg-error/5 p-4">
+        <div className="rounded-[8px] border border-error/30 bg-error/5 p-4" role="alert">
           <p className="text-[12px] text-error">{error}</p>
           <Button variant="secondary" size="sm" className="mt-3" onClick={onRetry}>Retry</Button>
         </div>
@@ -472,7 +479,7 @@ function OnchainStage({
         </ul>
       )}
 
-      <ul className="space-y-2.5">
+      <ul className="space-y-2.5" aria-live="polite">
         {STEP_ROWS.map((row) => {
           const st = rowState(row.phase);
           const isMint = row.phase === "minting";
@@ -493,11 +500,11 @@ function OnchainStage({
       </ul>
 
       {drop.error && (
-        <div className="rounded-[8px] border border-error/30 bg-error/5 p-4">
+        <div className="rounded-[8px] border border-error/30 bg-error/5 p-4" role="alert">
           <p className="text-[12px] text-error">{drop.error}</p>
         </div>
       )}
-      {drop.warning && <p className="text-[12px] text-faint">{drop.warning}</p>}
+      {drop.warning && <p className="text-[12px] text-faint" role="status">{drop.warning}</p>}
 
       {!started || drop.phase === "error" ? (
         <div className="flex flex-col items-end gap-1.5">

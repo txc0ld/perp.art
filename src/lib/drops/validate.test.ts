@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { validateDropEntries, type ZipEntry } from "./validate";
+import { validateDropEntries, MAX_IMAGE_BYTES, type ZipEntry } from "./validate";
+import { MAX_DROP_SIZE } from "./provenance";
 
 const enc = new TextEncoder();
 
@@ -110,5 +111,55 @@ describe("validateDropEntries", () => {
     const v = validateDropEntries([]);
     expect(v.ok).toBe(false);
     expect(v.count).toBe(0);
+  });
+
+  it("token ids are strictly 1-based and contiguous (matches PerpetualDrop mint)", () => {
+    // The contract mints ids 1..N; ownerOf(0)/tokenURI(0) revert. The validator
+    // must never emit a token id 0 and must start at 1 regardless of file index.
+    const entries: ZipEntry[] = [
+      { path: "metadata/0.json", bytes: meta("#0") }, // a 0-indexed file present
+      { path: "images/0.png", bytes: img() },
+      { path: "metadata/1.json", bytes: meta("#1") },
+      { path: "images/1.png", bytes: img() },
+    ];
+    const v = validateDropEntries(entries);
+    expect(v.ok).toBe(true);
+    expect(v.count).toBe(2);
+    // Even though one source file is index 0, assigned token ids start at 1.
+    expect(v.tokens.map((t) => t.tokenId)).toEqual([1, 2]);
+    expect(v.tokens.some((t) => t.tokenId === 0)).toBe(false);
+  });
+
+  it("rejects path-traversal / absolute entry names (malicious zip)", () => {
+    const entries: ZipEntry[] = [
+      ...buildEntries(1),
+      { path: "../../etc/2.json", bytes: meta("#evil") },
+      { path: "/abs/3.json", bytes: meta("#abs") },
+    ];
+    const v = validateDropEntries(entries);
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => /unsafe path/.test(e))).toBe(true);
+  });
+
+  it("skips an oversized image (per-file cap) with a warning, failing its token", () => {
+    const big = new Uint8Array(MAX_IMAGE_BYTES + 1);
+    const entries: ZipEntry[] = [
+      { path: "metadata/1.json", bytes: meta("#1") },
+      { path: "images/1.png", bytes: big },
+    ];
+    const v = validateDropEntries(entries);
+    // The oversized image is dropped → metadata #1 has no matching image → error.
+    expect(v.ok).toBe(false);
+    expect(v.warnings.some((w) => /exceeded/.test(w))).toBe(true);
+  });
+
+  it("rejects an archive with too many raw entries before mapping", () => {
+    const entries: ZipEntry[] = [];
+    for (let i = 0; i < MAX_DROP_SIZE * 4 + 1; i++) {
+      entries.push({ path: `junk/${i}.txt`, bytes: new Uint8Array(0) });
+    }
+    const v = validateDropEntries(entries);
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => /too many entries/.test(e))).toBe(true);
   });
 });

@@ -17,6 +17,25 @@ import { MAX_DROP_SIZE } from "./provenance";
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
 const JSON_EXT = /\.json$/i;
 
+/** Per-image hard cap (uncompressed). Bounds a single malicious/oversized entry. */
+export const MAX_IMAGE_BYTES = 32 * 1024 * 1024; // 32 MB
+/** Per-metadata-JSON hard cap (uncompressed). JSON is tiny; a huge one is junk. */
+export const MAX_METADATA_BYTES = 1 * 1024 * 1024; // 1 MB
+/** Total uncompressed-payload cap across all accepted entries — anti zip-bomb. */
+export const MAX_TOTAL_UNCOMPRESSED_BYTES = 4 * 1024 * 1024 * 1024; // 4 GB
+
+/**
+ * Reject path-traversal / absolute / drive-letter entry names. fflate yields the
+ * raw archive path; a crafted ZIP can carry `../`, a leading `/`, or `C:\`. We
+ * only ever key on a numeric basename (so traversal entries are already ignored
+ * for pairing), but we reject them outright so a malicious archive can never be
+ * silently partially-accepted.
+ */
+function isUnsafePath(path: string): boolean {
+  if (path.startsWith("/") || /^[a-zA-Z]:/.test(path)) return true;
+  return path.split("/").some((seg) => seg === "..");
+}
+
 export interface ZipEntry {
   /** Full path inside the ZIP (forward slashes). */
   path: string;
@@ -82,6 +101,15 @@ export function validateDropEntries(entries: ZipEntry[]): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
+  // Early guard: a drop is one image + one metadata file per token, so the total
+  // entry count can't legitimately exceed ~2× the cap (plus junk). Reject wildly
+  // oversized archives before we build any per-entry maps.
+  const ENTRY_HARD_CAP = MAX_DROP_SIZE * 4;
+  if (entries.length > ENTRY_HARD_CAP) {
+    errors.push(`Archive has too many entries (${entries.length}); cap is ${ENTRY_HARD_CAP}.`);
+    return { ok: false, count: 0, tokens: [], traitSummary: [], errors, warnings };
+  }
+
   // Skip macOS junk + directories.
   const clean = entries.filter(
     (e) =>
@@ -93,14 +121,58 @@ export function validateDropEntries(entries: ZipEntry[]): ValidationResult {
   const imagesByIndex = new Map<number, ZipEntry>();
   const metaByIndex = new Map<number, ZipEntry>();
 
+  let unsafe = 0;
+  let oversizedImages = 0;
+  let oversizedMeta = 0;
+  let totalBytes = 0;
+
   for (const e of clean) {
+    // Reject path traversal / absolute paths outright (anti malicious-zip).
+    if (isUnsafePath(e.path)) {
+      unsafe++;
+      continue;
+    }
     const idx = indexFromPath(e.path);
     if (idx === null) continue; // ignore non-numeric files (README, etc.)
     if (isImage(e.path)) {
-      if (!imagesByIndex.has(idx)) imagesByIndex.set(idx, e);
+      if (e.bytes.byteLength > MAX_IMAGE_BYTES) {
+        oversizedImages++;
+        continue;
+      }
+      if (!imagesByIndex.has(idx)) {
+        imagesByIndex.set(idx, e);
+        totalBytes += e.bytes.byteLength;
+      }
     } else if (isJson(e.path)) {
-      if (!metaByIndex.has(idx)) metaByIndex.set(idx, e);
+      if (e.bytes.byteLength > MAX_METADATA_BYTES) {
+        oversizedMeta++;
+        continue;
+      }
+      if (!metaByIndex.has(idx)) {
+        metaByIndex.set(idx, e);
+        totalBytes += e.bytes.byteLength;
+      }
     }
+  }
+
+  if (unsafe > 0) {
+    errors.push(`${unsafe} archive ${unsafe === 1 ? "entry" : "entries"} had an unsafe path (traversal/absolute) and were rejected.`);
+  }
+  if (oversizedImages > 0) {
+    warnings.push(`${oversizedImages} image(s) exceeded ${MAX_IMAGE_BYTES / (1024 * 1024)}MB and were skipped.`);
+  }
+  if (oversizedMeta > 0) {
+    warnings.push(`${oversizedMeta} metadata file(s) exceeded ${MAX_METADATA_BYTES / (1024 * 1024)}MB and were skipped.`);
+  }
+  // Anti zip-bomb: cap the total accepted uncompressed payload.
+  if (totalBytes > MAX_TOTAL_UNCOMPRESSED_BYTES) {
+    errors.push(
+      `Archive uncompressed size (${Math.round(totalBytes / (1024 * 1024))}MB) exceeds the ${Math.round(MAX_TOTAL_UNCOMPRESSED_BYTES / (1024 * 1024 * 1024))}GB cap.`,
+    );
+    return { ok: false, count: 0, tokens: [], traitSummary: [], errors, warnings };
+  }
+  if (unsafe > 0) {
+    return { ok: false, count: 0, tokens: [], traitSummary: [], errors, warnings };
   }
 
   const indices = [...metaByIndex.keys()].sort((a, b) => a - b);

@@ -202,19 +202,28 @@ export async function indexDropTokens(chainId: number): Promise<Token[]> {
   if (cached && Date.now() - cached.at < TTL_MS) return cached.tokens;
 
   try {
+    const pub = serverPublicClient(chainId);
+    if (!pub) {
+      tokenCache.set(chainId, { at: Date.now(), tokens: [] });
+      return [];
+    }
     const drops = await indexDrops(chainId);
     const all: Token[] = [];
     for (const drop of drops) {
       let minted = BigInt(0);
       try {
-        minted = (await serverPublicClient(chainId)!.readContract({
+        minted = (await pub.readContract({
           address: drop.address,
           abi: PERPETUAL_DROP_ABI,
           functionName: "totalMinted",
         })) as bigint;
       } catch {
+        // Lagging/empty replica or a non-drop contract — skip this drop, keep
+        // the feed. Token ids are 1-based, so totalMinted = 0 means nothing to read.
         continue;
       }
+      if (minted <= BigInt(0)) continue;
+      // Token ids run 1..totalMinted (inclusive); read the first MAX cap of them.
       const cap = minted < BigInt(MAX_DROP_TOKENS_READ) ? Number(minted) : MAX_DROP_TOKENS_READ;
       for (let i = 1; i <= cap; i++) {
         const t = await readDropToken(chainId, drop, BigInt(i));
