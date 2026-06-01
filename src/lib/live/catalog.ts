@@ -202,21 +202,43 @@ export async function getLiveCollection(contract: string): Promise<Collection | 
 }
 
 export async function getLiveMarketStats(): Promise<LiveMarketStats> {
-  const tokens = await getLiveTokens();
+  // Fetch the two permanence tiers separately so the per-token permanence
+  // metrics can be scoped to the 5-shard library tier only. Drop tokens are
+  // folder-permanence by design (no STATE shard), so including them in
+  // permanenceIntegrity / onchainProofRate would force both to ~0% even when
+  // every library token is fully verified. Counts (works/collections/shards)
+  // still cover everything.
+  const [libBatches, dropBatches] = await Promise.all([
+    Promise.all(LIVE_CHAIN_IDS.map((id) => indexAllTokens(id))),
+    Promise.all(LIVE_CHAIN_IDS.map((id) => indexDropTokens(id))),
+  ]);
+  const libraryTokens = libBatches.flat();
+  const dropTokens = dropBatches.flat();
+  const tokens = [...libraryTokens, ...dropTokens];
+
   if (tokens.length === 0) {
     return { works: 0, collections: 0, verifiedShards: 0, permanenceIntegrity: 0, onchainProofRate: 0 };
   }
   const collections = await getLiveCollections();
+
+  // verifiedShards counts every shard across all tiers (folder-permanence shards
+  // can be verified too).
   const verifiedShards = tokens.reduce(
     (n, t) => n + t.permanence.shards.filter((s) => s.status === "verified").length,
     0,
   );
-  const withOnchainProof = tokens.filter((t) => t.permanence.onchainProofConfigured).length;
-  const onchainProofRate = Math.round((withOnchainProof / tokens.length) * 100);
-  const integrityOk = tokens.filter(
+
+  // Permanence integrity / onchain proof: 5-shard library tier only. Honest 0
+  // when there are no library tokens (never faked to 100).
+  const withOnchainProof = libraryTokens.filter((t) => t.permanence.onchainProofConfigured).length;
+  const onchainProofRate =
+    libraryTokens.length === 0 ? 0 : Math.round((withOnchainProof / libraryTokens.length) * 100);
+  const integrityOk = libraryTokens.filter(
     (t) => t.permanence.onchainProofConfigured && t.permanence.contentHashMatches,
   ).length;
-  const permanenceIntegrity = Math.round((integrityOk / tokens.length) * 100);
+  const permanenceIntegrity =
+    libraryTokens.length === 0 ? 0 : Math.round((integrityOk / libraryTokens.length) * 100);
+
   return {
     works: tokens.length,
     collections: collections.length,

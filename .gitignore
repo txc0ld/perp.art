@@ -48,3 +48,6 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# local Playwright mobile-smoke-test screenshots (never commit)
+.mobtest/

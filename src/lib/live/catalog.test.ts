@@ -31,6 +31,14 @@ const indexAllTokens = vi.fn<(chainId: number) => Promise<Token[]>>();
 vi.mock("@/lib/web3/indexer", () => ({
   indexAllTokens: (chainId: number) => indexAllTokens(chainId),
   indexedCollections: async () => [],
+  indexCollections: async () => [],
+}));
+
+// --- mock drops indexer: folder-permanence tier (default empty) --------------
+const indexDropTokens = vi.fn<(chainId: number) => Promise<Token[]>>();
+vi.mock("@/lib/web3/drops-indexer", () => ({
+  indexDropTokens: (chainId: number) => indexDropTokens(chainId),
+  indexedDropCollections: async () => [],
 }));
 
 const NFT = "0x00000000000000000000000000000000000000aa";
@@ -64,8 +72,38 @@ function fakeToken(tokenId: number): Token {
   } as Token;
 }
 
+/** A 5-shard library token with explicit permanence flags for stats tests. */
+function libraryToken(
+  tokenId: number,
+  perm: { onchainProofConfigured: boolean; contentHashMatches: boolean; verifiedShards?: number },
+): Token {
+  const verified = perm.verifiedShards ?? 0;
+  return {
+    ...fakeToken(tokenId),
+    permanence: {
+      onchainProofConfigured: perm.onchainProofConfigured,
+      contentHashMatches: perm.contentHashMatches,
+      shards: Array.from({ length: verified }, (_, i) => ({ index: i, status: "verified" })),
+    },
+  } as Token;
+}
+
+/** A folder-permanence drop token: never onchain-proof configured by design. */
+function dropToken(tokenId: number, verifiedShards = 0): Token {
+  return {
+    ...fakeToken(tokenId),
+    permanence: {
+      onchainProofConfigured: false,
+      contentHashMatches: false,
+      shards: Array.from({ length: verifiedShards }, (_, i) => ({ index: i, status: "verified" })),
+    },
+  } as Token;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  // Default: no drops. Stats tests override per case.
+  indexDropTokens.mockResolvedValue([]);
 });
 
 describe("getOpenListings", () => {
@@ -130,5 +168,75 @@ describe("getLiveListedTokens", () => {
     expect(listed).toHaveLength(1);
     expect(listed[0].tokenId).toBe(2);
     expect(listed[0].listing?.priceEth).toBe(0.5);
+  });
+});
+
+describe("getLiveMarketStats permanence scoping", () => {
+  it("does NOT let folder-permanence drops drag library permanence to 0%", async () => {
+    // Two fully-verified library tokens + three drops (folder-permanence, never
+    // onchain-proof configured). Old behaviour averaged over all 5 → 40%.
+    indexAllTokens.mockResolvedValue([
+      libraryToken(1, { onchainProofConfigured: true, contentHashMatches: true, verifiedShards: 5 }),
+      libraryToken(2, { onchainProofConfigured: true, contentHashMatches: true, verifiedShards: 5 }),
+    ]);
+    indexDropTokens.mockResolvedValue([dropToken(10, 1), dropToken(11, 1), dropToken(12, 1)]);
+    listAllOpenOrders.mockResolvedValue([]);
+
+    const { getLiveMarketStats } = await import("./catalog");
+    const stats = await getLiveMarketStats();
+
+    // Library tier is 100% — drops don't dilute it.
+    expect(stats.permanenceIntegrity).toBe(100);
+    expect(stats.onchainProofRate).toBe(100);
+    // Counts still cover everything.
+    expect(stats.works).toBe(5);
+    expect(stats.verifiedShards).toBe(10 + 3); // 5+5 library, 1 each drop
+  });
+
+  it("reports 0% honestly when there are only drop tokens (no library tier)", async () => {
+    indexAllTokens.mockResolvedValue([]);
+    indexDropTokens.mockResolvedValue([dropToken(10), dropToken(11)]);
+    listAllOpenOrders.mockResolvedValue([]);
+
+    const { getLiveMarketStats } = await import("./catalog");
+    const stats = await getLiveMarketStats();
+
+    expect(stats.permanenceIntegrity).toBe(0); // honest 0, never faked 100
+    expect(stats.onchainProofRate).toBe(0);
+    expect(stats.works).toBe(2);
+  });
+
+  it("computes library integrity over the library tier (partial)", async () => {
+    indexAllTokens.mockResolvedValue([
+      libraryToken(1, { onchainProofConfigured: true, contentHashMatches: true }),
+      libraryToken(2, { onchainProofConfigured: true, contentHashMatches: false }),
+      libraryToken(3, { onchainProofConfigured: false, contentHashMatches: false }),
+      libraryToken(4, { onchainProofConfigured: true, contentHashMatches: true }),
+    ]);
+    indexDropTokens.mockResolvedValue([dropToken(10)]);
+    listAllOpenOrders.mockResolvedValue([]);
+
+    const { getLiveMarketStats } = await import("./catalog");
+    const stats = await getLiveMarketStats();
+
+    // 2 of 4 library tokens fully intact → 50%; 3 of 4 onchain-proof → 75%.
+    expect(stats.permanenceIntegrity).toBe(50);
+    expect(stats.onchainProofRate).toBe(75);
+  });
+
+  it("returns all-zero when there are no tokens at all", async () => {
+    indexAllTokens.mockResolvedValue([]);
+    indexDropTokens.mockResolvedValue([]);
+    listAllOpenOrders.mockResolvedValue([]);
+
+    const { getLiveMarketStats } = await import("./catalog");
+    const stats = await getLiveMarketStats();
+    expect(stats).toEqual({
+      works: 0,
+      collections: 0,
+      verifiedShards: 0,
+      permanenceIntegrity: 0,
+      onchainProofRate: 0,
+    });
   });
 });

@@ -64,7 +64,7 @@ export function SiteFooter() {
                   <li key={l.label}>
                     <Link
                       href={l.href}
-                      className="-mx-2 inline-flex rounded-[8px] px-2 py-1.5 text-sm text-muted transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="-mx-2 inline-flex min-h-[44px] items-center rounded-[8px] px-2 py-2 text-sm text-muted transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                       {l.label}
                     </Link>

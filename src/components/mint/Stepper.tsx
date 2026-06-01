@@ -33,7 +33,11 @@ export function Stepper({
                 onClick={() => reachable && onJump(i)}
                 aria-current={state === "current" ? "step" : undefined}
                 className={cn(
-                  "group flex min-h-[44px] items-center gap-2.5 rounded-full py-2 -my-2 pr-1 text-left transition-colors",
+                  // min-w-[44px] guarantees a >=44px tap target even when the
+                  // label is hidden on mobile (only the 28px circle shows); the
+                  // visible circle size is unchanged. justify-center keeps the
+                  // icon-only state centered in its hit area on mobile.
+                  "group flex min-h-[44px] min-w-[44px] items-center justify-center gap-2.5 rounded-full py-2 -my-2 pr-1 text-left transition-colors sm:justify-start",
                   reachable ? "cursor-pointer" : "cursor-default",
                 )}
               >

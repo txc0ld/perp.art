@@ -270,7 +270,10 @@ function SortableTh({
         type="button"
         onClick={onClick}
         className={cn(
-          "inline-flex min-h-[24px] items-center gap-1 rounded-[6px] px-1 -mx-1 uppercase tracking-wider transition-colors",
+          // Expand the tap area to >=44px without growing the visible header row
+          // (the th padding stays the same): the extra height is absorbed by the
+          // negative vertical margin so there's no layout shift.
+          "inline-flex min-h-[44px] -my-2.5 items-center gap-1 rounded-[6px] px-1 -mx-1 uppercase tracking-wider transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           align === "right" && "flex-row-reverse",
           active ? "text-foreground" : "text-faint hover:text-muted",
