@@ -36,15 +36,18 @@ export function Wordmark({
   markSize = 26,
   className,
   showMark = true,
+  textClassName,
 }: {
   markSize?: number;
   className?: string;
   showMark?: boolean;
+  /** Extra classes for the "perpetual.art" text span (e.g. hide on mobile). */
+  textClassName?: string;
 }) {
   return (
     <span className={cn("flex items-center gap-2.5", className)}>
       {showMark && <BrandMark size={markSize} className="text-foreground shrink-0" />}
-      <span className="font-brand text-[18px] font-semibold leading-none tracking-[-0.035em] text-foreground">
+      <span className={cn("font-brand text-[18px] font-semibold leading-none tracking-[-0.035em] text-foreground", textClassName)}>
         perpetual
         <span className="text-accent">.</span>
         <span className="font-mono text-[13px] font-medium tracking-tight text-muted">art</span>

@@ -58,7 +58,9 @@ export function SiteHeader() {
           className="inline-flex min-h-[44px] shrink-0 items-center rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label="perpetual.art home"
         >
-          <Wordmark markSize={26} />
+          {/* Mark-only on phones so the connected header (wallet + network + menu)
+              never overflows; full wordmark from sm up. */}
+          <Wordmark markSize={26} textClassName="hidden sm:inline" />
         </Link>
 
         <HeaderSearch className="ml-2 hidden min-w-0 max-w-[460px] flex-1 md:block" />
