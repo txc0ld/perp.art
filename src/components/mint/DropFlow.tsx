@@ -49,6 +49,14 @@ export function DropFlow() {
   const [previewError, setPreviewError] = React.useState<string>();
   const [parsing, setParsing] = React.useState(false);
 
+  // Reset the viewport to the top when the drop stage advances, so the next
+  // stage's content isn't left below the fold on mobile.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  }, [stage]);
+
   // Clean up object URLs.
   React.useEffect(() => {
     return () => thumbs.forEach((u) => URL.revokeObjectURL(u));

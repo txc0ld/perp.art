@@ -91,6 +91,15 @@ export function MintWizard({
     }
   }, [onchain.phase]);
 
+  // When the rendered screen changes (next/back step, busy, success), reset the
+  // viewport to the top — otherwise on mobile the page stays scrolled down and
+  // the next step's content is below the fold.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  }, [stepIndex, minted, busy]);
+
   const step = STEPS[stepIndex];
   const copy = STEP_COPY[step.key];
   const canAdvance = stepValid(step.key, form);
