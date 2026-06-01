@@ -364,6 +364,70 @@ contract ForeverLibraryTest is Test {
         assertTrue(_contains(json, 'Ar\\"tist'), "artist escaped");
     }
 
+    /*//////////////////////////////////////////////////////////////////////
+                    JSON-INJECTION REGRESSION (AUDIT FIXES)
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// A malicious mediaType (containing JSON/data-URI-breaking bytes) is
+    /// rejected at mint, so the on-chain data: URI can never be poisoned.
+    function test_MintRejectsMaliciousMediaType() public {
+        // Quote would break out of the data: URI and the JSON string.
+        vm.expectRevert(ForeverLibrary.InvalidMediaType.selector);
+        fl.mint(
+            address(this), "A", "B", 'image/png","x":"y',
+            500, keccak256("m"), bytes("proof"), 0
+        );
+    }
+
+    /// An empty mediaType is rejected at mint.
+    function test_MintRejectsEmptyMediaType() public {
+        vm.expectRevert(ForeverLibrary.InvalidMediaType.selector);
+        fl.mint(
+            address(this), "A", "B", "",
+            500, keccak256("m"), bytes("proof"), 0
+        );
+    }
+
+    /// mintEdition also validates the mediaType.
+    function test_MintEditionRejectsMaliciousMediaType() public {
+        vm.expectRevert(ForeverLibrary.InvalidMediaType.selector);
+        fl.mintEdition(
+            address(this), "A", "B", "image/png ", // space is outside charset
+            500, keccak256("m"), bytes("proof"), 0, 2
+        );
+    }
+
+    /// A common valid MIME with all allowed charset members is accepted.
+    function test_MintAcceptsValidMediaType() public {
+        uint256 id = fl.mint(
+            address(this), "A", "B", "image/svg+xml",
+            500, keccak256("m"), bytes("proof"), 0
+        );
+        assertEq(fl.ownerOf(id), address(this));
+    }
+
+    /// A malicious shard `uri` containing a double-quote is JSON-escaped in
+    /// tokenURI output: the decoded JSON keeps it as a \"-escaped string with
+    /// no injected top-level key, and still parses as a single image value.
+    function test_TokenURIEscapesMaliciousShardURI() public {
+        uint256 id = _mint();
+        // Attacker-controlled shard uri trying to inject a new JSON key.
+        string memory evil = 'ipfs://x","injected":"pwned';
+        fl.configureShard(id, 1, IForeverLibrary.ShardBackend.IPFS, evil, keccak256("e"));
+        fl.setSelectedShardIndex(id, 1);
+
+        string memory prefix = "data:application/json;base64,";
+        string memory json =
+            string(Base64.decode(_slice(fl.tokenURI(id), bytes(prefix).length)));
+
+        // The raw quote is backslash-escaped inside the image string.
+        assertTrue(_contains(json, 'ipfs://x\\",\\"injected\\":\\"pwned'), "uri escaped");
+        // No unescaped injected top-level key broke out of the image value.
+        assertTrue(!_contains(json, '","injected":"pwned"'), "no injected key");
+        // The image field is present and well-formed.
+        assertTrue(_contains(json, '"image":"ipfs://x\\"'), "image field intact");
+    }
+
     function _slice(string memory str, uint256 start) internal pure returns (string memory) {
         bytes memory s = bytes(str);
         bytes memory out = new bytes(s.length - start);

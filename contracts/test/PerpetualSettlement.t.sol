@@ -193,4 +193,160 @@ contract PerpetualSettlementTest is Test {
         vm.expectRevert(PerpetualSettlement.FeeOutOfRange.selector);
         exchange.setProtocolFeeBps(300); // > 2.5%
     }
+
+    /*//////////////////////////////////////////////////////////////////////
+                        MONEY-SAFETY (AUDIT FIXES)
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// A hostile NFT that reports royalty == price is clamped to MAX_ROYALTY_BPS
+    /// (10%). The sale still succeeds and the seller receives the remainder.
+    function test_HostileRoyaltyClampedTo10Percent() public {
+        HostileRoyaltyNFT evil = new HostileRoyaltyNFT(creator);
+        evil.mintTo(seller, 1);
+        vm.prank(seller);
+        evil.setApprovalForAll(address(exchange), true);
+
+        PerpetualSettlement.Order memory order = PerpetualSettlement.Order({
+            seller: seller, nft: address(evil), tokenId: 1,
+            paymentToken: address(0), price: PRICE, startTime: 0,
+            endTime: block.timestamp + 1 days, counter: 0, salt: 99
+        });
+        bytes memory sig = _sign(order, SELLER_PK);
+
+        vm.deal(buyer, 10 ether);
+        vm.prank(buyer);
+        exchange.fulfillOrder{value: PRICE}(order, sig);
+
+        uint256 royalty = (PRICE * exchange.MAX_ROYALTY_BPS()) / 10_000; // 10%
+        uint256 fee = (PRICE * exchange.protocolFeeBps()) / 10_000;
+        assertEq(evil.ownerOf(1), buyer, "buyer owns NFT");
+        assertEq(creator.balance, royalty, "royalty clamped to 10%");
+        assertEq(seller.balance, PRICE - royalty - fee, "seller gets remainder");
+    }
+
+    /// price == 0 reverts (ZeroPrice).
+    function test_ZeroPriceReverts() public {
+        PerpetualSettlement.Order memory order = _order();
+        order.price = 0;
+        bytes memory sig = _sign(order, SELLER_PK);
+        vm.prank(buyer);
+        vm.expectRevert(PerpetualSettlement.ZeroPrice.selector);
+        exchange.fulfillOrder{value: 0}(order, sig);
+    }
+
+    /// A reverting fee recipient does NOT brick the fill: proceeds escrow and
+    /// are withdrawable. Verifies _pay's escrow fallback + withdraw().
+    function test_RevertingFeeRecipientEscrowsAndWithdraws() public {
+        RevertingRecipient badFee = new RevertingRecipient();
+        vm.prank(owner);
+        exchange.setFeeRecipient(payable(address(badFee)));
+
+        PerpetualSettlement.Order memory order = _order();
+        bytes memory sig = _sign(order, SELLER_PK);
+
+        vm.deal(buyer, 10 ether);
+        vm.prank(buyer);
+        exchange.fulfillOrder{value: PRICE}(order, sig); // must NOT revert
+
+        uint256 royalty = (PRICE * ROYALTY_BPS) / 10_000;
+        uint256 fee = (PRICE * exchange.protocolFeeBps()) / 10_000;
+        uint256 proceeds = PRICE - royalty - fee;
+
+        // NFT moved; seller + royalty paid normally; fee escrowed.
+        assertEq(fl.ownerOf(tokenId), buyer, "buyer owns NFT");
+        assertEq(seller.balance, proceeds, "seller proceeds paid");
+        assertEq(creator.balance, royalty, "royalty paid");
+        assertEq(exchange.withdrawable(address(badFee)), fee, "fee escrowed");
+
+        // Once the recipient can accept ETH, withdraw() pays it out and zeroes.
+        badFee.setAccept(true);
+        uint256 before = address(badFee).balance;
+        vm.prank(address(badFee));
+        exchange.withdraw();
+        assertEq(address(badFee).balance - before, fee, "escrow withdrawn");
+        assertEq(exchange.withdrawable(address(badFee)), 0, "escrow zeroed");
+    }
+
+    /// A reverting royalty receiver does NOT brick the fill either: the NFT
+    /// transfers, the seller is paid normally, and the royalty is escrowed to
+    /// the receiver for later pull. (Push-payment DoS mitigation, seller-side.)
+    function test_RevertingRoyaltyReceiverEscrows() public {
+        RevertingRecipient badRoyalty = new RevertingRecipient();
+        HostileRoyaltyNFT nft = new HostileRoyaltyNFT(address(badRoyalty));
+        nft.mintTo(seller, 1);
+        vm.prank(seller);
+        nft.setApprovalForAll(address(exchange), true);
+
+        PerpetualSettlement.Order memory order = PerpetualSettlement.Order({
+            seller: seller, nft: address(nft), tokenId: 1,
+            paymentToken: address(0), price: PRICE, startTime: 0,
+            endTime: block.timestamp + 1 days, counter: 0, salt: 7
+        });
+        bytes memory sig = _sign(order, SELLER_PK);
+
+        vm.deal(buyer, 10 ether);
+        vm.prank(buyer);
+        exchange.fulfillOrder{value: PRICE}(order, sig); // must NOT revert
+
+        uint256 royalty = (PRICE * exchange.MAX_ROYALTY_BPS()) / 10_000; // clamped
+        uint256 fee = (PRICE * exchange.protocolFeeBps()) / 10_000;
+        assertEq(nft.ownerOf(1), buyer, "buyer owns NFT");
+        assertEq(seller.balance, PRICE - royalty - fee, "seller paid");
+        assertEq(exchange.withdrawable(address(badRoyalty)), royalty, "royalty escrowed");
+    }
+}
+
+/// @dev ERC-721 that reports a royalty equal to the full sale price (hostile).
+contract HostileRoyaltyNFT {
+    mapping(uint256 => address) private _owners;
+    mapping(address => mapping(address => bool)) private _approvals;
+    address public royaltyReceiver;
+
+    constructor(address receiver_) {
+        royaltyReceiver = receiver_;
+    }
+
+    function mintTo(address to, uint256 id) external {
+        _owners[id] = to;
+    }
+
+    function ownerOf(uint256 id) external view returns (address) {
+        return _owners[id];
+    }
+
+    function setApprovalForAll(address op, bool ok) external {
+        _approvals[msg.sender][op] = ok;
+    }
+
+    function isApprovedForAll(address o, address op) external view returns (bool) {
+        return _approvals[o][op];
+    }
+
+    function safeTransferFrom(address from, address to, uint256 id) external {
+        require(_owners[id] == from, "not owner");
+        require(_approvals[from][msg.sender] || msg.sender == from, "not approved");
+        _owners[id] = to;
+    }
+
+    /// Reports royalty == salePrice (would drain the buyer if not clamped).
+    function royaltyInfo(uint256, uint256 salePrice) external view returns (address, uint256) {
+        return (royaltyReceiver, salePrice);
+    }
+
+    function supportsInterface(bytes4) external pure returns (bool) {
+        return true;
+    }
+}
+
+/// @dev Recipient that reverts on ETH receipt until `accept` is toggled on.
+contract RevertingRecipient {
+    bool public accept;
+
+    function setAccept(bool a) external {
+        accept = a;
+    }
+
+    receive() external payable {
+        require(accept, "reject");
+    }
 }

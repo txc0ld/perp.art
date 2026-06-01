@@ -59,6 +59,7 @@ contract ForeverLibrary is
     error UnexpectedPayment();
     error StorageFeeTransferFailed();
     error InvalidEditionSize();
+    error InvalidMediaType();
 
     /*//////////////////////////////////////////////////////////////////////
                                     TYPES
@@ -235,6 +236,10 @@ contract ForeverLibrary is
         if (proofData.length == 0) revert EmptyProof();
         if (proofData.length > MAX_PROOF_BYTES) revert ProofTooLarge();
         if (hostingFeeBps_ > MAX_HOSTING_FEE_BPS) revert HostingFeeTooHigh();
+        // Strict MIME charset so the on-chain `data:<mediaType>;base64,...` URI
+        // built in `_stateDataUri` is always well-formed and cannot inject
+        // characters that break out of JSON (defense-in-depth with escapeJSON).
+        _validateMediaType(mediaType);
 
         // Hosting model. fee == 0: the artist self-funds permanent storage by
         // paying the flat storage fee now, and the token carries no resale fee.
@@ -294,6 +299,9 @@ contract ForeverLibrary is
         if (proofData.length > MAX_PROOF_BYTES) revert ProofTooLarge();
         if (hostingFeeBps_ > MAX_HOSTING_FEE_BPS) revert HostingFeeTooHigh();
         if (editionSize_ == 0 || editionSize_ > MAX_EDITION_SIZE) revert InvalidEditionSize();
+        // Strict MIME charset (see mint); keeps every edition token's Shard 0
+        // `data:` URI well-formed.
+        _validateMediaType(mediaType);
 
         // Same hosting-model fee rules as mint — charged ONCE for the edition.
         if (hostingFeeBps_ == 0) {
@@ -634,10 +642,16 @@ contract ForeverLibrary is
         }
         attributes = string.concat(attributes, "]");
 
+        // Escape the FINAL image string before interpolation. This closes the
+        // shard-uri injection vector (a malicious appended shard `uri`) AND the
+        // STATE data-URI vector (the `mediaType` embedded in the data: URI).
+        // Legit data:/ipfs://ar:// URIs contain no `"`, so this is a no-op for
+        // them.
+        string memory image = LibString.escapeJSON(_tokenImageURI(tokenId));
         return string.concat(
             '{"name":"', name,
             '","description":"', description,
-            '","image":"', _tokenImageURI(tokenId),
+            '","image":"', image,
             '","attributes":', attributes,
             "}"
         );
@@ -655,7 +669,10 @@ contract ForeverLibrary is
     ///         media when one exists.
     function contractURI() external view returns (string memory) {
         (, uint256 royaltyAmount) = royaltyInfo(0, 10_000);
-        string memory image = _nextTokenId > 1 ? _tokenImageURI(1) : "";
+        // Escape the image (token 1's media) for the same injection reasons as
+        // tokenURI: a malicious shard uri / mediaType must not break the JSON.
+        string memory image =
+            _nextTokenId > 1 ? LibString.escapeJSON(_tokenImageURI(1)) : "";
 
         string memory json = string.concat(
             '{"name":"', LibString.escapeJSON(name()),
@@ -702,6 +719,27 @@ contract ForeverLibrary is
             ";base64,",
             Base64.encode(data)
         );
+    }
+
+    /// @dev Reject an empty `mediaType` or one containing any byte outside the
+    ///      strict MIME charset `[A-Za-z0-9/.+-]`. This keeps the on-chain
+    ///      `data:` URI well-formed and blocks JSON/data-URI injection at the
+    ///      source (the recorded mediaType is later interpolated into the
+    ///      Shard 0 `data:` URI in `_stateDataUri`).
+    function _validateMediaType(string memory mediaType) internal pure {
+        bytes memory b = bytes(mediaType);
+        if (b.length == 0) revert InvalidMediaType();
+        for (uint256 i = 0; i < b.length; i++) {
+            bytes1 c = b[i];
+            bool ok = (c >= 0x41 && c <= 0x5A) || // A-Z
+                (c >= 0x61 && c <= 0x7A) ||        // a-z
+                (c >= 0x30 && c <= 0x39) ||        // 0-9
+                c == 0x2F ||                        // /
+                c == 0x2E ||                        // .
+                c == 0x2B ||                        // +
+                c == 0x2D;                          // -
+            if (!ok) revert InvalidMediaType();
+        }
     }
 
     /// @dev Reverts if `tokenId` has not been minted.

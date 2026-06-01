@@ -51,6 +51,9 @@ contract PerpetualDrop is ERC721, ERC2981, Ownable, IERC2309 {
     error ZeroQuantity();
     error InvalidReceiver();
     error TokenDoesNotExist();
+    error BatchTooLarge();
+    error ProvenanceNotCommitted();
+    error MaxSupplyTooLarge();
 
     /*//////////////////////////////////////////////////////////////////////
                                     EVENTS
@@ -66,6 +69,11 @@ contract PerpetualDrop is ERC721, ERC2981, Ownable, IERC2309 {
 
     /// @notice Maximum number of tokens that can ever be minted.
     uint256 public immutable maxSupply;
+
+    /// @notice Per-call cap on `mintBatch` quantity. Bounds the ERC-2309
+    ///         `ConsecutiveTransfer` range so indexers (OpenSea et al.) reliably
+    ///         ingest the batch; very large ranges are dropped by some indexers.
+    uint256 public constant MAX_BATCH = 5000;
 
     /// @notice On-chain anchor over the ordered per-asset hash manifest
     ///         (the off-chain manifest is published alongside, verifiable
@@ -104,6 +112,9 @@ contract PerpetualDrop is ERC721, ERC2981, Ownable, IERC2309 {
         uint256 maxSupply_,
         string memory placeholderBaseURI_
     ) ERC721(name_, symbol_) Ownable(owner_) {
+        // Bound maxSupply to uint96 so token ids fit the ERC-2309 anchor's
+        // uint96 key (see `_sequentialOwnership` pushes) without truncation.
+        if (maxSupply_ > type(uint96).max) revert MaxSupplyTooLarge();
         maxSupply = maxSupply_;
         _baseTokenURI = placeholderBaseURI_;
         _setDefaultRoyalty(owner_, royaltyBps);
@@ -135,6 +146,7 @@ contract PerpetualDrop is ERC721, ERC2981, Ownable, IERC2309 {
     ///         first transferred (at which point `_update` writes `_owners`).
     function mintBatch(address to, uint256 quantity) external onlyOwner {
         if (quantity == 0) revert ZeroQuantity();
+        if (quantity > MAX_BATCH) revert BatchTooLarge();
         if (to == address(0)) revert InvalidReceiver();
         uint256 minted = _totalMinted;
         if (minted + quantity > maxSupply) revert MaxSupplyExceeded();
@@ -158,6 +170,9 @@ contract PerpetualDrop is ERC721, ERC2981, Ownable, IERC2309 {
     /// @notice Reveal the real metadata folder. One-way: reverts if already
     ///         revealed. After this, `baseURI` is frozen.
     function reveal(string calldata realBaseURI) external onlyOwner {
+        // Enforce the deploy -> commit -> mint -> reveal ordering: provenance
+        // must be anchored before the real metadata can be revealed.
+        if (provenanceHash == bytes32(0)) revert ProvenanceNotCommitted();
         if (revealed) revert AlreadyRevealed();
         revealed = true;
         _baseTokenURI = realBaseURI;
@@ -209,10 +224,16 @@ contract PerpetualDrop is ERC721, ERC2981, Ownable, IERC2309 {
     /// @dev Resolve ownership of batch-minted tokens from the sequential
     ///      anchors when the core `_owners` slot is still empty (token never
     ///      transferred). Mirrors OpenZeppelin's ERC721Consecutive._ownerOf.
+    ///
+    ///      NO BURN ENTRYPOINT: this manual ERC-2309 anchor scheme has no burn
+    ///      bitmap. A burn would clear the core `_owners` slot but `lowerLookup`
+    ///      would still resolve the burned id back to its batch owner, silently
+    ///      "un-burning" it. Burns MUST NEVER be added here without first porting
+    ///      OpenZeppelin's `ERC721Consecutive._sequentialBurn` bitmap.
     function _ownerOf(uint256 tokenId) internal view virtual override returns (address) {
-        address owner = super._ownerOf(tokenId);
-        if (owner != address(0) || tokenId == 0 || tokenId > _totalMinted) {
-            return owner;
+        address coreOwner = super._ownerOf(tokenId);
+        if (coreOwner != address(0) || tokenId == 0 || tokenId > _totalMinted) {
+            return coreOwner;
         }
         return address(_sequentialOwnership.lowerLookup(uint96(tokenId)));
     }

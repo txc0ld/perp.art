@@ -69,7 +69,7 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
     error UnsupportedPaymentToken();
     error WrongPayment();
     error RoyaltyExceedsPrice();
-    error PaymentFailed();
+    error ZeroPrice();
 
     /*//////////////////////////////////////////////////////////////////////
                                     EVENTS
@@ -91,6 +91,7 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
     event CounterIncremented(uint256 newCounter, address indexed seller);
     event ProtocolFeeUpdated(uint96 newFeeBps);
     event FeeRecipientUpdated(address newRecipient);
+    event PaymentEscrowed(address indexed recipient, uint256 amount);
 
     /*//////////////////////////////////////////////////////////////////////
                                 CONSTANTS / STORAGE
@@ -99,6 +100,12 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
     uint96 internal constant BPS_DENOMINATOR = 10_000;
     uint96 public constant MIN_FEE_BPS = 200; // 2.00% (PRD §8.4)
     uint96 public constant MAX_FEE_BPS = 250; // 2.50%
+
+    /// @dev Hard cap on the ERC-2981 royalty honored at settlement: 10%. A
+    ///      hostile NFT can report an arbitrary royaltyInfo; clamping (not
+    ///      reverting) means it can neither drain the buyer nor brick its own
+    ///      market by reporting an absurd royalty.
+    uint96 public constant MAX_ROYALTY_BPS = 1000; // 10%
 
     bytes32 public constant ORDER_TYPEHASH = keccak256(
         "Order(address seller,address nft,uint256 tokenId,address paymentToken,uint256 price,uint256 startTime,uint256 endTime,uint256 counter,uint256 salt)"
@@ -110,6 +117,10 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
     mapping(address => uint256) private _counters; // seller => counter
     mapping(bytes32 => bool) public filled;        // orderHash => filled
     mapping(bytes32 => bool) public cancelled;     // orderHash => cancelled
+
+    /// @notice Pull-payment escrow: amounts owed to recipients whose push
+    ///         payment reverted during a fill. Claim via `withdraw()`.
+    mapping(address => uint256) public withdrawable;
 
     /*//////////////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
@@ -157,6 +168,7 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         if (order.endTime != 0 && block.timestamp > order.endTime) revert OrderExpired();
         if (order.counter != _counters[order.seller]) revert WrongCounter();
         if (order.paymentToken != address(0)) revert UnsupportedPaymentToken();
+        if (order.price == 0) revert ZeroPrice();
         if (msg.value != order.price) revert WrongPayment();
 
         orderHash = hashOrder(order);
@@ -169,6 +181,14 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         // (3) Mandatory ERC-2981 royalty (PRD §8.2) + protocol fee (PRD §8.4).
         (address royaltyReceiver, uint256 royaltyAmount) =
             _royaltyInfo(order.nft, order.tokenId, order.price);
+        // Clamp the royalty to MAX_ROYALTY_BPS (10%). A hostile NFT can report
+        // an arbitrary royalty; clamping (rather than reverting) prevents it
+        // from draining the buyer while still letting the sale settle.
+        uint256 royaltyCap = (order.price * MAX_ROYALTY_BPS) / BPS_DENOMINATOR;
+        if (royaltyAmount > royaltyCap) royaltyAmount = royaltyCap;
+        // AUDIT: roadmap — sign minSellerProceeds / a fee+royalty bound into the
+        // EIP-712 Order struct so the seller authorizes their net proceeds and
+        // is protected from fee/royalty changes between signing and fill.
         uint256 protocolFee = (order.price * _protocolFeeBps) / BPS_DENOMINATOR;
         // Perpetual hosting fee: only set on Perpetual-hosted tokens (PRD §7),
         // read from the NFT itself so it follows the token to any marketplace.
@@ -284,8 +304,27 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         }
     }
 
+    /// @dev Push-with-escrow-fallback payment. A reverting recipient (seller,
+    ///      royalty receiver, or fee recipient) must NOT brick the fill, else a
+    ///      hostile party could grief every sale (push-payment DoS). On a failed
+    ///      `.call` the amount is credited to `withdrawable` for the recipient
+    ///      to pull later via `withdraw()`. CEI is preserved: `filled` is set
+    ///      before any `_pay`, and `withdrawable` is a pure credit.
     function _pay(address payable to, uint256 amount) internal {
+        if (amount == 0) return;
         (bool ok, ) = to.call{value: amount}("");
-        if (!ok) revert PaymentFailed();
+        if (!ok) {
+            withdrawable[to] += amount;
+            emit PaymentEscrowed(to, amount);
+        }
+    }
+
+    /// @notice Withdraw funds escrowed for `msg.sender` because a push payment
+    ///         to them previously failed during a fill (pull-payment pattern).
+    function withdraw() external nonReentrant {
+        uint256 amt = withdrawable[msg.sender];
+        withdrawable[msg.sender] = 0;
+        (bool ok, ) = msg.sender.call{value: amt}("");
+        require(ok);
     }
 }

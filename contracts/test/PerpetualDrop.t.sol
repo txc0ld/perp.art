@@ -155,6 +155,8 @@ contract PerpetualDropTest is Test {
     /// reveal switches the base URI and is one-way (second reveal reverts).
     function test_RevealOneWay() public {
         vm.prank(owner);
+        drop.commitProvenance(keccak256("manifest"));
+        vm.prank(owner);
         drop.mintBatch(owner, 2);
 
         vm.prank(owner);
@@ -201,6 +203,74 @@ contract PerpetualDropTest is Test {
     function test_SupportsInterface() public view {
         assertTrue(drop.supportsInterface(0x80ac58cd), "ERC721");
         assertTrue(drop.supportsInterface(0x2a55205a), "ERC2981");
+    }
+
+    /*//////////////////////////////////////////////////////////////////////
+                            HARDENING (AUDIT FIXES)
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// A mintBatch quantity above MAX_BATCH (5000) reverts, even when below
+    /// maxSupply. Uses a large-supply drop so MAX_BATCH binds first.
+    function test_MintBatchRevertsAboveMaxBatch() public {
+        PerpetualDrop big = new PerpetualDrop(
+            "Big", "BIG", owner, ROYALTY_BPS, 10_000, PLACEHOLDER
+        );
+        assertEq(big.MAX_BATCH(), 5000);
+        vm.prank(owner);
+        vm.expectRevert(PerpetualDrop.BatchTooLarge.selector);
+        big.mintBatch(owner, 5001);
+
+        // Exactly MAX_BATCH succeeds.
+        vm.prank(owner);
+        big.mintBatch(owner, 5000);
+        assertEq(big.totalMinted(), 5000);
+    }
+
+    /// reveal before committing provenance reverts (enforces commit->reveal).
+    function test_RevealBeforeCommitReverts() public {
+        vm.prank(owner);
+        vm.expectRevert(PerpetualDrop.ProvenanceNotCommitted.selector);
+        drop.reveal("ipfs://real/");
+    }
+
+    /// reveal after committing provenance succeeds.
+    function test_RevealAfterCommitWorks() public {
+        vm.prank(owner);
+        drop.commitProvenance(keccak256("manifest"));
+        vm.prank(owner);
+        drop.reveal("ipfs://real/");
+        assertTrue(drop.revealed());
+        assertEq(drop.baseURI(), "ipfs://real/");
+    }
+
+    /// Constructor rejects a maxSupply above uint96 max (anchor-cast safety).
+    function test_ConstructorRejectsHugeMaxSupply() public {
+        vm.expectRevert(PerpetualDrop.MaxSupplyTooLarge.selector);
+        new PerpetualDrop(
+            "X", "X", owner, ROYALTY_BPS,
+            uint256(type(uint96).max) + 1, PLACEHOLDER
+        );
+    }
+
+    /// There is NO burn entrypoint. The manual ERC-2309 anchor scheme has no
+    /// burn bitmap (see _ownerOf docs); a burn would be silently "un-burned" by
+    /// lowerLookup resolving the id back to its batch owner. This asserts that
+    /// no burn(uint256) / burnBatch(uint256,uint256) function is dispatchable.
+    function test_NoBurnEntrypoint() public {
+        vm.prank(owner);
+        drop.mintBatch(owner, 3);
+
+        // A call carrying a burn(uint256) selector must NOT dispatch to any
+        // handler (no fallback either), so the low-level call fails.
+        (bool ok1,) = address(drop).call(abi.encodeWithSignature("burn(uint256)", 1));
+        assertFalse(ok1, "burn(uint256) must not exist");
+        (bool ok2,) = address(drop).call(
+            abi.encodeWithSignature("burnBatch(uint256,uint256)", 1, 3)
+        );
+        assertFalse(ok2, "burnBatch must not exist");
+
+        // Token still owned (was never burnable in the first place).
+        assertEq(drop.ownerOf(1), owner, "token intact");
     }
 
     /*//////////////////////////////////////////////////////////////////////
