@@ -13,6 +13,7 @@ import { RoyaltyStep } from "./RoyaltyStep";
 import { PermanenceStep } from "./PermanenceStep";
 import { LockStep } from "./LockStep";
 import { ReviewStep } from "./ReviewStep";
+import { CollectionStep } from "./CollectionStep";
 import { MintSuccess } from "./MintSuccess";
 import {
   STEPS,
@@ -43,8 +44,13 @@ const STEP_COPY: Record<StepKey, { title: string; eyebrow: string; blurb: string
     title: "Seal it, if you wish",
     blurb: "Optionally freeze the work so it can never be altered.",
   },
+  collection: {
+    eyebrow: "Step 05 · Collection",
+    title: "Choose where it lives",
+    blurb: "Mint into the open shared collection, or into a sovereign contract you own outright.",
+  },
   review: {
-    eyebrow: "Step 05 · Review",
+    eyebrow: "Step 06 · Review",
     title: "Confirm and commit",
     blurb: "A last look at the record, then it becomes permanent.",
   },
@@ -127,8 +133,12 @@ export function MintWizard({
       onchain.uploadPct > 0 && onchain.uploadPct < 100
         ? `Uploading the artwork… ${onchain.uploadPct}%`
         : "Pinning to IPFS / Arweave / Irys and publishing LOG shard…",
-    minting: "Writing provenance + STATE shard (SSTORE2). Confirm in your wallet…",
-    recording: "Recording shard descriptors onchain. Confirm in your wallet…",
+    minting: form.mintType === "edition"
+      ? `Minting edition of ${form.editionSize}. Confirm in your wallet…`
+      : "Writing provenance + STATE shard (SSTORE2). Confirm in your wallet…",
+    recording: form.mintType === "edition" && onchain.recordingProgress
+      ? `Recording shards (${onchain.recordingProgress.done}/${onchain.recordingProgress.total}). Confirm in your wallet…`
+      : "Recording shard descriptors onchain. Confirm in your wallet…",
   };
 
   return (
@@ -163,7 +173,7 @@ export function MintWizard({
             chainId={onchain.chainId}
             tokenId={onchain.tokenId}
             shards={onchain.shards.length ? onchain.shards : undefined}
-            contract={onchain.chainId ? getContracts(onchain.chainId).foreverLibrary : undefined}
+            contract={onchain.mintedContract}
           />
         ) : busy ? (
           <div className="space-y-7">
@@ -192,6 +202,9 @@ export function MintWizard({
                 <PermanenceStep form={form} set={set} shardOptions={shardOptions} />
               )}
               {step.key === "lock" && <LockStep form={form} set={set} />}
+              {step.key === "collection" && (
+                <CollectionStep form={form} set={set} />
+              )}
               {step.key === "review" && (
                 <ReviewStep form={form} shardOptions={shardOptions} />
               )}
