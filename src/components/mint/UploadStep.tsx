@@ -337,7 +337,7 @@ export function UploadStep({
             <button
               type="button"
               onClick={addTrait}
-              className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-[6px] px-1 py-1"
+              className="inline-flex min-h-[44px] items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-[6px] px-1 py-2.5"
             >
               <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden>
                 <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

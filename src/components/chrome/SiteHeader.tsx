@@ -55,7 +55,7 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-3 px-4 sm:gap-4 sm:px-6">
         <Link
           href="/"
-          className="shrink-0 rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="inline-flex min-h-[44px] shrink-0 items-center rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label="perpetual.art home"
         >
           <Wordmark markSize={26} />
