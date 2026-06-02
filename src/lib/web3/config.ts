@@ -35,6 +35,25 @@ if (!projectId) {
   }
 }
 
+// Reliable testnet RPCs — used BOTH for the dapp's reads (transports below) AND
+// for the rpcUrls AppKit hands the wallet on add/switch. viem's default Sepolia
+// RPC is frequently down/rate-limited ("Cannot reach the RPC URL"), so we pin
+// known-good public endpoints (overridable via NEXT_PUBLIC_RPC_* for a premium
+// endpoint later).
+const BASE_SEPOLIA_RPC =
+  process.env.NEXT_PUBLIC_RPC_BASE_SEPOLIA || "https://sepolia.base.org";
+const SEPOLIA_RPC =
+  process.env.NEXT_PUBLIC_RPC_SEPOLIA || "https://ethereum-sepolia-rpc.publicnode.com";
+
+const baseSepoliaNet: AppKitNetwork = {
+  ...baseSepolia,
+  rpcUrls: { ...baseSepolia.rpcUrls, default: { http: [BASE_SEPOLIA_RPC] } },
+};
+const sepoliaNet: AppKitNetwork = {
+  ...sepolia,
+  rpcUrls: { ...sepolia.rpcUrls, default: { http: [SEPOLIA_RPC] } },
+};
+
 export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [
   mainnet,
   base,
@@ -43,9 +62,9 @@ export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [
   optimism,
   zora,
   shape,
-  // Testnets (where the contracts are deployed today).
-  baseSepolia,
-  sepolia,
+  // Testnets (where the contracts are deployed today) — with pinned RPCs.
+  baseSepoliaNet,
+  sepoliaNet,
 ];
 
 /**
@@ -65,6 +84,9 @@ const transports: Record<number, Transport> = {
   [optimism.id]: rpc("optimism"),
   [zora.id]: rpc("zora"),
   [shape.id]: rpc("shape"),
+  // Testnets — pinned reliable RPCs (viem defaults are flaky).
+  [baseSepolia.id]: http(BASE_SEPOLIA_RPC),
+  [sepolia.id]: http(SEPOLIA_RPC),
 };
 
 export const wagmiAdapter = new WagmiAdapter({
