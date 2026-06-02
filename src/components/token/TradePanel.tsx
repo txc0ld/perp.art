@@ -64,6 +64,85 @@ function shortErr(e: unknown): string {
   return String(e).slice(0, 120);
 }
 
+/** min(a, b) for bigints (no BigInt literals; ES2017 target). */
+function bigMin(a: bigint, b: bigint): bigint {
+  return a < b ? a : b;
+}
+
+const BPS_DENOM = BigInt(10000);
+const MAX_HOSTING_FEE_BPS = BigInt(150); // clamp: contract MAX_HOSTING_FEE_BPS
+const MAX_ROYALTY_BPS = BigInt(1000); // clamp: contract MAX_ROYALTY_BPS (10%)
+
+/**
+ * Compute the seller's expected net proceeds using the EXACT integer math the
+ * Settlement contract applies at fulfillment, so the signed `minSellerProceeds`
+ * equals the contract's computed `sellerProceeds`:
+ *
+ *   protocolFee = price * protocolFeeBps / 10000
+ *   hostingFee  = price * min(hostingFeeBps, 150) / 10000
+ *   royalty     = min(royaltyAmount, price * 1000 / 10000)
+ *   minSellerProceeds = price - protocolFee - hostingFee - royalty
+ *
+ * All reads are best-effort: any failure falls back to BigInt(0) for that term
+ * (and a total read failure → minSellerProceeds = BigInt(0), i.e. no floor) so a
+ * listing never fails to sign because of an optional read.
+ */
+async function computeMinSellerProceeds(params: {
+  settlement: `0x${string}`;
+  nft: `0x${string}`;
+  tokenId: bigint;
+  price: bigint;
+  chainId: number;
+}): Promise<bigint> {
+  const { settlement, nft, tokenId, price, chainId } = params;
+  try {
+    const protocolFeeBps = (await readContract(wagmiConfig, {
+      address: settlement,
+      abi: SETTLEMENT_ABI,
+      functionName: "protocolFeeBps",
+      args: [],
+      chainId,
+    })) as bigint;
+
+    let hostingFeeBps = BigInt(0);
+    try {
+      hostingFeeBps = BigInt(
+        (await readContract(wagmiConfig, {
+          address: nft,
+          abi: FOREVER_LIBRARY_ABI,
+          functionName: "hostingFeeBps",
+          args: [tokenId],
+          chainId,
+        })) as number | bigint,
+      );
+    } catch {
+      hostingFeeBps = BigInt(0);
+    }
+
+    let royaltyAmount = BigInt(0);
+    try {
+      const [, amount] = (await readContract(wagmiConfig, {
+        address: nft,
+        abi: FOREVER_LIBRARY_ABI,
+        functionName: "royaltyInfo",
+        args: [tokenId, price],
+        chainId,
+      })) as readonly [`0x${string}`, bigint];
+      royaltyAmount = amount;
+    } catch {
+      royaltyAmount = BigInt(0);
+    }
+
+    const protocolFee = (price * protocolFeeBps) / BPS_DENOM;
+    const hostingFee = (price * bigMin(hostingFeeBps, MAX_HOSTING_FEE_BPS)) / BPS_DENOM;
+    const royalty = bigMin(royaltyAmount, (price * MAX_ROYALTY_BPS) / BPS_DENOM);
+    return price - protocolFee - hostingFee - royalty;
+  } catch {
+    // Could not read the protocol fee → no floor, so the listing still works.
+    return BigInt(0);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -215,6 +294,18 @@ export function TradePanel({ chainId, tokenId, nft, owner }: TradePanelProps) {
         chainId,
       });
 
+      // Compute minSellerProceeds with the SAME integer math the contract uses
+      // at fulfillment, so it equals the contract's `sellerProceeds` and locks in
+      // the seller's net at sign time (protects against later fee/royalty
+      // increases without causing spurious reverts). Any read failure → no floor.
+      const minSellerProceeds = await computeMinSellerProceeds({
+        settlement,
+        nft,
+        tokenId: BigInt(tokenId),
+        price: priceWei,
+        chainId,
+      });
+
       const now = Math.floor(Date.now() / 1000);
       const order: OrderStruct = {
         seller: address,
@@ -226,6 +317,7 @@ export function TradePanel({ chainId, tokenId, nft, owner }: TradePanelProps) {
         endTime: BigInt(now + 30 * 86400),
         counter: counter as bigint,
         salt: BigInt(Math.floor(Math.random() * 1e15)),
+        minSellerProceeds,
       };
 
       const domain = buildOrderDomain(chainId, settlement);
@@ -311,6 +403,7 @@ export function TradePanel({ chainId, tokenId, nft, owner }: TradePanelProps) {
         endTime: order.endTime,
         counter: order.counter,
         salt: order.salt,
+        minSellerProceeds: order.minSellerProceeds,
       } as const;
 
       const txHash = await writeContract(wagmiConfig, {

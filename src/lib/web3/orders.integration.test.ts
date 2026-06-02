@@ -123,6 +123,7 @@ describe.runIf(RUN)("PerpetualSettlement order flow (on-chain Base Sepolia)", ()
         endTime: BigInt(4102444800), // year 2100 — effectively never expires
         counter,
         salt: BigInt(1),
+        minSellerProceeds: BigInt(0), // 1 wei self-transfer; no floor needed
       };
 
       const domain = buildOrderDomain(CHAIN_ID, settlementAddr!);

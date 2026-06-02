@@ -22,6 +22,7 @@ export const ORDER_TYPES = {
     { name: "endTime", type: "uint256" },
     { name: "counter", type: "uint256" },
     { name: "salt", type: "uint256" },
+    { name: "minSellerProceeds", type: "uint256" },
   ],
 } as const;
 
@@ -39,6 +40,7 @@ export interface OrderStruct {
   endTime: bigint;
   counter: bigint;
   salt: bigint;
+  minSellerProceeds: bigint;
 }
 
 export interface SignedOrder {
@@ -65,6 +67,7 @@ export interface SerializedOrderStruct {
   endTime: string;
   counter: string;
   salt: string;
+  minSellerProceeds: string;
 }
 
 export interface SerializedSignedOrder {
@@ -87,6 +90,7 @@ export function serializeOrder(signed: SignedOrder): SerializedSignedOrder {
       endTime: signed.order.endTime.toString(),
       counter: signed.order.counter.toString(),
       salt: signed.order.salt.toString(),
+      minSellerProceeds: signed.order.minSellerProceeds.toString(),
     },
     signature: signed.signature,
     chainId: signed.chainId,
@@ -107,6 +111,7 @@ export function deserializeOrder(raw: SerializedSignedOrder): SignedOrder {
       endTime: BigInt(raw.order.endTime),
       counter: BigInt(raw.order.counter),
       salt: BigInt(raw.order.salt),
+      minSellerProceeds: BigInt(raw.order.minSellerProceeds),
     },
     signature: raw.signature,
     chainId: raw.chainId,

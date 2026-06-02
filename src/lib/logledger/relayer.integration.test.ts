@@ -74,19 +74,20 @@ describe.runIf(RUN)("LogLedger relayer (on-chain Base Sepolia)", () => {
 
       const { LOG_LEDGER_ABI } = await import("@/lib/web3/abis");
       // Tolerate public-RPC read-replica lag: poll files() until finalized.
+      // files(): [root, size, chunks, deployBlock, nextChunk, codec, finalized, author]
       const readFile = () =>
         pub.readContract({
           address: ledger,
           abi: LOG_LEDGER_ABI,
           functionName: "files",
           args: [fileId],
-        }) as Promise<readonly [Hex, bigint, number, number, number, boolean, Hex]>;
+        }) as Promise<readonly [Hex, bigint, number, number, number, number, boolean, Hex]>;
       let file = await readFile();
-      for (let attempt = 0; attempt < 15 && !file[5]; attempt++) {
+      for (let attempt = 0; attempt < 15 && !file[6]; attempt++) {
         await new Promise((r) => setTimeout(r, 2000));
         file = await readFile();
       }
-      expect(file[5], "file finalized on-chain").toBe(true);
+      expect(file[6], "file finalized on-chain").toBe(true);
 
       const chunkEvent = parseAbiItem(
         "event FileChunk(bytes32 indexed fileId, uint32 indexed chunkIndex, bytes data)",
@@ -110,8 +111,8 @@ describe.runIf(RUN)("LogLedger relayer (on-chain Base Sepolia)", () => {
           root: file[0],
           size: file[1],
           chunks: Number(file[2]),
-          codec: Number(file[4]) as 0 | 1 | 2 | 3,
-          finalized: file[5],
+          codec: Number(file[5]) as 0 | 1 | 2 | 3,
+          finalized: file[6],
         }),
         getChunks: async () => rawChunks,
       });

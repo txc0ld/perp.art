@@ -26,6 +26,7 @@ function serialized(tokenId: string, price: string, createdAt: number, hash: str
       endTime: "0",
       counter: "0",
       salt: "1",
+      minSellerProceeds: "0",
     },
     signature: "0xdead",
     chainId: 84532,

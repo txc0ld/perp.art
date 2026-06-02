@@ -151,12 +151,13 @@ describe.runIf(RUN)("full mint pipeline (on-chain Base Sepolia)", () => {
 
       const ledger = log.ledger!;
       const fileId = log.fileId!;
+      // files(): [root, size, chunks, deployBlock, nextChunk, codec, finalized, author]
       const readFile = () =>
         pub.readContract({ address: ledger, abi: LOG_LEDGER_ABI, functionName: "files", args: [fileId] }) as Promise<
-          readonly [Hex, bigint, number, number, number, boolean, Hex]
+          readonly [Hex, bigint, number, number, number, number, boolean, Hex]
         >;
       let file = await readFile();
-      for (let i = 0; i < 15 && !file[5]; i++) {
+      for (let i = 0; i < 15 && !file[6]; i++) {
         await new Promise((r) => setTimeout(r, 2000));
         file = await readFile();
       }
@@ -167,7 +168,7 @@ describe.runIf(RUN)("full mint pipeline (on-chain Base Sepolia)", () => {
       const rawChunks = [...byIndex.entries()].map(([index, data]) => ({ index, data }));
 
       const recovered = await reconstructFile({
-        readFile: async () => ({ root: file[0], size: file[1], chunks: Number(file[2]), codec: Number(file[4]) as 0 | 1 | 2 | 3, finalized: file[5] }),
+        readFile: async () => ({ root: file[0], size: file[1], chunks: Number(file[2]), codec: Number(file[5]) as 0 | 1 | 2 | 3, finalized: file[6] }),
         getChunks: async () => rawChunks,
       });
       expect(Array.from(recovered)).toEqual(Array.from(artwork));

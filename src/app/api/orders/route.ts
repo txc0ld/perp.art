@@ -51,6 +51,7 @@ function validateShape(body: unknown): body is SerializedSignedOrder {
   if (typeof o.endTime !== "string") return false;
   if (typeof o.counter !== "string") return false;
   if (typeof o.salt !== "string") return false;
+  if (typeof o.minSellerProceeds !== "string") return false;
   return true;
 }
 

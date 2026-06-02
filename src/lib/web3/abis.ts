@@ -325,8 +325,11 @@ export const LOG_LEDGER_ABI = [
     type: "function",
     name: "open",
     stateMutability: "nonpayable",
-    inputs: [{ name: "fileId", type: "bytes32" }],
-    outputs: [],
+    inputs: [
+      { name: "contentHash", type: "bytes32" },
+      { name: "version", type: "uint32" },
+    ],
+    outputs: [{ name: "fileId", type: "bytes32" }],
   },
   {
     type: "function",
@@ -362,11 +365,25 @@ export const LOG_LEDGER_ABI = [
       { name: "size", type: "uint256" },
       { name: "chunks", type: "uint32" },
       { name: "deployBlock", type: "uint32" },
+      { name: "nextChunk", type: "uint32" },
       { name: "codec", type: "uint8" },
       { name: "finalized", type: "bool" },
       { name: "author", type: "address" },
     ],
   },
+  {
+    type: "function",
+    name: "nextChunk",
+    stateMutability: "view",
+    inputs: [{ name: "fileId", type: "bytes32" }],
+    outputs: [{ name: "", type: "uint32" }],
+  },
+  { type: "error", name: "NotAuthor", inputs: [] },
+  { type: "error", name: "AlreadyOpened", inputs: [] },
+  { type: "error", name: "AlreadySealed", inputs: [] },
+  { type: "error", name: "NotOpened", inputs: [] },
+  { type: "error", name: "ChunkOutOfOrder", inputs: [] },
+  { type: "error", name: "ChunkCountMismatch", inputs: [] },
   {
     type: "function",
     name: "isSealed",
@@ -407,7 +424,8 @@ export const LOG_LEDGER_ABI = [
 /**
  * PerpetualSettlement: EIP-712 fixed-price order book.
  * Order tuple field order MUST match the contract exactly:
- *   seller, nft, tokenId, paymentToken, price, startTime, endTime, counter, salt
+ *   seller, nft, tokenId, paymentToken, price, startTime, endTime, counter, salt,
+ *   minSellerProceeds
  */
 export const SETTLEMENT_ABI = [
   {
@@ -428,6 +446,7 @@ export const SETTLEMENT_ABI = [
           { name: "endTime", type: "uint256" },
           { name: "counter", type: "uint256" },
           { name: "salt", type: "uint256" },
+          { name: "minSellerProceeds", type: "uint256" },
         ],
       },
       { name: "signature", type: "bytes" },
@@ -452,6 +471,7 @@ export const SETTLEMENT_ABI = [
           { name: "endTime", type: "uint256" },
           { name: "counter", type: "uint256" },
           { name: "salt", type: "uint256" },
+          { name: "minSellerProceeds", type: "uint256" },
         ],
       },
     ],
@@ -471,6 +491,15 @@ export const SETTLEMENT_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "uint96" }],
   },
+  {
+    type: "function",
+    name: "withdrawTo",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "to", type: "address" }],
+    outputs: [],
+  },
+  { type: "error", name: "SellerProceedsTooLow", inputs: [] },
+  { type: "error", name: "NothingToWithdraw", inputs: [] },
   {
     type: "event",
     name: "OrderFulfilled",

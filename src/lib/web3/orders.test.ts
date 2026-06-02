@@ -27,6 +27,7 @@ const FIXTURE: SignedOrder = {
     endTime: BigInt(4102444800),
     counter: BigInt(0),
     salt: BigInt(1),
+    minSellerProceeds: BigInt(950000000000000),
   },
   signature: "0xdeadbeef00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001b",
   chainId: 84532,
@@ -35,8 +36,8 @@ const FIXTURE: SignedOrder = {
 };
 
 describe("ORDER_TYPES", () => {
-  it("has exactly 9 fields in the Order type", () => {
-    expect(ORDER_TYPES.Order).toHaveLength(9);
+  it("has exactly 10 fields in the Order type", () => {
+    expect(ORDER_TYPES.Order).toHaveLength(10);
   });
 
   it("fields are in the exact contract-specified order", () => {
@@ -51,6 +52,7 @@ describe("ORDER_TYPES", () => {
       "endTime",
       "counter",
       "salt",
+      "minSellerProceeds",
     ]);
   });
 
@@ -65,7 +67,7 @@ describe("ORDER_TYPES", () => {
 
   it("all remaining fields have type uint256", () => {
     const uint256Fields = ORDER_TYPES.Order.filter((f) =>
-      ["tokenId", "price", "startTime", "endTime", "counter", "salt"].includes(f.name)
+      ["tokenId", "price", "startTime", "endTime", "counter", "salt", "minSellerProceeds"].includes(f.name)
     );
     for (const field of uint256Fields) {
       expect(field.type).toBe("uint256");
@@ -87,6 +89,7 @@ describe("serializeOrder / deserializeOrder round-trip", () => {
     expect(roundTripped.order.endTime).toBe(FIXTURE.order.endTime);
     expect(roundTripped.order.counter).toBe(FIXTURE.order.counter);
     expect(roundTripped.order.salt).toBe(FIXTURE.order.salt);
+    expect(roundTripped.order.minSellerProceeds).toBe(FIXTURE.order.minSellerProceeds);
     expect(roundTripped.signature).toBe(FIXTURE.signature);
     expect(roundTripped.chainId).toBe(FIXTURE.chainId);
     expect(roundTripped.orderHash).toBe(FIXTURE.orderHash);
@@ -101,6 +104,7 @@ describe("serializeOrder / deserializeOrder round-trip", () => {
     expect(typeof s.order.endTime).toBe("string");
     expect(typeof s.order.counter).toBe("string");
     expect(typeof s.order.salt).toBe("string");
+    expect(typeof s.order.minSellerProceeds).toBe("string");
   });
 
   it("serialized form is valid JSON", () => {

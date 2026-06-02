@@ -1,5 +1,6 @@
 import "server-only";
 import { createPublicClient, http, parseAbiItem, hexToBytes, keccak256, type Hex, type PublicClient } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia, sepolia } from "viem/chains";
 import { reconstructFile, computeFileId, type RawChunk, type CodecValue } from "@/lib/logledger";
 import { publishToLogLedger } from "@/lib/logledger/relayer";
@@ -17,6 +18,23 @@ const CHAINS: Record<number, typeof baseSepolia | typeof sepolia> = {
 const CHUNK_EVENT = parseAbiItem(
   "event FileChunk(bytes32 indexed fileId, uint32 indexed chunkIndex, bytes data)",
 );
+
+/**
+ * The relayer wallet address = the on-chain `msg.sender` that opens files, so
+ * the fileId derivation (keccak256(abi.encode(author, contentHash, version)))
+ * must use THIS address, not the collection. Returns undefined if the relayer
+ * key isn't configured (re-emit fallbacks then simply can't be probed).
+ */
+function relayerAddress(): Hex | undefined {
+  const pk = serverEnv().logLedgerRelayerPk;
+  if (!pk) return undefined;
+  const normalized = (pk.startsWith("0x") ? pk : `0x${pk}`) as Hex;
+  try {
+    return privateKeyToAccount(normalized).address;
+  } catch {
+    return undefined;
+  }
+}
 
 /** Reverse-map a LogLedger address to its chain id via the deployed registry. */
 export function chainIdForLedger(ledger: string): number | undefined {
@@ -43,7 +61,8 @@ export function sniffMime(b: Uint8Array): string {
   return "application/octet-stream";
 }
 
-type FileTuple = readonly [Hex, bigint, number, number, number, boolean, Hex];
+// files() getter: [root, size, chunks, deployBlock, nextChunk, codec, finalized, author]
+type FileTuple = readonly [Hex, bigint, number, number, number, number, boolean, Hex];
 
 function rpcsFor(chainId: number): (string | undefined)[] {
   const env = serverEnv();
@@ -124,7 +143,7 @@ async function loadOneFileId(
     throw new Error("log shard: RPC root disagreement");
   }
   const committed = tuples[0];
-  if (!committed[5]) throw new Error("log shard not sealed");
+  if (!committed[6]) throw new Error("log shard not sealed");
 
   let lastErr: unknown;
   for (const pub of clients) {
@@ -135,12 +154,12 @@ async function loadOneFileId(
           root: committed[0],
           size: committed[1],
           chunks: Number(committed[2]),
-          codec: Number(committed[4]) as CodecValue,
-          finalized: committed[5],
+          codec: Number(committed[5]) as CodecValue,
+          finalized: committed[6],
         }),
         getChunks: async () => rawChunks,
       });
-      return { bytes, root: committed[0], codec: Number(committed[4]), size: Number(committed[1]), mime: mime || sniffMime(bytes) };
+      return { bytes, root: committed[0], codec: Number(committed[5]), size: Number(committed[1]), mime: mime || sniffMime(bytes) };
     } catch (e) {
       lastErr = e;
     }
@@ -171,10 +190,10 @@ export async function loadAndVerifyLogShard(params: {
   );
 
   const candidates: Hex[] = [params.fileId];
-  const collection = getContracts(chainId).foreverLibrary;
-  if (params.contentHash && collection) {
+  const author = relayerAddress();
+  if (params.contentHash && author) {
     for (let v = 1; v <= MAX_REEMIT_VERSIONS; v++) {
-      candidates.push(computeFileId(collection, params.contentHash, v));
+      candidates.push(computeFileId(author, params.contentHash, v));
     }
   }
 
@@ -205,9 +224,9 @@ export async function reEmitLogShard(params: {
 }): Promise<{ ok: boolean; fileId?: Hex; version?: number; root?: Hex; matchesOriginal?: boolean; error?: string }> {
   const { chainId, contentHash, sourceUrl } = params;
   const chain = CHAINS[chainId];
-  const collection = getContracts(chainId).foreverLibrary;
+  const author = relayerAddress();
   const ledger = getContracts(chainId).logLedger;
-  if (!chain || !collection || !ledger) return { ok: false, error: `LogLedger not configured for chain ${chainId}` };
+  if (!chain || !author || !ledger) return { ok: false, error: `LogLedger not configured for chain ${chainId}` };
 
   try {
     // 1) Fetch the authentic bytes from a surviving copy and verify the hash.
@@ -221,8 +240,8 @@ export async function reEmitLogShard(params: {
     // 2) Read the original (version 0) commitment: its codec MUST be reused so
     //    the re-emitted Merkle root reproduces the original exactly.
     const pub = createPublicClient({ chain, transport: http(rpcsFor(chainId)[0]) }) as PublicClient;
-    const original = await readFileTuple(pub, ledger, computeFileId(collection, contentHash, 0));
-    const originalCodec = Number(original[4]) as CodecValue;
+    const original = await readFileTuple(pub, ledger, computeFileId(author, contentHash, 0));
+    const originalCodec = Number(original[5]) as CodecValue;
     const originalRoot = original[0];
 
     // 3) Pick a fresh (never-opened) version so new logs are actually emitted.
@@ -230,8 +249,8 @@ export async function reEmitLogShard(params: {
     if (version === undefined) {
       version = MAX_REEMIT_VERSIONS; // fallback to the last slot
       for (let v = 1; v <= MAX_REEMIT_VERSIONS; v++) {
-        const t = await readFileTuple(pub, ledger, computeFileId(collection, contentHash, v));
-        if ((t[6] as string).toLowerCase() === ZERO_ADDR) { version = v; break; }
+        const t = await readFileTuple(pub, ledger, computeFileId(author, contentHash, v));
+        if ((t[7] as string).toLowerCase() === ZERO_ADDR) { version = v; break; }
       }
     }
 

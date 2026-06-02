@@ -55,6 +55,7 @@ function order(tokenId: number, priceWei: bigint, seller: string, hash: string):
       endTime: BigInt(0),
       counter: BigInt(0),
       salt: BigInt(tokenId),
+      minSellerProceeds: BigInt(0),
     },
     signature: "0xdead",
     chainId: 84532,

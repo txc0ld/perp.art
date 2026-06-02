@@ -43,7 +43,7 @@ function rpcFor(chainId: number): string | undefined {
 /**
  * Publish the artwork's high-res copy to the chain's LogLedger via the relayer
  * wallet: compress → chunk → Merkle root, then open → upload×N → seal. fileId is
- * content-bound (collection, contentHash, version 0), so a re-mint of identical
+ * author-bound (relayer address, contentHash, version 0), so a re-mint of identical
  * bytes that is already sealed short-circuits. Returns a sealed commitment the
  * caller records as the token's Log shard. Server-only.
  */
@@ -81,18 +81,20 @@ export async function publishToLogLedger(params: {
     const compressed = compress(bytes, codec);
     const chunks = chunkBytes(compressed);
     const root = merkleRoot(chunks);
-    const fileId = computeFileId(collection, contentHash, version);
+    // fileId is derived from the relayer's own address (= the on-chain
+    // msg.sender), matching the contract: keccak256(abi.encode(author, contentHash, version)).
+    const fileId = computeFileId(account.address, contentHash, version);
     const uri = `log://${ledger}/${fileId}`;
 
-    // Existing state: [root, size, chunks, deployBlock, codec, finalized, author]
+    // Existing state: [root, size, chunks, deployBlock, nextChunk, codec, finalized, author]
     const existing = await pub.readContract({
       address: ledger,
       abi: LOG_LEDGER_ABI,
       functionName: "files",
       args: [fileId],
     });
-    const finalized = existing[5] as boolean;
-    const author = (existing[6] as string).toLowerCase();
+    const finalized = existing[6] as boolean;
+    const author = (existing[7] as string).toLowerCase();
 
     // Already sealed (identical content re-minted) → reuse it.
     if (finalized) {
@@ -103,7 +105,7 @@ export async function publishToLogLedger(params: {
         root: existing[0] as Hex,
         size: Number(existing[1]),
         chunks: Number(existing[2]),
-        codec: Number(existing[4]),
+        codec: Number(existing[5]),
         sealed: true,
         uri,
       };
@@ -122,7 +124,7 @@ export async function publishToLogLedger(params: {
     // with its exact ABI argument tuple — so the ABI's own type-checking is
     // preserved (no `any`) while a single helper handles send + receipt.
     type LedgerWrite =
-      | { fn: "open"; args: readonly [Hex] }
+      | { fn: "open"; args: readonly [Hex, number] }
       | { fn: "upload"; args: readonly [Hex, number, Hex] }
       | { fn: "seal"; args: readonly [Hex, Hex, bigint, number, CodecValue] };
 
@@ -138,7 +140,10 @@ export async function publishToLogLedger(params: {
       if (receipt.status !== "success") throw new Error(`${call.fn} reverted (tx ${hash})`);
     };
 
-    if (author === ZERO) await send({ fn: "open", args: [fileId] }, BigInt(120_000));
+    // open(contentHash, version) — the contract derives the same fileId from
+    // msg.sender (this relayer) + contentHash + version. Uploads are strictly
+    // ordered: chunkIndex i == nextChunk, so the loop index below is the index.
+    if (author === ZERO) await send({ fn: "open", args: [contentHash, version] }, BigInt(120_000));
 
     for (let i = 0; i < chunks.length; i++) {
       const data = chunks[i];
