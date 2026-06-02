@@ -49,7 +49,8 @@ contract PerpetualSettlementTest is Test {
             startTime: 0,
             endTime: block.timestamp + 1 days,
             counter: 0,
-            salt: 1
+            salt: 1,
+            minSellerProceeds: 0
         });
     }
 
@@ -98,7 +99,8 @@ contract PerpetualSettlementTest is Test {
         PerpetualSettlement.Order memory order = PerpetualSettlement.Order({
             seller: seller, nft: address(fl), tokenId: hostedId,
             paymentToken: address(0), price: PRICE, startTime: 0,
-            endTime: block.timestamp + 1 days, counter: 0, salt: 2
+            endTime: block.timestamp + 1 days, counter: 0, salt: 2,
+            minSellerProceeds: 0
         });
         bytes memory sig = _sign(order, SELLER_PK);
 
@@ -209,7 +211,8 @@ contract PerpetualSettlementTest is Test {
         PerpetualSettlement.Order memory order = PerpetualSettlement.Order({
             seller: seller, nft: address(evil), tokenId: 1,
             paymentToken: address(0), price: PRICE, startTime: 0,
-            endTime: block.timestamp + 1 days, counter: 0, salt: 99
+            endTime: block.timestamp + 1 days, counter: 0, salt: 99,
+            minSellerProceeds: 0
         });
         bytes memory sig = _sign(order, SELLER_PK);
 
@@ -236,7 +239,8 @@ contract PerpetualSettlementTest is Test {
         PerpetualSettlement.Order memory order = PerpetualSettlement.Order({
             seller: seller, nft: address(evil), tokenId: 1,
             paymentToken: address(0), price: PRICE, startTime: 0,
-            endTime: block.timestamp + 1 days, counter: 0, salt: 123
+            endTime: block.timestamp + 1 days, counter: 0, salt: 123,
+            minSellerProceeds: 0
         });
         bytes memory sig = _sign(order, SELLER_PK);
 
@@ -308,7 +312,8 @@ contract PerpetualSettlementTest is Test {
         PerpetualSettlement.Order memory order = PerpetualSettlement.Order({
             seller: seller, nft: address(nft), tokenId: 1,
             paymentToken: address(0), price: PRICE, startTime: 0,
-            endTime: block.timestamp + 1 days, counter: 0, salt: 7
+            endTime: block.timestamp + 1 days, counter: 0, salt: 7,
+            minSellerProceeds: 0
         });
         bytes memory sig = _sign(order, SELLER_PK);
 
@@ -321,6 +326,89 @@ contract PerpetualSettlementTest is Test {
         assertEq(nft.ownerOf(1), buyer, "buyer owns NFT");
         assertEq(seller.balance, PRICE - royalty - fee, "seller paid");
         assertEq(exchange.withdrawable(address(badRoyalty)), royalty, "royalty escrowed");
+    }
+
+    /*//////////////////////////////////////////////////////////////////////
+                    SELLER-SIGNED minSellerProceeds FLOOR
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// A fill where sellerProceeds >= minSellerProceeds succeeds. The seller
+    /// signs a floor equal to price minus the fees they expect at signing.
+    function test_FulfillSucceedsAtProceedsFloor() public {
+        uint256 royalty = (PRICE * ROYALTY_BPS) / 10_000;
+        uint256 fee = (PRICE * exchange.protocolFeeBps()) / 10_000;
+        uint256 expectedProceeds = PRICE - royalty - fee;
+
+        PerpetualSettlement.Order memory order = _order();
+        order.minSellerProceeds = expectedProceeds; // exactly the floor; must pass.
+        bytes memory sig = _sign(order, SELLER_PK);
+
+        vm.deal(buyer, 10 ether);
+        vm.prank(buyer);
+        exchange.fulfillOrder{value: PRICE}(order, sig);
+
+        assertEq(fl.ownerOf(tokenId), buyer, "buyer owns NFT");
+        assertEq(seller.balance, expectedProceeds, "seller got at least the floor");
+    }
+
+    /// If the protocol fee is raised between signing and fill so that actual
+    /// proceeds drop below the signed floor, the fill reverts SellerProceedsTooLow.
+    function test_FulfillRevertsWhenProceedsBelowFloor() public {
+        // Seller signs assuming the current (2.25%) fee.
+        uint256 royalty = (PRICE * ROYALTY_BPS) / 10_000;
+        uint256 feeAtSign = (PRICE * exchange.protocolFeeBps()) / 10_000;
+        uint256 floor = PRICE - royalty - feeAtSign;
+
+        PerpetualSettlement.Order memory order = _order();
+        order.minSellerProceeds = floor;
+        bytes memory sig = _sign(order, SELLER_PK);
+
+        // Protocol bumps the fee to the max (2.50%) before the buyer fills:
+        // proceeds now fall below the signed floor.
+        uint96 maxFee = exchange.MAX_FEE_BPS();
+        vm.prank(owner);
+        exchange.setProtocolFeeBps(maxFee);
+
+        vm.deal(buyer, 10 ether);
+        vm.prank(buyer);
+        vm.expectRevert(PerpetualSettlement.SellerProceedsTooLow.selector);
+        exchange.fulfillOrder{value: PRICE}(order, sig);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////
+                            withdrawTo ESCAPE HATCH
+    //////////////////////////////////////////////////////////////////////*/
+
+    /// Escrow accrues to a recipient that can't receive a push; the recipient's
+    /// controller redirects it to another address via withdrawTo.
+    function test_WithdrawToRedirectsOwnEscrow() public {
+        RevertingRecipient badFee = new RevertingRecipient();
+        vm.prank(owner);
+        exchange.setFeeRecipient(payable(address(badFee)));
+
+        PerpetualSettlement.Order memory order = _order();
+        bytes memory sig = _sign(order, SELLER_PK);
+        vm.deal(buyer, 10 ether);
+        vm.prank(buyer);
+        exchange.fulfillOrder{value: PRICE}(order, sig);
+
+        uint256 fee = (PRICE * exchange.protocolFeeBps()) / 10_000;
+        assertEq(exchange.withdrawable(address(badFee)), fee, "fee escrowed");
+
+        address payable other = payable(address(0xD00D));
+        uint256 before = other.balance;
+        vm.prank(address(badFee));
+        exchange.withdrawTo(other);
+
+        assertEq(other.balance - before, fee, "escrow moved to other address");
+        assertEq(exchange.withdrawable(address(badFee)), 0, "escrow zeroed");
+    }
+
+    /// withdrawTo reverts NothingToWithdraw when the caller has no escrow.
+    function test_WithdrawToRevertsWhenEmpty() public {
+        vm.prank(buyer);
+        vm.expectRevert(PerpetualSettlement.NothingToWithdraw.selector);
+        exchange.withdrawTo(payable(address(0xD00D)));
     }
 }
 

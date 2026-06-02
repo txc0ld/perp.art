@@ -52,6 +52,9 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         uint256 endTime;      // unix seconds; 0 == no expiry.
         uint256 counter;      // must equal the seller's current counter.
         uint256 salt;         // uniqueness for the order hash.
+        uint256 minSellerProceeds; // floor on seller's net (price - royalty - fees);
+                                   // signed in to protect the seller from fee/
+                                   // royalty changes between signing and fill. 0 == no floor.
     }
 
     /*//////////////////////////////////////////////////////////////////////
@@ -70,6 +73,8 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
     error WrongPayment();
     error RoyaltyExceedsPrice();
     error ZeroPrice();
+    error SellerProceedsTooLow();
+    error NothingToWithdraw();
 
     /*//////////////////////////////////////////////////////////////////////
                                     EVENTS
@@ -115,7 +120,7 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
     uint96 public constant MAX_HOSTING_FEE_BPS = 150; // 1.50%
 
     bytes32 public constant ORDER_TYPEHASH = keccak256(
-        "Order(address seller,address nft,uint256 tokenId,address paymentToken,uint256 price,uint256 startTime,uint256 endTime,uint256 counter,uint256 salt)"
+        "Order(address seller,address nft,uint256 tokenId,address paymentToken,uint256 price,uint256 startTime,uint256 endTime,uint256 counter,uint256 salt,uint256 minSellerProceeds)"
     );
 
     uint96 private _protocolFeeBps = 225; // 2.25% default
@@ -193,9 +198,6 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         // from draining the buyer while still letting the sale settle.
         uint256 royaltyCap = (order.price * MAX_ROYALTY_BPS) / BPS_DENOMINATOR;
         if (royaltyAmount > royaltyCap) royaltyAmount = royaltyCap;
-        // AUDIT: roadmap — sign minSellerProceeds / a fee+royalty bound into the
-        // EIP-712 Order struct so the seller authorizes their net proceeds and
-        // is protected from fee/royalty changes between signing and fill.
         uint256 protocolFee = (order.price * _protocolFeeBps) / BPS_DENOMINATOR;
         // Perpetual hosting fee: only set on Perpetual-hosted tokens (PRD §7),
         // read from the NFT itself so it follows the token to any marketplace.
@@ -207,6 +209,9 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         uint256 hostingFee = (order.price * hostingFeeBpsClamped) / BPS_DENOMINATOR;
         if (royaltyAmount + protocolFee + hostingFee > order.price) revert RoyaltyExceedsPrice();
         uint256 sellerProceeds = order.price - royaltyAmount - protocolFee - hostingFee;
+        // Seller-signed floor: protect the seller from fee/royalty changes
+        // between signing and fill. They authorized a minimum net in the order.
+        if (sellerProceeds < order.minSellerProceeds) revert SellerProceedsTooLow();
 
         // (4) Effects before interactions.
         filled[orderHash] = true;
@@ -283,7 +288,8 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
                     order.startTime,
                     order.endTime,
                     order.counter,
-                    order.salt
+                    order.salt,
+                    order.minSellerProceeds
                 )
             )
         );
@@ -337,6 +343,22 @@ contract PerpetualSettlement is EIP712, Ownable, ReentrancyGuard {
         uint256 amt = withdrawable[msg.sender];
         withdrawable[msg.sender] = 0;
         (bool ok, ) = msg.sender.call{value: amt}("");
+        require(ok);
+    }
+
+    /// @notice Redirect the caller's OWN escrowed balance to an arbitrary
+    ///         address `to`. Escape hatch for when the recipient address itself
+    ///         can't receive a plain push (e.g. a contract without a payable
+    ///         fallback) but its controller can still call this. Recipient-
+    ///         controlled only — no owner rescue, to avoid an admin trust vector.
+    /// @dev    Zeroes the caller's escrow before transferring (CEI) under
+    ///         nonReentrant; reverts `NothingToWithdraw` if there is nothing to
+    ///         move and requires the outbound call to succeed.
+    function withdrawTo(address payable to) external nonReentrant {
+        uint256 amt = withdrawable[msg.sender];
+        if (amt == 0) revert NothingToWithdraw();
+        withdrawable[msg.sender] = 0;
+        (bool ok, ) = to.call{value: amt}("");
         require(ok);
     }
 }

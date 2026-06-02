@@ -1,6 +1,6 @@
 # Perpetual — Contract Upgrade Roadmap
 
-Status as of 2026-06-01. Contracts are **testnet, unaudited (internal adversarial audit only)**.
+Status as of 2026-06-02. Contracts are **testnet, unaudited (internal adversarial audit only)**.
 Audit findings live in this doc's "Deferred" section; the spec for drops is
 `docs/superpowers/specs/2026-06-01-bulk-pfp-drops-design.md`.
 
@@ -57,24 +57,49 @@ mainnet redeploy. (Source-only; no testnet redeploy was performed.)
 7. **PerpetualDrop — multi-recipient batch coverage.** Added `test_MintBatchMultipleRecipients`:
    interleaved batches to two recipients (Alice 1..5, Bob 6..10) resolve `ownerOf`/`balanceOf`
    correctly across both anchor ranges, including after a cross-range transfer.
+8. **Settlement — seller-signed `minSellerProceeds` floor (HIGH).** The seller now signs a net-
+   proceeds floor into the EIP-712 `Order`. `minSellerProceeds` is appended as the LAST `Order`
+   field (preserving the prior field order) AND added to `ORDER_TYPEHASH`; `hashOrder` encodes it.
+   `fulfillOrder` reverts `SellerProceedsTooLow` when `sellerProceeds < order.minSellerProceeds`,
+   protecting the seller from protocol-fee/royalty/hosting-fee changes between signing and fill
+   (`0` == no floor). The `// AUDIT:` TODO in `fulfillOrder` is removed. **Breaking ABI change**
+   (redeploy). **Frontend follow-up (other agent):** `ORDER_TYPES` in `src/lib/web3/orders.ts`,
+   `TradePanel` signing, and `/api/orders` validation must add `minSellerProceeds` (byte-for-byte
+   matching the typehash below). Tests: `test_FulfillSucceedsAtProceedsFloor`,
+   `test_FulfillRevertsWhenProceedsBelowFloor` (+ all existing fulfill tests updated to set it).
+9. **Settlement — `withdrawTo` escrow escape hatch (MED).** Added
+   `withdrawTo(address payable to) external nonReentrant`: a recipient redirects THEIR OWN escrow
+   (`withdrawable[msg.sender]`) to an arbitrary `to` (zero-out before transfer, `require` success,
+   reverts `NothingToWithdraw` if 0). Rescues escrow when the recipient address itself can't
+   receive a push but its controller can call this. Recipient-controlled only — no owner-rescue,
+   to avoid an admin trust vector. `withdraw()` is unchanged. Tests:
+   `test_WithdrawToRedirectsOwnEscrow`, `test_WithdrawToRevertsWhenEmpty`.
+10. **LogLedger — author-bound fileId + ordered chunks (MED).** `open` now DERIVES the fileId from
+   the caller: `open(bytes32 contentHash, uint32 version) returns (bytes32 fileId)` with
+   `fileId = keccak256(abi.encode(msg.sender, contentHash, version))`, making it un-squattable (an
+   attacker's `open` derives a different id). A per-file `nextChunk` enforces ordered/contiguous
+   uploads — `upload` requires `chunkIndex == nextChunk` (reverts `ChunkOutOfOrder`) then
+   increments; `seal` requires the asserted `chunks == nextChunk` (reverts `ChunkCountMismatch`) so
+   the sealed count matches the log stream. A `nextChunk(fileId)` view is exposed. **Root integrity
+   — accepted design:** `root`/`size`/`codec` stay author-asserted; the contract does NOT do on-
+   chain Merkle verification (gas-prohibitive). Instead the LOG resolver verifies the root off-chain
+   via multi-RPC agreement, and the on-chain STATE proof shard is the consensus backstop. The on-
+   chain guarantees are author-binding (anti-squat) + ordered/contiguous chunks (anti-corruption).
+   Both `// AUDIT:` TODOs in `open`/`seal` are removed. **Breaking ABI change** (redeploy).
+   **Relayer follow-up (other agent):** the relayer must compute the identical fileId
+   `keccak256(abi.encode(msg.sender, contentHash, version))` where `msg.sender` is the RELAYER
+   wallet, and upload chunks strictly in order from index 0. Tests:
+   `test_OpenDerivesFileIdAndSetsAuthor`, `test_DifferentCallerDerivesDifferentFileId`,
+   `test_OutOfOrderChunkReverts`, `test_DuplicateChunkReverts`, `test_SealWrongChunkCountReverts`,
+   `test_ResealedIdenticalContentReusesFileId` (+ the open/upload/seal/finalize suite updated to the
+   new `open(contentHash, version)` signature).
 
-## Deferred — formal PRE-MAINNET batch (redeploy / frontend-coupled, do next by priority)
-These three are NOT yet implemented in source: each changes the order struct / relayer / resolver
-or otherwise couples to the frontend + a redeploy, so they are batched for the pre-mainnet work.
-1. **Settlement — seller-signed fee bound (HIGH).** The seller currently signs no fee/royalty
-   acknowledgment; protocol fee + NFT hosting fee are read live at fill. Add `minSellerProceeds`
-   (or a full fee schedule) to the EIP-712 `Order` struct and enforce it on fill. Touches the
-   order struct + frontend signing (`TradePanel`) + `/api/orders` validation. `// AUDIT:` TODO is
-   in `PerpetualSettlement.fulfillOrder`. (Order struct deliberately left UNCHANGED in this batch.)
-2. **Settlement — escrow rescue escape hatch (MED).** Add a `withdrawTo`/owner-rescue path for
-   escrow (`withdrawable`) that can never otherwise be claimed (e.g. a recipient that can neither
-   receive a push nor call `withdraw`). Money-contract change; pairs with the UUPS-proxy decision.
-3. **LogLedger — fileId author-binding + root integrity (MED).** `open` is first-come on a
-   predictable `fileId` (squattable); the sealed Merkle root is author-asserted, not validated
-   against uploaded chunks. Bind storage to `(author, fileId)` (or `fileId = keccak(msg.sender,…)`)
-   and/or accumulate a chunk hash on-chain to validate the root at `seal`. Changes the relayer's
-   fileId computation + the LOG resolver — coordinate together. `// AUDIT:` TODOs are in
-   `LogLedger.open`/`seal`. (LogLedger logic deliberately left UNCHANGED in this batch.)
+## Deferred — formal PRE-MAINNET batch (DONE)
+The three pre-mainnet items (Settlement seller-signed fee bound, Settlement escrow escape hatch,
+LogLedger fileId author-binding + root integrity) are now implemented in source + tested on `main`
+— see items 8–10 in "Fixed in source" above. They are breaking ABI changes that land at the mainnet
+redeploy; the live testnet stays on the current verified contracts. Frontend/relayer follow-ups are
+flagged inline (each "follow-up (other agent)" note).
 
 ## ERC-2309 indexer caveat (informational)
 Post-construction batch mint emits only `ConsecutiveTransfer` (no per-token `Transfer`). OpenSea
