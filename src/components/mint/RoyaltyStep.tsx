@@ -38,7 +38,7 @@ export function RoyaltyStep({
             type="range"
             min={0}
             max={MAX}
-            step={0.5}
+            step={0.1}
             value={pct}
             onChange={(e) => set({ royaltyPct: Number(e.target.value) })}
             aria-label="Royalty percentage"
